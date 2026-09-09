@@ -8,8 +8,8 @@ import { notifyUser } from "@/lib/notify";
 const schema = z.object({
   fullName: z.string().trim().min(2),
   contactEmail: z.string().email(),
-  facultyId: z.string().uuid(),
-  subjectId: z.string().uuid(),
+  facultyId: z.string().trim().min(1),
+  subjectId: z.string().trim().min(1),
 });
 
 export async function POST(req: Request) {

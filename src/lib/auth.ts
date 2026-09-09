@@ -56,6 +56,11 @@ async function syncGoogleUser(
       authLog("google_sign_in_success", { userId: dbUser.id, email });
     }
 
+    await prisma.user.update({
+      where: { id: dbUser.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     user.id = dbUser.id;
     user.role = dbUser.role;
     return true;
@@ -140,6 +145,10 @@ providers.push(
         }
 
         authLog("credentials_sign_in_success", { userId: user.id, email });
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
         return {
           id: user.id,
           email: user.email,
