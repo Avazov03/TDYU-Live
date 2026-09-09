@@ -97,9 +97,13 @@ function isPdfFile(name: string, mime: string) {
   return mime === "application/pdf" || name.toLowerCase().endsWith(".pdf");
 }
 
+function absoluteFileUrl(fileUrl: string) {
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  return `${window.location.origin}${fileUrl.startsWith("/") ? "" : "/"}${fileUrl}`;
+}
+
 function officeViewerSrc(fileUrl: string) {
-  const abs = `${window.location.origin}${fileUrl}`;
-  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(abs)}`;
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteFileUrl(fileUrl))}`;
 }
 
 function PresentPane({ present }: { present: PresentState }) {
@@ -158,16 +162,20 @@ function PresentBoard({
     onPointer(Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y)));
   };
   return (
-    <div
-      ref={boxRef}
-      className={`meet-present-board${pointing ? " is-pointing" : ""}`}
-      onMouseMove={move}
-    >
+    <div ref={boxRef} className="meet-present-board">
       <PresentPane present={present} />
       {present ? <span className="meet-tile-name">{present.fileName}</span> : null}
-      {pointer.on ? (
-        <span className="meet-laser" style={{ left: `${pointer.x * 100}%`, top: `${pointer.y * 100}%` }} />
-      ) : null}
+      <div
+        className={`meet-present-overlay${pointing ? " is-pointing" : ""}`}
+        onMouseMove={move}
+      >
+        {pointer.on ? (
+          <span className="meet-stick" style={{ left: `${pointer.x * 100}%`, top: `${pointer.y * 100}%` }}>
+            <span className="meet-stick-tip" />
+            <span className="meet-stick-shaft" />
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
