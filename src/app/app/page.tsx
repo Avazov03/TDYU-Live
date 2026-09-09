@@ -4,7 +4,6 @@ import { HomeContent } from "@/components/home/HomeContent";
 import type { VideoCardData } from "@/components/video/VideoCard";
 import { requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { fakeDurationSec, fakeViews } from "@/lib/thumbs";
 import { TARIFF_APP_HINTS, TARIFF_LABELS, canWatchLive } from "@/lib/tariffs";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +40,7 @@ async function getHomeData() {
       href: `/learn/${l.id}`,
       teacherName: l.course.teacher.fullName,
       metaLine: `${l.course.subject.nameUz}`,
-      durationSec: fakeDurationSec(l.id),
-      viewCount: fakeViews(l.id, l._count.attendance),
+      viewCount: l._count.attendance || undefined,
       createdAt: l.scheduledAt,
       playbackId: l.muxVodPlaybackId || l.muxLivePlaybackId,
       live: l.status === "live",

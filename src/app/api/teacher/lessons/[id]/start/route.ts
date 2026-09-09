@@ -22,9 +22,22 @@ export async function POST(
     include: { course: true },
   });
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
-  if (lesson.status === "live") return NextResponse.json({ lesson });
+  if (lesson.status === "live") {
+    const demo = Boolean(lesson.streamKey?.startsWith("demo_"));
+    return NextResponse.json({
+      lesson,
+      demo,
+      rtmpUrl: demo ? null : "rtmps://global-live.mux.com:443/app",
+    });
+  }
 
-  const stream = await createLiveStream(lesson.titleUz);
+  let stream;
+  try {
+    stream = await createLiveStream(lesson.titleUz);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Mux xatosi";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
     data: {
@@ -46,5 +59,9 @@ export async function POST(
     "t2",
   );
 
-  return NextResponse.json({ lesson: updated, demo: stream.demo });
+  return NextResponse.json({
+    lesson: updated,
+    demo: stream.demo,
+    rtmpUrl: stream.demo ? null : "rtmps://global-live.mux.com:443/app",
+  });
 }

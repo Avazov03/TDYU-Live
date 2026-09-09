@@ -17,6 +17,9 @@ export { muxPlayerUrl, MUX_RTMP_URL } from "./mux-player";
 export async function createLiveStream(lessonTitle: string): Promise<LiveStreamResult> {
   const auth = muxAuthHeader();
   if (!auth) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Mux sozlanmagan. MUX_TOKEN_ID va MUX_TOKEN_SECRET kerak.");
+    }
     const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
     return {
       liveStreamId: `demo_live_${token}`,

@@ -36,13 +36,3 @@ export function coverUrl(id: string, title: string, playbackId?: string | null) 
   </svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
-
-export function fakeDurationSec(id: string) {
-  const n = hashId(id);
-  return 7 * 60 + (n % 38) * 60 + (n % 50);
-}
-
-export function fakeViews(id: string, real?: number) {
-  if (real && real > 0) return real;
-  return 180 + (hashId(id) % 8400);
-}

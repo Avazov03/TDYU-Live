@@ -57,7 +57,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                       {lesson.status === "live" ? "JONLI EFIR" : "YOZUV"}
                     </div>
                     <h3>{lesson.titleUz}</h3>
-                    <p className="muted small">Pleyer — Mux ulanishidan keyin ochiladi.</p>
+                    <p className="muted small">Video hali yozilmagan.</p>
                   </div>
                 </div>
               ) : (
