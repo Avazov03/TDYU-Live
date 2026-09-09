@@ -65,26 +65,34 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               subject={lesson.titleUz}
               moderator={staffJoin}
             />
-          ) : access.ok && playbackId ? (
+          ) : access.ok && lesson.recordingUrl ? (
             <div className="player-wrap">
-              {playbackId.startsWith("demo_") ? (
-                <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
-                  <div>
-                    <div className="badge danger" style={{ marginBottom: 8 }}>
-                      {lesson.status === "live" ? "JONLI EFIR" : "YOZUV"}
-                    </div>
-                    <h3>{lesson.titleUz}</h3>
-                    <p className="muted small">Video hali yozilmagan.</p>
+              <video src={lesson.recordingUrl} controls playsInline title={lesson.titleUz} />
+            </div>
+          ) : access.ok && playbackId && !playbackId.startsWith("demo_") ? (
+            <div className="player-wrap">
+              <iframe
+                src={muxPlayerUrl(playbackId)}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                title={lesson.titleUz}
+              />
+            </div>
+          ) : access.ok && (lesson.status === "ended" || lesson.status === "live") ? (
+            <div className="player-wrap">
+              <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
+                <div>
+                  <div className="badge danger" style={{ marginBottom: 8 }}>
+                    {lesson.status === "live" ? "JONLI EFIR" : "YOZUV"}
                   </div>
+                  <h3>{lesson.titleUz}</h3>
+                  <p className="muted small">
+                    {lesson.status === "live"
+                      ? "Jonli darsga kirish uchun ruxsat kerak."
+                      : "Video hali yozilmagan."}
+                  </p>
                 </div>
-              ) : (
-                <iframe
-                  src={muxPlayerUrl(playbackId)}
-                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  title={lesson.titleUz}
-                />
-              )}
+              </div>
             </div>
           ) : (
             <div className="player-wrap paywall">

@@ -4,39 +4,69 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLessonAccess } from "@/lib/access";
 import {
+  applyRoomEvent,
   joinLivePeer,
   leaveLivePeer,
   pollLiveRoom,
   pushLiveSignal,
+  type SignalPayload,
 } from "@/lib/live-rooms";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+
+const eventKind = z.enum([
+  "offer",
+  "answer",
+  "ice",
+  "hand",
+  "grant",
+  "revoke",
+  "present",
+  "chat",
+  "state",
+]);
 
 const postSchema = z.object({
   lessonId: z.string().trim().min(1),
   peerId: z.string().trim().min(8).max(80),
   name: z.string().trim().max(80).optional(),
-  action: z.enum(["join", "leave", "signal", "poll"]),
+  action: z.enum(["join", "leave", "signal", "poll", "event"]),
   since: z.number().int().nonnegative().optional(),
   to: z.string().trim().min(1).optional(),
   data: z
     .object({
-      kind: z.enum(["offer", "answer", "ice"]),
+      kind: eventKind,
       sdp: z.string().optional(),
       candidate: z.unknown().optional(),
+      handRaised: z.boolean().optional(),
+      targetId: z.string().optional(),
+      mic: z.boolean().optional(),
+      cam: z.boolean().optional(),
+      present: z
+        .object({
+          fileUrl: z.string(),
+          fileName: z.string(),
+          mime: z.string(),
+        })
+        .nullable()
+        .optional(),
+      text: z.string().max(400).optional(),
+      micOn: z.boolean().optional(),
+      camOn: z.boolean().optional(),
     })
     .optional(),
 });
 
-async function canJoinLive(userId: string, role: string, lessonId: string) {
+async function liveGate(userId: string, role: string, lessonId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { course: { include: { teacher: true } } },
   });
-  if (!lesson || lesson.status !== "live") return false;
-  if (isAdminRole(role)) return true;
-  if (isTeacherRole(role) && lesson.course.teacher.userId === userId) return true;
+  if (!lesson || lesson.status !== "live") return { ok: false, moderator: false };
+  const moderator =
+    isAdminRole(role) || (isTeacherRole(role) && lesson.course.teacher.userId === userId);
+  if (moderator) return { ok: true, moderator: true };
   const access = await getLessonAccess(userId, lesson.courseId, lesson.status);
-  return access.ok;
+  return { ok: access.ok, moderator: false };
 }
 
 export async function POST(req: Request) {
@@ -51,12 +81,13 @@ export async function POST(req: Request) {
   }
 
   const { lessonId, peerId, name, action, since, to, data } = parsed.data;
-  const allowed = await canJoinLive(session.user.id, session.user.role, lessonId);
-  if (!allowed) {
+  const gate = await liveGate(session.user.id, session.user.role, lessonId);
+  if (!gate.ok) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }
 
   const displayName = name?.trim() || session.user.name?.trim() || "Mehmon";
+  const role = gate.moderator ? "moderator" : "student";
 
   if (action === "leave") {
     leaveLivePeer(lessonId, peerId);
@@ -64,7 +95,15 @@ export async function POST(req: Request) {
   }
 
   if (action === "join") {
-    const snap = joinLivePeer(lessonId, peerId, displayName);
+    const snap = joinLivePeer(lessonId, peerId, displayName, role);
+    return NextResponse.json(snap);
+  }
+
+  if (action === "event") {
+    if (!data) {
+      return NextResponse.json({ error: "Signal to'liq emas" }, { status: 400 });
+    }
+    const snap = applyRoomEvent(lessonId, peerId, data as SignalPayload);
     return NextResponse.json(snap);
   }
 
@@ -72,10 +111,13 @@ export async function POST(req: Request) {
     if (!to || !data) {
       return NextResponse.json({ error: "Signal to'liq emas" }, { status: 400 });
     }
+    if (data.kind !== "offer" && data.kind !== "answer" && data.kind !== "ice") {
+      return NextResponse.json({ error: "Noto'g'ri signal" }, { status: 400 });
+    }
     pushLiveSignal(lessonId, peerId, to, {
       kind: data.kind,
       sdp: data.sdp,
-      candidate: data.candidate as { candidate?: string; sdpMid?: string | null; sdpMLineIndex?: number | null } | undefined,
+      candidate: data.candidate as SignalPayload["candidate"],
     });
     return NextResponse.json({ ok: true });
   }

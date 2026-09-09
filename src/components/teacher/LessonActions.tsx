@@ -36,13 +36,13 @@ export function LessonActions({
         </button>
       ) : null}
       {status === "live" ? (
-        <button className="btn btn-danger btn-sm" type="button" disabled={loading} onClick={() => act("end")}>
-          Efirni tugatish
-        </button>
+        <a href="/teacher#live" className="btn btn-danger btn-sm">
+          Studioda tugating
+        </a>
       ) : null}
       {status === "live" ? (
         <p className="small muted" style={{ marginTop: 8 }}>
-          Xona Studio sahifasida.
+          Yozuv saqlanishi uchun efirni studio sahifasidan yoping.
         </p>
       ) : null}
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}

@@ -210,15 +210,31 @@ model Lesson {
   muxLivePlaybackId  String?      @map("mux_live_playback_id")
   muxVodPlaybackId   String?      @map("mux_vod_playback_id")
   streamKey          String?      @map("stream_key")
+  recordingUrl       String?      @map("recording_url")
   createdAt          DateTime     @default(now()) @map("created_at")
 
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   attendance  Attendance[]
   assignments Assignment[]
   chatMessages ChatMessage[]
+  assets      LessonAsset[]
 
   @@index([courseId])
   @@map("lessons")
+}
+
+model LessonAsset {
+  id        String   @id @default(uuid())
+  lessonId  String   @map("lesson_id")
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  mime      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_assets")
 }
 
 model Attendance {

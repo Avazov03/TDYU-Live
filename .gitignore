@@ -56,6 +56,10 @@ next-env.d.ts
 
 /public/uploads/assignments/*
 !/public/uploads/assignments/.gitkeep
+/public/uploads/lessons/*
+!/public/uploads/lessons/.gitkeep
+/public/uploads/recordings/*
+!/public/uploads/recordings/.gitkeep
 
 # local zip extracts
 .tmp-eski/

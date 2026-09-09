@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MUX_RTMP_URL } from "@/lib/mux-player";
 import { CopyField } from "@/components/ui/CopyField";
-import { MeetRoom } from "@/components/live/MeetRoom";
+import { MeetRoom, type MeetRoomHandle } from "@/components/live/MeetRoom";
+import { LessonInventory } from "@/components/teacher/LessonInventory";
 
 type LiveStudioProps = {
   lessonId: string;
@@ -27,6 +28,7 @@ export function LiveStudio({
   displayName,
 }: LiveStudioProps) {
   const router = useRouter();
+  const meetRef = useRef<MeetRoomHandle>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [key, setKey] = useState(
@@ -39,7 +41,19 @@ export function LiveStudio({
   const act = async (action: "start" | "end") => {
     setLoading(true);
     setError("");
-    const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, { method: "POST" });
+    let recordingUrl: string | undefined;
+    if (action === "end") {
+      try {
+        recordingUrl = (await meetRef.current?.saveRecording()) ?? undefined;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Yozuv yuklanmadi, dars yopiladi.");
+      }
+    }
+    const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, {
+      method: "POST",
+      headers: action === "end" ? { "Content-Type": "application/json" } : undefined,
+      body: action === "end" ? JSON.stringify({ recordingUrl }) : undefined,
+    });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
@@ -70,7 +84,7 @@ export function LiveStudio({
         </div>
         <div className="live-studio-actions">
           {canStart ? (
-            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => act("start")}>
+            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("start")}>
               {loading ? "Ochilmoqda..." : "Efirni boshlash"}
             </button>
           ) : null}
@@ -79,8 +93,8 @@ export function LiveStudio({
               <Link href={`/learn/${lessonId}`} className="btn">
                 Talaba ko‘rinishi
               </Link>
-              <button className="btn btn-danger" type="button" disabled={loading} onClick={() => act("end")}>
-                {loading ? "Yopilmoqda..." : "Efirni tugatish"}
+              <button className="btn btn-danger" type="button" disabled={loading} onClick={() => void act("end")}>
+                {loading ? "Yozuv saqlanmoqda..." : "Efirni tugatish"}
               </button>
             </>
           ) : null}
@@ -89,18 +103,20 @@ export function LiveStudio({
 
       {canStart ? (
         <ol className="live-steps">
-          <li>Efirni boshlang — kamera va mikrofon shu sahifada ochiladi (Zoom / Google Meet kabi).</li>
-          <li>Brauzer so‘rasa, kameraga ruxsat bering. Talabalar dars sahifasidan kiradi.</li>
-          <li>2/3-tarifdagi o‘quvchilar sizni va bir-birini ko‘radi.</li>
+          <li>Kerakli slayd yoki faylni pastdagi inventarga yuklang.</li>
+          <li>Efirni boshlang — kamera shu sahifada ochiladi. Talabalar yon qatorda ko‘rinadi.</li>
+          <li>Qo‘l ko‘targan o‘quvchiga mikrofon yoki kameraga ruxsat bering.</li>
+          <li>Tugatganda dars avtomatik yozib olinadi va talabalar keyin ko‘ra oladi.</li>
         </ol>
       ) : null}
 
       {isLive ? (
         <div className="live-meet">
           <p className="small muted" style={{ margin: "0 0 10px" }}>
-            Kamerani yoqing. Talabalar «Talaba ko‘rinishi» yoki o‘z dars sahifasidan shu xonaga kiradi.
+            Asosiy ekran — siz yoki slayd. Yon qator — o‘quvchilar. Faylni namoyish qilsangiz slayd katta, siz kichrayasiz.
           </p>
           <MeetRoom
+            ref={meetRef}
             lessonId={lessonId}
             displayName={displayName}
             subject={titleUz}
@@ -109,11 +125,17 @@ export function LiveStudio({
         </div>
       ) : null}
 
+      <LessonInventory
+        lessonId={lessonId}
+        canPresent={isLive}
+        onPresent={(file) => meetRef.current?.presentFile(file)}
+      />
+
       {isLive && key ? (
         <details className="live-obs-extra">
           <summary>OBS orqali yozib olish (ixtiyoriy)</summary>
           <p className="small" style={{ margin: "10px 0" }}>
-            Dars brauzerda allaqachon ketmoqda. OBS faqat yozuv uchun.
+            Brauzer allaqachon yozmoqda. OBS faqat zaxira uchun.
           </p>
           <CopyField label="Server" value={MUX_RTMP_URL} />
           <CopyField label="Stream key" value={key} />
