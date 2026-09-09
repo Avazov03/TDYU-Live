@@ -926,12 +926,19 @@ tr:last-child td { border-bottom: none; }
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: min(78vh, 860px);
-  min-height: 520px;
+  height: min(calc(100vh - 96px), 780px);
+  min-height: 440px;
   background: #0b0b0d;
   border-radius: 14px;
   overflow: hidden;
   color: #eee;
+  overflow-anchor: none;
+}
+.live-meet .meet-frame,
+.watch-main .meet-frame {
+  position: sticky;
+  top: 8px;
+  z-index: 3;
 }
 .meet-zoom {
   flex: 1;
@@ -1049,7 +1056,10 @@ tr:last-child td { border-bottom: none; }
   object-fit: cover;
   background: #222;
 }
+.meet-tile video.is-hidden { opacity: 0; }
 .meet-tile-empty {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1196,6 +1206,7 @@ tr:last-child td { border-bottom: none; }
   overflow: auto;
   padding: 12px;
   font-size: 13px;
+  overflow-anchor: none;
 }
 .meet-chat-list p { margin: 0 0 8px; }
 .meet-chat-send {
@@ -1229,6 +1240,22 @@ tr:last-child td { border-bottom: none; }
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+.lesson-inventory.is-live-files {
+  margin-top: 12px;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.lesson-inventory.is-live-files > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.lesson-inventory.is-live-files .lesson-inventory {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: none;
 }
 .lesson-inventory-list { list-style: none; margin: 12px 0 0; padding: 0; }
 .lesson-inventory-list li {

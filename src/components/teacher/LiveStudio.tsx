@@ -112,9 +112,6 @@ export function LiveStudio({
 
       {isLive ? (
         <div className="live-meet">
-          <p className="small muted" style={{ margin: "0 0 10px" }}>
-            Asosiy ekran — siz yoki slayd. Yon qator — o‘quvchilar. Faylni namoyish qilsangiz slayd katta, siz kichrayasiz.
-          </p>
           <MeetRoom
             ref={meetRef}
             lessonId={lessonId}
@@ -125,11 +122,22 @@ export function LiveStudio({
         </div>
       ) : null}
 
-      <LessonInventory
-        lessonId={lessonId}
-        canPresent={isLive}
-        onPresent={(file) => meetRef.current?.presentFile(file)}
-      />
+      {isLive ? (
+        <details className="lesson-inventory is-live-files">
+          <summary>Dars fayllari — namoyish qilish</summary>
+          <LessonInventory
+            lessonId={lessonId}
+            canPresent={isLive}
+            onPresent={(file) => meetRef.current?.presentFile(file)}
+          />
+        </details>
+      ) : (
+        <LessonInventory
+          lessonId={lessonId}
+          canPresent={isLive}
+          onPresent={(file) => meetRef.current?.presentFile(file)}
+        />
+      )}
 
       {isLive && key ? (
         <details className="live-obs-extra">

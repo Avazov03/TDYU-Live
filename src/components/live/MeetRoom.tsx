@@ -43,7 +43,9 @@ const ICE: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
   ],
+  iceCandidatePoolSize: 4,
 };
 
 async function api(body: Record<string, unknown>) {
@@ -196,10 +198,39 @@ function VideoPane({
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [, setMediaTick] = useState(0);
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream;
+    const el = ref.current;
+    if (!el) return;
+    el.srcObject = stream;
+    if (!stream) return;
+    el.muted = true;
+    void el.play()
+      .then(() => {
+        if (!muted) el.muted = false;
+      })
+      .catch(() => undefined);
+  }, [stream, muted]);
+  useEffect(() => {
+    const track = stream?.getVideoTracks()[0];
+    if (!track) return;
+    const bump = () => setMediaTick((n) => n + 1);
+    track.addEventListener("mute", bump);
+    track.addEventListener("unmute", bump);
+    track.addEventListener("ended", bump);
+    return () => {
+      track.removeEventListener("mute", bump);
+      track.removeEventListener("unmute", bump);
+      track.removeEventListener("ended", bump);
+    };
   }, [stream]);
-  const showVideo = Boolean(stream && !camOff && stream.getVideoTracks().some((t) => t.enabled && t.readyState === "live"));
+  const track = stream?.getVideoTracks()[0];
+  const hasPic = Boolean(
+    track &&
+      track.readyState !== "ended" &&
+      track.enabled &&
+      (you ? !camOff : true),
+  );
   return (
     <div
       className={`meet-tile${compact ? " is-compact" : ""}${speaking ? " is-speaking" : ""}${hand ? " has-hand" : ""}`}
@@ -210,11 +241,8 @@ function VideoPane({
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {showVideo ? (
-        <video ref={ref} autoPlay playsInline muted={muted} />
-      ) : (
-        <div className="meet-tile-empty">{name.slice(0, 1).toUpperCase()}</div>
-      )}
+      <video ref={ref} autoPlay playsInline className={hasPic ? "" : "is-hidden"} />
+      {hasPic ? null : <div className="meet-tile-empty">{name.slice(0, 1).toUpperCase()}</div>}
       <span className="meet-tile-name">
         {name}
         {you ? " · siz" : ""}
@@ -270,6 +298,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
+  const remoteMedia = useRef(new Map<string, MediaStream>());
   const names = useRef(new Map<string, PeerInfo>());
   const sinceRef = useRef(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -291,7 +320,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const [focus, setFocus] = useState<Focus>("auto");
   const [panel, setPanel] = useState<"none" | "files" | "people" | "settings">("none");
   const [chatText, setChatText] = useState("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatListRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const lastPtrRef = useRef(0);
   const [assets, setAssets] = useState<{ id: string; fileName: string; fileUrl: string; mime: string }[]>([]);
@@ -383,6 +412,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     pc?.close();
     pcs.current.delete(id);
     names.current.delete(id);
+    remoteMedia.current.delete(id);
     setRemotes((prev) => prev.filter((p) => p.info.id !== id));
   }, []);
 
@@ -402,6 +432,16 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
   const outgoingStream = useCallback(() => screenStreamRef.current ?? localStreamRef.current, []);
 
+  const bindStream = useCallback(async (pc: RTCPeerConnection, stream: MediaStream) => {
+    for (const track of stream.getTracks()) {
+      const byKind = pc.getSenders().find((s) => s.track?.kind === track.kind);
+      const empty = pc.getTransceivers().find((t) => t.receiver.track.kind === track.kind && !t.sender.track)?.sender;
+      const sender = byKind ?? empty;
+      if (sender) await sender.replaceTrack(track);
+      else pc.addTrack(track, stream);
+    }
+  }, []);
+
   const ensurePc = useCallback(
     (otherId: string) => {
       const existing = pcs.current.get(otherId);
@@ -409,16 +449,35 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       const pc = new RTCPeerConnection(ICE);
       pcs.current.set(otherId, pc);
       const local = outgoingStream();
-      local?.getTracks().forEach((track) => pc.addTrack(track, local));
+      if (local && local.getTracks().length > 0) {
+        local.getTracks().forEach((track) => pc.addTrack(track, local));
+      } else {
+        pc.addTransceiver("audio", { direction: "sendrecv" });
+        pc.addTransceiver("video", { direction: "sendrecv" });
+      }
       pc.onicecandidate = (ev) => {
         if (ev.candidate) sendSignal(otherId, { kind: "ice", candidate: ev.candidate.toJSON() });
       };
       pc.ontrack = (ev) => {
-        const stream = ev.streams[0] ?? new MediaStream([ev.track]);
+        let stream = remoteMedia.current.get(otherId);
+        if (!stream) {
+          stream = new MediaStream();
+          remoteMedia.current.set(otherId, stream);
+        }
+        if (!stream.getTracks().some((t) => t.id === ev.track.id)) {
+          stream.addTrack(ev.track);
+        }
         upsertRemote(otherId, stream);
       };
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") dropRemote(otherId);
+        if (pc.connectionState === "failed") {
+          try {
+            pc.restartIce();
+          } catch {
+            dropRemote(otherId);
+          }
+        }
+        if (pc.connectionState === "closed") dropRemote(otherId);
       };
       return pc;
     },
@@ -477,6 +536,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   useEffect(() => {
     let stopped = false;
     const peerId = peerIdRef.current;
+    let poll = 0;
 
     const start = async () => {
       try {
@@ -495,6 +555,9 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         }
         localStreamRef.current = stream;
         setLocalStream(stream);
+        for (const pc of pcs.current.values()) {
+          await bindStream(pc, stream);
+        }
         await api({ lessonId, peerId, name: displayName, action: "join" });
         sendEvent({ kind: "state", micOn: Boolean(moderator), camOn: Boolean(moderator) });
         if (moderator) startRecorder(stream);
@@ -513,9 +576,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       }
     };
 
-    void start();
-
-    const poll = window.setInterval(async () => {
+    const tick = async () => {
       if (stopped) return;
       try {
         const snap = await api({
@@ -528,7 +589,18 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         sinceRef.current = snap.since ?? sinceRef.current;
         setPresent(snap.present ?? null);
         if (snap.pointer) setPointer(snap.pointer);
-        if (snap.chat) setChat(snap.chat);
+        if (snap.chat) {
+          setChat((prev) => {
+            const incoming = snap.chat ?? [];
+            if (
+              prev.length === incoming.length &&
+              prev[prev.length - 1]?.id === incoming[incoming.length - 1]?.id
+            ) {
+              return prev;
+            }
+            return incoming;
+          });
+        }
         if (snap.self) setSelfInfo(snap.self);
         const liveIds = new Set((snap.peers ?? []).map((p) => p.id));
         for (const p of snap.peers ?? []) {
@@ -538,11 +610,10 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         }
         setRemotes((prev) => {
           const known = new Map(prev.map((r) => [r.info.id, r]));
-          const next = (snap.peers ?? []).map((info) => ({
+          return (snap.peers ?? []).map((info) => ({
             info,
-            stream: known.get(info.id)?.stream ?? null,
+            stream: remoteMedia.current.get(info.id) ?? known.get(info.id)?.stream ?? null,
           }));
-          return next;
         });
         for (const id of [...pcs.current.keys()]) {
           if (!liveIds.has(id)) dropRemote(id);
@@ -551,7 +622,12 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           if (msg.data.kind !== "offer" && msg.data.kind !== "answer" && msg.data.kind !== "ice") continue;
           const pc = ensurePc(msg.from);
           if (msg.data.kind === "offer" && msg.data.sdp) {
+            if (pc.signalingState === "have-local-offer") {
+              await pc.setLocalDescription({ type: "rollback" }).catch(() => undefined);
+            }
             await pc.setRemoteDescription({ type: "offer", sdp: msg.data.sdp });
+            const local = outgoingStream();
+            if (local) await bindStream(pc, local);
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             sendSignal(msg.from, { kind: "answer", sdp: answer.sdp });
@@ -570,21 +646,43 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       } catch {
         /* poll retry */
       }
-    }, 500);
+    };
+
+    void start().then(() => {
+      if (stopped) return;
+      void tick();
+      poll = window.setInterval(() => {
+        void tick();
+      }, 800);
+    });
 
     const connections = pcs.current;
+    const remotesMap = remoteMedia.current;
     return () => {
       stopped = true;
       window.clearInterval(poll);
       void api({ lessonId, peerId, action: "leave" }).catch(() => undefined);
       connections.forEach((pc) => pc.close());
       connections.clear();
+      remotesMap.clear();
       recorderRef.current?.stop();
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
     };
-  }, [callPeer, displayName, dropRemote, ensurePc, lessonId, moderator, sendEvent, sendSignal, startRecorder]);
+  }, [
+    bindStream,
+    callPeer,
+    displayName,
+    dropRemote,
+    ensurePc,
+    lessonId,
+    moderator,
+    outgoingStream,
+    sendEvent,
+    sendSignal,
+    startRecorder,
+  ]);
 
   useEffect(() => {
     if (moderator || !selfInfo) return;
@@ -632,7 +730,10 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   }, [moderator, uploadRecording]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
+    const el = chatListRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [chat]);
 
   useEffect(() => {
@@ -821,7 +922,18 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const raisedCount = remotes.filter((p) => p.info.handRaised).length + (handRaised && !moderator ? 1 : 0);
 
   return (
-    <div className="meet-frame" role="region" aria-label="Jonli dars xonasi">
+    <div
+      className="meet-frame"
+      role="region"
+      aria-label="Jonli dars xonasi"
+      onClick={(e) => {
+        const node = e.currentTarget;
+        node.querySelectorAll("video").forEach((vid) => {
+          const el = vid;
+          if (el.paused) void el.play().catch(() => undefined);
+        });
+      }}
+    >
       {error ? <p className="meet-error">{error}</p> : null}
       {notice ? (
         <p className="meet-notice">
@@ -980,7 +1092,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         </aside>
         <aside className="meet-chat-dock" aria-label="Jonli chat">
           <div className="meet-chat-head">Jonli chat</div>
-          <div className="meet-chat-list">
+          <div className="meet-chat-list" ref={chatListRef}>
             {chat.length === 0 ? <p className="small muted">Hali xabar yo‘q. Yozing — hammaga ko‘rinadi.</p> : null}
             {chat.map((line) => (
               <p key={line.id}>
@@ -988,7 +1100,6 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
                 {line.text}
               </p>
             ))}
-            <div ref={chatEndRef} />
           </div>
           <div className="meet-chat-send">
             <input
