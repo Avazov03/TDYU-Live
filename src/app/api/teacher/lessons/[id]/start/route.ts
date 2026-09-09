@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createLiveStream } from "@/lib/mux";
+import { createLiveStreamOrDemo } from "@/lib/mux";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 
@@ -31,23 +31,7 @@ export async function POST(
     });
   }
 
-  let stream;
-  try {
-    stream = await createLiveStream(lesson.titleUz);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Mux xatosi";
-    if (message === "MUX_FREE_PLAN") {
-      return NextResponse.json(
-        {
-          error:
-            "Mux hisobi bepul tarifda — jonli efir yo'q. dashboard.mux.com → Billing: karta qo'shing, Video Live yoqiladi. Keyin shu tugmani qayta bosing.",
-          code: "mux_free_plan",
-        },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
+  const stream = await createLiveStreamOrDemo(lesson.titleUz);
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
     data: {

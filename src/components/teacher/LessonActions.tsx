@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MUX_RTMP_URL } from "@/lib/mux-player";
 
 export function LessonActions({
   lessonId,
   status,
-  streamKey,
 }: {
   lessonId: string;
   status: string;
@@ -16,7 +14,6 @@ export function LessonActions({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const realKey = streamKey && !streamKey.startsWith("demo_") ? streamKey : null;
 
   const act = async (action: "start" | "end") => {
     setLoading(true);
@@ -43,15 +40,9 @@ export function LessonActions({
           Efirni tugatish
         </button>
       ) : null}
-      {status === "live" && realKey ? (
-        <div className="small muted" style={{ marginTop: 8 }}>
-          <div>OBS Server: {MUX_RTMP_URL}</div>
-          <div>Stream key: {realKey}</div>
-        </div>
-      ) : null}
-      {status === "live" && streamKey && !realKey ? (
-        <p className="small" style={{ color: "var(--danger)", marginTop: 8 }}>
-          Mux kaliti yo&apos;q — demo efir. Haqiqiy OBS ishlamaydi.
+      {status === "live" ? (
+        <p className="small muted" style={{ marginTop: 8 }}>
+          Xona Studio sahifasida.
         </p>
       ) : null}
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}

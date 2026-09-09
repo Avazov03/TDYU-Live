@@ -88,13 +88,14 @@ export default async function TeacherHomePage() {
           whenLabel={formatDateTime(studio.scheduledAt)}
           status={studio.status}
           streamKey={studio.streamKey}
+          displayName={teacher.fullName}
         />
       ) : (
         <section id="live" className="live-studio">
           <span className="badge pending">Studio</span>
           <h2 style={{ margin: "8px 0 6px" }}>Hali efir yo&apos;q</h2>
           <p className="muted small" style={{ marginBottom: 12 }}>
-            «Hozir efir» bosing yoki pastda dars rejalang — keyin shu blokda OBS kaliti chiqadi.
+            «Hozir efir» bosing yoki pastda dars rejalang — keyin shu yerda kamera ochiladi.
           </p>
         </section>
       )}

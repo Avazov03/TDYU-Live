@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { completeLiveStream } from "@/lib/mux";
+import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 
@@ -26,6 +27,7 @@ export async function POST(
   if (lesson.muxLiveStreamId) {
     await completeLiveStream(lesson.muxLiveStreamId);
   }
+  closeLiveRoom(lesson.id);
 
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },

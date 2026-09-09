@@ -53,7 +53,7 @@ export function TeacherHub({
           <Icon name="play" size={22} />
           <h3>Jonli dars</h3>
           <p className="small muted">
-            Hozir efir yoki rejadagi darsni Studio&apos;dan boshlang. OBS ulanadi, talabalar 2/3-tarifda ko&apos;radi.
+            Hozir efir yoki rejadagi darsni Studio&apos;dan boshlang. Kamera brauzerda ochiladi — Zoom / Meet kabi. Talabalar 2/3-tarifda kiradi.
           </p>
           <div className="studio-card-actions">
             <QuickLiveButton />

@@ -14,6 +14,25 @@ function muxAuthHeader() {
 
 export { muxPlayerUrl, MUX_RTMP_URL } from "./mux-player";
 
+function demoLiveStream(): LiveStreamResult {
+  const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+  return {
+    liveStreamId: `demo_live_${token}`,
+    livePlaybackId: `demo_play_${token}`,
+    streamKey: `demo_key_${token}`,
+    demo: true,
+  };
+}
+
+/** Meet xonasi Muxsiz ham ochiladi; kalit bo‘lsa OBS ixtiyoriy. */
+export async function createLiveStreamOrDemo(lessonTitle: string): Promise<LiveStreamResult> {
+  try {
+    return await createLiveStream(lessonTitle);
+  } catch {
+    return demoLiveStream();
+  }
+}
+
 export async function createLiveStream(lessonTitle: string): Promise<LiveStreamResult> {
   const auth = muxAuthHeader();
   if (!auth) {

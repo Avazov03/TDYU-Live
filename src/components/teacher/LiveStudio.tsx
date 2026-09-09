@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MUX_RTMP_URL } from "@/lib/mux-player";
 import { CopyField } from "@/components/ui/CopyField";
+import { MeetRoom } from "@/components/live/MeetRoom";
 
 type LiveStudioProps = {
   lessonId: string;
@@ -13,6 +14,7 @@ type LiveStudioProps = {
   whenLabel: string;
   status: string;
   streamKey?: string | null;
+  displayName: string;
 };
 
 export function LiveStudio({
@@ -22,6 +24,7 @@ export function LiveStudio({
   whenLabel,
   status,
   streamKey,
+  displayName,
 }: LiveStudioProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -45,10 +48,6 @@ export function LiveStudio({
     }
     const nextKey = data.lesson?.streamKey as string | undefined;
     if (nextKey && !nextKey.startsWith("demo_")) setKey(nextKey);
-    if (data.demo) {
-      setError("Mux ulanmagan. Haqiqiy efir ishlamaydi.");
-      return;
-    }
     router.refresh();
   };
 
@@ -90,30 +89,40 @@ export function LiveStudio({
 
       {canStart ? (
         <ol className="live-steps">
-          <li>Efirni boshlang — Mux stream key beriladi.</li>
-          <li>OBS → Settings → Stream: Server va key ni qo‘ying.</li>
-          <li>OBS da Start Streaming. Talabalar (2/3-tarif) darhol ko‘radi.</li>
+          <li>Efirni boshlang — kamera va mikrofon shu sahifada ochiladi (Zoom / Google Meet kabi).</li>
+          <li>Brauzer so‘rasa, kameraga ruxsat bering. Talabalar dars sahifasidan kiradi.</li>
+          <li>2/3-tarifdagi o‘quvchilar sizni va bir-birini ko‘radi.</li>
         </ol>
       ) : null}
 
+      {isLive ? (
+        <div className="live-meet">
+          <p className="small muted" style={{ margin: "0 0 10px" }}>
+            Kamerani yoqing. Talabalar «Talaba ko‘rinishi» yoki o‘z dars sahifasidan shu xonaga kiradi.
+          </p>
+          <MeetRoom
+            lessonId={lessonId}
+            displayName={displayName}
+            subject={titleUz}
+            moderator
+          />
+        </div>
+      ) : null}
+
       {isLive && key ? (
-        <div className="live-obs">
-          <p className="small" style={{ margin: "0 0 10px" }}>
-            OBS ochiq bo‘lsin. Kalitni hech kimga bermang.
+        <details className="live-obs-extra">
+          <summary>OBS orqali yozib olish (ixtiyoriy)</summary>
+          <p className="small" style={{ margin: "10px 0" }}>
+            Dars brauzerda allaqachon ketmoqda. OBS faqat yozuv uchun.
           </p>
           <CopyField label="Server" value={MUX_RTMP_URL} />
           <CopyField label="Stream key" value={key} />
-        </div>
+        </details>
       ) : null}
 
       {error ? (
         <div className="live-error">
           <p>{error}</p>
-          {error.includes("dashboard.mux.com") ? (
-            <a href="https://dashboard.mux.com/settings/billing" target="_blank" rel="noreferrer">
-              Mux Billing ni ochish
-            </a>
-          ) : null}
         </div>
       ) : null}
     </section>

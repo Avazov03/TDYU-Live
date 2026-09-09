@@ -4,12 +4,14 @@ import { AppShell } from "@/components/layout/AppShell";
 import { LiveChat } from "@/components/lesson/LiveChat";
 import { LessonRow } from "@/components/lesson/LessonRow";
 import { WatchShareButton } from "@/components/video/WatchShareButton";
+import { MeetRoom } from "@/components/live/MeetRoom";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { accessMessage, getLessonAccess } from "@/lib/access";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
+import { isAdminRole, isTeacherRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,14 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     });
   }
 
+  const staffJoin = Boolean(
+    session?.user &&
+      (isAdminRole(session.user.role) ||
+        (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id)),
+  );
+  const canJoinLive = lesson.status === "live" && (access.ok || staffJoin);
+  const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
+
   const playbackId =
     lesson.status === "live"
       ? lesson.muxLivePlaybackId
@@ -48,7 +58,14 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     <AppShell active="my-courses">
       <div className="watch-layout">
         <div className="watch-main">
-          {access.ok && playbackId ? (
+          {canJoinLive ? (
+            <MeetRoom
+              lessonId={lesson.id}
+              displayName={displayName}
+              subject={lesson.titleUz}
+              moderator={staffJoin}
+            />
+          ) : access.ok && playbackId ? (
             <div className="player-wrap">
               {playbackId.startsWith("demo_") ? (
                 <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
