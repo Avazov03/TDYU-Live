@@ -12,6 +12,8 @@ function createPrismaClient() {
     globalForPrisma.pool ??
     new Pool({
       connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 8_000,
+      idleTimeoutMillis: 20_000,
     });
 
   if (process.env.NODE_ENV !== "production") {

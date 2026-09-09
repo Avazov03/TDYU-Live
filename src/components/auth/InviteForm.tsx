@@ -18,33 +18,42 @@ export function InviteForm({ token, email }: { token: string; email: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (password.length < 8) {
+      setError("Parol kamida 8 belgidan iborat bo'lsin");
+      return;
+    }
     if (password !== confirm) {
       setError("Parollar mos kelmadi");
       return;
     }
     setLoading(true);
-    const res = await fetch("/api/auth/invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, fullName, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Xatolik");
+    try {
+      const res = await fetch("/api/auth/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, fullName, password }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; email?: string };
+      if (!res.ok) {
+        setError(data.error || "Hisob ochilmadi");
+        return;
+      }
+      const signinRes = await signIn("credentials", {
+        email: data.email || email,
+        password,
+        redirect: false,
+      });
+      if (signinRes?.error) {
+        router.push("/login");
+        return;
+      }
+      router.push("/teacher");
+      router.refresh();
+    } catch {
+      setError("Server javob bermadi. Qayta urinib ko'ring.");
+    } finally {
       setLoading(false);
-      return;
     }
-    const signinRes = await signIn("credentials", {
-      email: data.email || email,
-      password,
-      redirect: false,
-    });
-    if (signinRes?.error) {
-      router.push("/login");
-      return;
-    }
-    router.push("/teacher");
-    router.refresh();
   }
 
   return (
