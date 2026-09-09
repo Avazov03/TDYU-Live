@@ -1,0 +1,17 @@
+---
+description: TDYU Live — Open Tsul / open.okina.uz ga tegilmasin
+alwaysApply: true
+---
+
+# TDYU Live — taqiq (boshqa loyiha)
+
+Bu papka **faqat TDYU Live** (TSUL Live).
+
+**Tegilmasin:**
+- https://open.okina.uz
+- server `72.62.3.191`, papka `/var/www/open-tsul`
+- Open Tsul SSL, nginx, certbot, deploy skriptlari
+
+Bu sayt **boshqa loyiha**. Deploy, SSH, DNS, SSL qilma.
+
+TDYU Live hozir **mahalliy**: `http://localhost:3000`. O‘z serveri berilmaguncha remote deploy yo‘q.

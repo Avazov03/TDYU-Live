@@ -1,0 +1,323 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  student
+  teacher
+  admin
+}
+
+enum Language {
+  uz
+  ru
+  en
+}
+
+enum Theme {
+  dark
+  light
+}
+
+enum TariffTier {
+  t1
+  t2
+  t3
+}
+
+enum LessonStatus {
+  scheduled
+  live
+  ended
+}
+
+enum PaymentStatus {
+  demo_paid
+  pending
+  paid
+  failed
+}
+
+enum PaymentProvider {
+  demo
+  payme
+  click
+}
+
+enum NotificationType {
+  lesson_starting
+  lesson_live
+  assignment
+  grade
+  certificate
+  system
+}
+
+model User {
+  id             String    @id @default(uuid())
+  fullName       String    @map("full_name")
+  email          String    @unique
+  passwordHash   String?   @map("password_hash")
+  googleId       String?   @map("google_id")
+  role           UserRole  @default(student)
+  avatarUrl      String?   @map("avatar_url")
+  language       Language  @default(uz)
+  theme          Theme     @default(dark)
+  isBlocked      Boolean   @default(false) @map("is_blocked")
+  telegramChatId String?   @map("telegram_chat_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  teacherProfile Teacher?
+  subscriptions  Subscription[]
+  payments       Payment[]
+  attendance     Attendance[]
+  submissions    Submission[]
+  certificates   Certificate[]
+  notifications  Notification[]
+  chatMessages   ChatMessage[]
+
+  @@map("users")
+}
+
+model Faculty {
+  id     String @id @default(uuid())
+  nameUz String @map("name_uz")
+  nameRu String @map("name_ru")
+  nameEn String @map("name_en")
+  order  Int    @default(0)
+
+  subjects Subject[]
+  courses  Course[]
+  teachers Teacher[]
+
+  @@map("faculties")
+}
+
+model Subject {
+  id        String @id @default(uuid())
+  facultyId String @map("faculty_id")
+  nameUz    String @map("name_uz")
+  nameRu    String @map("name_ru")
+  nameEn    String @map("name_en")
+
+  faculty  Faculty   @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  courses  Course[]
+  teachers Teacher[]
+
+  @@map("subjects")
+}
+
+model Teacher {
+  id           String   @id @default(uuid())
+  userId       String?  @unique @map("user_id")
+  facultyId    String   @map("faculty_id")
+  subjectId    String   @map("subject_id")
+  fullName     String   @map("full_name")
+  contactEmail String   @map("contact_email")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user    User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  faculty Faculty        @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  courses Course[]
+  invites TeacherInvite[]
+
+  @@map("teachers")
+}
+
+model TeacherInvite {
+  id        String    @id @default(uuid())
+  teacherId String    @map("teacher_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("teacher_invites")
+}
+
+model Course {
+  id             String   @id @default(uuid())
+  teacherId      String   @map("teacher_id")
+  facultyId      String   @map("faculty_id")
+  subjectId      String   @map("subject_id")
+  titleUz        String   @map("title_uz")
+  descriptionUz  String   @map("description_uz") @db.Text
+  priceT1        Int      @map("price_t1")
+  priceT2        Int      @map("price_t2")
+  priceT3        Int      @map("price_t3")
+  isPublished    Boolean  @default(true) @map("is_published")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  teacher       Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  faculty       Faculty        @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lessons       Lesson[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  assignments   Assignment[]
+  certificates  Certificate[]
+
+  @@map("courses")
+}
+
+model Subscription {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  courseId  String     @map("course_id")
+  tier      TariffTier
+  startsAt  DateTime   @map("starts_at")
+  endsAt    DateTime   @map("ends_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("subscriptions")
+}
+
+model Lesson {
+  id                 String       @id @default(uuid())
+  courseId           String       @map("course_id")
+  titleUz            String       @map("title_uz")
+  scheduledAt        DateTime     @map("scheduled_at")
+  status             LessonStatus @default(scheduled)
+  muxLiveStreamId    String?      @map("mux_live_stream_id")
+  muxLivePlaybackId  String?      @map("mux_live_playback_id")
+  muxVodPlaybackId   String?      @map("mux_vod_playback_id")
+  streamKey          String?      @map("stream_key")
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendance  Attendance[]
+  assignments Assignment[]
+  chatMessages ChatMessage[]
+
+  @@index([courseId])
+  @@map("lessons")
+}
+
+model Attendance {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  lessonId String   @map("lesson_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("attendance")
+}
+
+model Assignment {
+  id            String   @id @default(uuid())
+  courseId      String   @map("course_id")
+  lessonId      String?  @map("lesson_id")
+  titleUz       String   @map("title_uz")
+  descriptionUz String   @map("description_uz") @db.Text
+  dueAt         DateTime @map("due_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson      Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  submissions Submission[]
+
+  @@map("assignments")
+}
+
+model Submission {
+  id           String   @id @default(uuid())
+  assignmentId String   @map("assignment_id")
+  userId       String   @map("user_id")
+  text         String?  @db.Text
+  fileName     String?  @map("file_name")
+  fileUrl      String?  @map("file_url")
+  grade        Int?
+  teacherNote  String?  @map("teacher_note") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  gradedAt     DateTime? @map("graded_at")
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId])
+  @@map("submissions")
+}
+
+model Certificate {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  issuedAt  DateTime @default(now()) @map("issued_at")
+  issuedBy  String?  @map("issued_by")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("certificates")
+}
+
+model Payment {
+  id        String          @id @default(uuid())
+  userId    String          @map("user_id")
+  courseId  String          @map("course_id")
+  tier      TariffTier
+  amount    Int
+  status    PaymentStatus   @default(demo_paid)
+  provider  PaymentProvider @default(demo)
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  titleUz   String           @map("title_uz")
+  messageUz String           @map("message_uz")
+  relatedId String?          @map("related_id")
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  lessonId  String   @map("lesson_id")
+  userId    String   @map("user_id")
+  text      String   @db.Text
+  priority  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, createdAt])
+  @@map("chat_messages")
+}
+
+model SiteSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String @db.Text
+
+  @@map("site_settings")
+}

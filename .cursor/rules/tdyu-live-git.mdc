@@ -1,0 +1,17 @@
+---
+description: TDYU Live GitHub remote — manba, asosiy branch main
+alwaysApply: true
+---
+
+# TDYU Live — Git
+
+Repo: `git@github.com:Avazov03/TDYU-Live.git`  
+Remote nomi: **manba** (origin emas). Branch: **main**.
+
+```
+git remote add manba git@github.com:Avazov03/TDYU-Live.git
+git branch -M main
+git push -u manba main
+```
+
+Push: `git push -u manba main`. `.env` commit qilinmasin.
