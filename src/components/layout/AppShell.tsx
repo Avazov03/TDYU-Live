@@ -23,6 +23,7 @@ export async function AppShell({ children, active = "home", mainClassName }: App
         userEmail={shell.userEmail}
         userRole={shell.userRole}
         unreadCount={shell.unreadCount}
+        impersonating={Boolean(session?.impersonatorId)}
       />
       <div className="shell">
         <Sidebar active={active} userRole={shell.userRole} tariffTier={sub?.tier ?? null} />

@@ -10,6 +10,7 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { initials } from "@/lib/utils";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { BRAND } from "@/lib/brand";
+import { StopImpersonateButton } from "@/components/admin/StopImpersonateButton";
 
 type TopbarProps = {
   loggedIn?: boolean;
@@ -17,6 +18,7 @@ type TopbarProps = {
   userEmail?: string;
   userRole?: string;
   unreadCount?: number;
+  impersonating?: boolean;
 };
 
 export function Topbar({
@@ -25,6 +27,7 @@ export function Topbar({
   userEmail,
   userRole,
   unreadCount = 0,
+  impersonating = false,
 }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -56,9 +59,16 @@ export function Topbar({
       </div>
       <SearchBar />
       <div className="topbar-right">
-        <Link href="/" className="btn btn-sm">
-          Bosh sahifa
-        </Link>
+        {impersonating ? (
+          <>
+            <span className="badge pending">Admin → o&apos;qituvchi</span>
+            <StopImpersonateButton />
+          </>
+        ) : (
+          <Link href="/" className="btn btn-sm">
+            Bosh sahifa
+          </Link>
+        )}
         <button
           className="iconbtn"
           type="button"
@@ -109,16 +119,20 @@ export function Topbar({
                   <Icon name="settings" size={18} />
                   <span>Sozlamalar</span>
                 </Link>
-                <div className="ddx-divider" />
-                <button
-                  type="button"
-                  className="ddx-item"
-                  style={{ width: "100%", border: "none", background: "transparent", color: "inherit" }}
-                  onClick={handleSignOut}
-                >
-                  <Icon name="logout" size={18} />
-                  <span>Chiqish</span>
-                </button>
+                {impersonating ? null : (
+                  <>
+                    <div className="ddx-divider" />
+                    <button
+                      type="button"
+                      className="ddx-item"
+                      style={{ width: "100%", border: "none", background: "transparent", color: "inherit" }}
+                      onClick={handleSignOut}
+                    >
+                      <Icon name="logout" size={18} />
+                      <span>Chiqish</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </>

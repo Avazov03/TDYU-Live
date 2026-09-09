@@ -5,6 +5,7 @@ import type { UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { authError, authLog } from "@/lib/auth-log";
+import { readTicket, resolveLoginId } from "@/lib/impersonate";
 
 export const isGoogleAuthEnabled = Boolean(
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET,
@@ -80,11 +81,40 @@ providers.push(
   Credentials({
     name: "credentials",
     credentials: {
-      email: { label: "Email", type: "email" },
+      email: { label: "Login yoki email", type: "text" },
       password: { label: "Parol", type: "password" },
+      ticket: { label: "Ticket", type: "text" },
     },
     async authorize(credentials) {
-      const email = credentials?.email?.toString().toLowerCase().trim();
+      const ticketRaw = credentials?.ticket?.toString();
+      if (ticketRaw) {
+        const ticket = readTicket(ticketRaw);
+        if (!ticket) return null;
+        if (ticket.kind === "as") {
+          const admin = await prisma.user.findUnique({ where: { id: ticket.adminId } });
+          const target = await prisma.user.findUnique({ where: { id: ticket.userId } });
+          if (!admin || admin.role !== "admin" || admin.isBlocked || !target || target.role !== "teacher") {
+            return null;
+          }
+          return {
+            id: target.id,
+            email: target.email,
+            name: target.fullName,
+            role: target.role,
+            impersonatorId: admin.id,
+          };
+        }
+        const admin = await prisma.user.findUnique({ where: { id: ticket.adminId } });
+        if (!admin || admin.role !== "admin" || admin.isBlocked) return null;
+        return {
+          id: admin.id,
+          email: admin.email,
+          name: admin.fullName,
+          role: admin.role,
+        };
+      }
+
+      const email = resolveLoginId(credentials?.email?.toString() ?? "");
       const password = credentials?.password?.toString();
 
       if (!email || !password) {
@@ -142,6 +172,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        if (user.impersonatorId) {
+          token.impersonatorId = user.impersonatorId;
+        } else {
+          delete token.impersonatorId;
+        }
       }
       return token;
     },
@@ -150,6 +185,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
       }
+      session.impersonatorId =
+        typeof token.impersonatorId === "string" ? token.impersonatorId : undefined;
       return session;
     },
   },

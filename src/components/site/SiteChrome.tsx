@@ -4,6 +4,7 @@ import { getAnyActiveSubscription } from "@/lib/access";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { BRAND } from "@/lib/brand";
 import { SiteSignOut } from "@/components/site/SiteSignOut";
+import { StopImpersonateButton } from "@/components/admin/StopImpersonateButton";
 
 export async function SiteHeader() {
   const session = await auth();
@@ -32,7 +33,12 @@ export async function SiteHeader() {
         <Link href="/#tariflar">Tariflar</Link>
       </nav>
       <div className="site-nav-actions">
-        {session?.user ? (
+        {session?.impersonatorId ? (
+          <>
+            <span className="badge pending">Admin → o&apos;qituvchi</span>
+            <StopImpersonateButton />
+          </>
+        ) : session?.user ? (
           <>
             {cabinetHref ? (
               <Link href={cabinetHref} className="btn btn-primary">

@@ -56,7 +56,7 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Email yoki parol noto'g'ri");
+      setError("Login yoki parol noto'g'ri");
       return;
     }
     router.push("/go");
@@ -77,12 +77,12 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
       <form className={styles.form} onSubmit={handleSubmit}>
         <GlassField
           id="login-email"
-          label="Email manzilingiz"
-          type="email"
+          label="Login yoki email"
+          type="text"
           value={email}
           onChange={setEmail}
           required
-          autoComplete="email"
+          autoComplete="username"
         />
 
         <GlassField

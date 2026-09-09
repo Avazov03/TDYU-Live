@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImpersonateTeacherButton } from "@/components/admin/ImpersonateTeacherButton";
 
 type TeacherRow = {
   id: string;
@@ -105,6 +106,7 @@ export function AdminTeachersManager({
               <th>Fan</th>
               <th>Hisob</th>
               <th>Kurs</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -120,6 +122,9 @@ export function AdminTeachersManager({
                 </td>
                 <td>{t.hasAccount ? <span className="badge success">Faol</span> : <span className="badge pending">Invite</span>}</td>
                 <td>{t.courseCount}</td>
+                <td>
+                  <ImpersonateTeacherButton teacherId={t.id} />
+                </td>
               </tr>
             ))}
           </tbody>
