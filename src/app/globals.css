@@ -18,6 +18,8 @@
   --success: #4caf6f;
   --success-bg: #1d3324;
   --warning: #d99a2b;
+  --content-max: 1280px;
+  --content-wide: 1440px;
   --warning-bg: #3a2f15;
   --overlay: rgba(0,0,0,.65);
 }
@@ -291,8 +293,21 @@ svg { display: block; }
 .navitem .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: auto; flex-shrink:0; }
 .sec-title { font-size: 12px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 16px 14px 6px; }
 .sidebar hr { border: none; border-top: 1px solid var(--border); margin: 8px 4px; }
-.main { flex: 1; min-width: 0; padding: 24px; }
-.main.narrow { max-width: 1100px; margin: 0 auto; }
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.main-inner {
+  width: 100%;
+  max-width: var(--content-wide);
+  margin-inline: auto;
+  flex: 1;
+  min-width: 0;
+}
+.main.narrow .main-inner { max-width: 1100px; }
 
 .chiprow { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 14px; margin-bottom: 18px; }
 .chip {
@@ -367,8 +382,8 @@ svg { display: block; }
 }
 
 /* Watch page */
-.watch-layout { display: flex; gap: 24px; max-width: 1280px; align-items: flex-start; }
-.watch-layout:has(.meet-frame) { max-width: none; }
+.watch-layout { display: flex; gap: 24px; max-width: var(--content-max); align-items: flex-start; }
+.watch-layout:has(.meet-frame) { max-width: var(--content-wide); }
 .watch-layout:has(.meet-frame) .watch-sidebar { display: none; }
 .watch-main { flex: 1; min-width: 0; }
 .watch-sidebar {
@@ -465,6 +480,10 @@ tr:last-child td { border-bottom: none; }
   height: calc(100vh - 56px);
   max-height: calc(100vh - 56px);
   background: #000;
+}
+.shorts-main .main-inner {
+  max-width: none;
+  height: 100%;
 }
 
 .shorts-viewport {
@@ -830,6 +849,7 @@ tr:last-child td { border-bottom: none; }
   .topbar, .sidebar, .no-print { display: none !important; }
   .shell { display: block; }
   .main { padding: 0; }
+  .main-inner { max-width: none; }
   .certificate { border-color: #000; }
 }
 

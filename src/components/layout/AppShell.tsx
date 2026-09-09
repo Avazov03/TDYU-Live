@@ -27,7 +27,9 @@ export async function AppShell({ children, active = "home", mainClassName }: App
       />
       <div className="shell">
         <Sidebar active={active} userRole={shell.userRole} tariffTier={sub?.tier ?? null} />
-        <main className={mainClassName ? `main ${mainClassName}` : "main"}>{children}</main>
+        <main className={mainClassName ? `main ${mainClassName}` : "main"}>
+          <div className="main-inner">{children}</div>
+        </main>
       </div>
     </>
   );

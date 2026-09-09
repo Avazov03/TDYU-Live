@@ -64,7 +64,9 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
             );
           })}
         </div>
-        <main className="main">{children}</main>
+        <main className="main">
+          <div className="main-inner">{children}</div>
+        </main>
       </div>
     </>
   );
