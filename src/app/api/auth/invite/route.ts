@@ -3,10 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
+import { isUniqueConstraint } from "@/lib/prisma-error";
 
 const schema = z.object({
-  token: z.string().min(10),
-  fullName: z.string().trim().min(2).max(100),
+  token: z.string().min(10, "Link noto'g'ri"),
+  fullName: z.string().trim().min(2, "Ism kamida 2 belgi").max(100),
   password: z.string().min(8, "Parol kamida 8 belgi").max(100),
 });
 
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
 
     const invite = await prisma.teacherInvite.findUnique({
       where: { token: parsed.data.token },
-      include: { teacher: true },
+      include: { teacher: { include: { user: true } } },
     });
     if (!invite || invite.usedAt || invite.expiresAt < new Date()) {
       return NextResponse.json({ error: "Link eskirgan yoki ishlatilgan" }, { status: 400 });
@@ -30,28 +31,47 @@ export async function POST(req: Request) {
     const passwordHash = await hashPassword(parsed.data.password);
     const fullName = parsed.data.fullName;
 
-    let userId = invite.teacher.userId;
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      include: { teacherProfile: true },
+    });
+
+    if (existingUser?.isBlocked) {
+      return NextResponse.json({ error: "Hisob bloklangan. Admin bilan bog'laning." }, { status: 403 });
+    }
+    if (existingUser?.role === "admin") {
+      return NextResponse.json({ error: "Bu email admin hisobi. Boshqa email kerak." }, { status: 409 });
+    }
+    if (existingUser?.role === "student") {
+      return NextResponse.json(
+        { error: "Bu email talaba hisobi bilan band. Boshqa email kerak." },
+        { status: 409 },
+      );
+    }
+
+    const linkedOther =
+      existingUser?.teacherProfile && existingUser.teacherProfile.id !== invite.teacherId;
+    if (linkedOther) {
+      return NextResponse.json(
+        {
+          error: "Bu email bilan o'qituvchi kabineti allaqachon ochilgan. Kirish sahifasidan kiring.",
+          code: "already_registered",
+          email,
+        },
+        { status: 409 },
+      );
+    }
+
+    let userId = invite.teacher.userId ?? existingUser?.id ?? null;
     if (userId) {
       await prisma.user.update({
         where: { id: userId },
         data: { fullName, passwordHash, role: "teacher", isBlocked: false },
       });
     } else {
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing && existing.role !== "teacher") {
-        return NextResponse.json(
-          { error: "Bu email boshqa rol bilan band" },
-          { status: 409 },
-        );
-      }
-      const user = existing
-        ? await prisma.user.update({
-            where: { id: existing.id },
-            data: { fullName, passwordHash, role: "teacher", isBlocked: false },
-          })
-        : await prisma.user.create({
-            data: { fullName, email, passwordHash, role: "teacher" },
-          });
+      const user = await prisma.user.create({
+        data: { fullName, email, passwordHash, role: "teacher" },
+      });
       userId = user.id;
     }
 
@@ -68,6 +88,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, email });
   } catch (error) {
     console.error("invite_accept_failed", error);
-    return NextResponse.json({ error: "Hisob ochilmadi. Qayta urinib ko'ring." }, { status: 500 });
+    if (isUniqueConstraint(error)) {
+      return NextResponse.json(
+        {
+          error: "Bu email bilan kabinet allaqachon ochilgan. Kirish sahifasidan kiring.",
+          code: "already_registered",
+        },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Hisob ochilmadi. Keyinroq qayta urinib ko'ring yoki admin bilan bog'laning." },
+      { status: 500 },
+    );
   }
 }

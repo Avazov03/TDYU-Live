@@ -5,9 +5,9 @@ import { hashPassword } from "@/lib/password";
 import { authError, authLog } from "@/lib/auth-log";
 
 const schema = z.object({
-  fullName: z.string().trim().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(100),
+  fullName: z.string().trim().min(2, "Ism kamida 2 belgi").max(100),
+  email: z.string().email("Email noto'g'ri"),
+  password: z.string().min(8, "Parol kamida 8 belgi").max(100),
 });
 
 export async function POST(req: Request) {
@@ -20,7 +20,10 @@ export async function POST(req: Request) {
       authLog("register_validation_failed", {
         issues: parsed.error.issues.map((i) => i.path.join(".")),
       });
-      return NextResponse.json({ error: "Noto'g'ri ma'lumotlar" }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Noto'g'ri ma'lumotlar" },
+        { status: 400 },
+      );
     }
 
     const { fullName, email, password } = parsed.data;

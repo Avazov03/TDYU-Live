@@ -466,6 +466,9 @@ export function AdminTeachersManager({
               <button type="button" className="btn btn-sm" onClick={() => setModalOpen(false)}>Bekor</button>
               <button className="btn btn-sm btn-primary" type="submit">Yaratish va nusxalash</button>
             </div>
+            {error ? (
+              <p className="small" style={{ color: "var(--danger)", marginTop: 10 }}>{error}</p>
+            ) : null}
           </form>
         </div>
       </div>
