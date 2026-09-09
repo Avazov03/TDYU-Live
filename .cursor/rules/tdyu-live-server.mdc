@@ -1,0 +1,18 @@
+---
+description: TDYU Live server — tdyu-live.zonic.fit, Open Tsul ga tegilmasin
+alwaysApply: true
+---
+
+# TDYU Live — server
+
+Domen: **https://tdyu-live.zonic.fit**  
+Public IPv4: `3.79.57.253`  
+Private IPv4: `172.26.11.220`  
+Public IPv6: `2a05:d014:1091:2d00:768b:8b11:2d63:34ae`  
+SSH: `ubuntu@3.79.57.253`  
+SSH kalit (lokal, gitga kiritilmasin): `.secrets/tdyu-live-server.pem`  
+App: `/var/www/tdyu-live` (PM2 `tdyu-live`, port 3100)
+
+Kod o‘zgagach: shu serverga deploy + `git push -u manba main`. `.env` va `.pem` commit qilinmasin.
+
+**Tegilmasin:** https://open.okina.uz , `72.62.3.191`, `/var/www/open-tsul`

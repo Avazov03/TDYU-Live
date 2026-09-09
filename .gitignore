@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local server secrets (never commit)
+.secrets/
+
 # deploy scripts with server credentials (local only)
 scripts/deploy*.py
 scripts/fix_deploy.py

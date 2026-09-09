@@ -1,11 +1,11 @@
 ---
-description: TDYU Live — mahalliy ish, boshqa loyihaga deploy yo'q
+description: TDYU Live — mahalliy + tdyu-live.zonic.fit, Open Tsul yo'q
 alwaysApply: true
 ---
 
 # TDYU Live — workflow
 
-Loyiha: **TDYU Live**. Ish: shu papka + `http://localhost:3000`.
+Loyiha: **TDYU Live**. Ish: shu papka, `http://localhost:3000`, production `https://tdyu-live.zonic.fit`.
 
 ## Taqiqlangan
 

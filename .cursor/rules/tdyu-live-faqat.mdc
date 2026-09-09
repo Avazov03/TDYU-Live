@@ -1,11 +1,11 @@
 ---
-description: TDYU Live — Open Tsul / open.okina.uz ga tegilmasin
+description: TDYU Live — Open Tsul ga tegilmasin; o'z serveri tdyu-live.zonic.fit
 alwaysApply: true
 ---
 
 # TDYU Live — taqiq (boshqa loyiha)
 
-Bu papka **faqat TDYU Live** (TSUL Live).
+Bu papka **faqat TDYU Live**.
 
 **Tegilmasin:**
 - https://open.okina.uz
@@ -14,4 +14,4 @@ Bu papka **faqat TDYU Live** (TSUL Live).
 
 Bu sayt **boshqa loyiha**. Deploy, SSH, DNS, SSL qilma.
 
-TDYU Live hozir **mahalliy**: `http://localhost:3000`. O‘z serveri berilmaguncha remote deploy yo‘q.
+TDYU Live serveri: **tdyu-live.zonic.fit** (`3.79.57.253`). Mahalliy: `http://localhost:3000`.
