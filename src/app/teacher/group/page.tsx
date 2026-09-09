@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TARIFF_LABELS, isSubscriptionActive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
+import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import type { TariffTier } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -41,14 +42,37 @@ export default async function TeacherGroupPage() {
   });
 
   if (!teacher) redirect("/teacher");
+  await ensureTeacherWorkspace(teacher.id);
+  const workspace = await prisma.teacher.findUnique({
+    where: { id: teacher.id },
+    include: {
+      courses: {
+        include: {
+          subscriptions: {
+            include: {
+              user: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+          certificates: true,
+          lessons: {
+            include: { attendance: true },
+          },
+        },
+      },
+    },
+  });
+  if (!workspace) redirect("/teacher");
 
   return (
     <AppShell active="teacher-group">
-      <h2 style={{ marginBottom: 8 }}>Guruh</h2>
+      <h2 style={{ marginBottom: 8 }}>O&apos;quvchilar</h2>
       <p className="muted small" style={{ marginBottom: 16 }}>
-        O&apos;quvchilar 3 tarif bo&apos;yicha ajratilgan. Sertifikat 2 va 3-tarif uchun.
+        Kursni sotib olgan talabalar shu yerda. Tarif, davomat va sertifikat — Classroomdagi People.
       </p>
-      {teacher.courses.map((course) => {
+      {workspace.courses.length === 0 ? (
+        <p className="muted">Avval Studio&apos;da dars rejalang. O&apos;quvchilar obuna bo&apos;lgach ro&apos;yxat to&apos;ladi.</p>
+      ) : null}
+      {workspace.courses.map((course) => {
         const active = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
         return (
           <div key={course.id} style={{ marginBottom: 28 }}>

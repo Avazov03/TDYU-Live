@@ -53,7 +53,7 @@ export function LiveStudio({
   };
 
   return (
-    <section className={`live-studio${isLive ? " is-live" : ""}`}>
+    <section id="live" className={`live-studio${isLive ? " is-live" : ""}`}>
       <div className="live-studio-head">
         <div>
           {isLive ? (

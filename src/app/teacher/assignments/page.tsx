@@ -54,7 +54,7 @@ export default async function TeacherAssignmentsPage() {
     <AppShell active="teacher-assignments">
       <h2 style={{ marginBottom: 8 }}>Topshiriqlar</h2>
       <p className="muted small" style={{ marginBottom: 16 }}>
-        3-tarif ishlari ro&apos;yxat boshida — avval ularni tekshiring.
+        Vazifa bering, javoblarni tekshiring. 3-tarif ishlari ro&apos;yxat boshida.
       </p>
       <CreateAssignmentForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
       {teacher.courses.flatMap((c) =>

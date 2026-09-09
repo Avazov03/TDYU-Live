@@ -4,6 +4,7 @@ import { auth, isAdminRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createInviteToken, inviteExpiresAt, inviteUrl } from "@/lib/invite";
 import { notifyUser } from "@/lib/notify";
+import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 
 const schema = z.object({
   fullName: z.string().trim().min(2),
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
   });
 
   const url = inviteUrl(invite.token);
+  await ensureTeacherWorkspace(teacher.id);
   await notifyUser({
     userId: session.user.id,
     type: "system",

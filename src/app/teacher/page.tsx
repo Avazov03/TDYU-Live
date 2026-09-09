@@ -4,9 +4,12 @@ import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
 import { LiveStudio } from "@/components/teacher/LiveStudio";
 import { LessonActions } from "@/components/teacher/LessonActions";
 import { LessonRow } from "@/components/lesson/LessonRow";
+import { TeacherHub } from "@/components/teacher/TeacherHub";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { formatDateTime } from "@/lib/utils";
+import { isSubscriptionActive } from "@/lib/tariffs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +18,14 @@ export default async function TeacherHomePage() {
   if (!session?.user?.id) redirect("/login?callbackUrl=/teacher");
   if (session.user.role !== "teacher") redirect("/");
 
-  const teacher = await prisma.teacher.findUnique({
+  let teacher = await prisma.teacher.findUnique({
     where: { userId: session.user.id },
     include: {
       courses: {
-        include: { lessons: { orderBy: { scheduledAt: "desc" } } },
+        include: {
+          lessons: { orderBy: { scheduledAt: "desc" } },
+          subscriptions: { select: { endsAt: true } },
+        },
       },
     },
   });
@@ -27,10 +33,30 @@ export default async function TeacherHomePage() {
   if (!teacher) {
     return (
       <AppShell active="teacher">
-        <div className="empty">Profilingiz admin tomonidan hali bog&apos;lanmagan.</div>
+        <div className="studio-head">
+          <h2>O&apos;qituvchi studiosi</h2>
+          <p className="muted" style={{ marginTop: 8, maxWidth: 520 }}>
+            Hisob ochildi. Admin sizni fan bilan bog&apos;lagach shu yerda uch ish joyi chiqadi:
+            jonli dars, dars rejalash va o&apos;quvchilar.
+          </p>
+        </div>
       </AppShell>
     );
   }
+
+  await ensureTeacherWorkspace(teacher.id);
+  teacher = await prisma.teacher.findUnique({
+    where: { id: teacher.id },
+    include: {
+      courses: {
+        include: {
+          lessons: { orderBy: { scheduledAt: "desc" } },
+          subscriptions: { select: { endsAt: true } },
+        },
+      },
+    },
+  });
+  if (!teacher) redirect("/teacher");
 
   const lessons = teacher.courses.flatMap((c) =>
     c.lessons.map((l) => ({ ...l, courseTitle: c.titleUz })),
@@ -39,11 +65,20 @@ export default async function TeacherHomePage() {
   const next = lessons.find((l) => l.status === "scheduled");
   const studio = live ?? next;
   const rest = lessons.filter((l) => l.id !== studio?.id);
+  const studentCount = teacher.courses.reduce(
+    (n, c) => n + c.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length,
+    0,
+  );
 
   return (
     <AppShell active="teacher">
-      <h2 style={{ marginBottom: 4 }}>O&apos;qituvchi kabineti</h2>
-      <p className="muted small" style={{ marginBottom: 18 }}>{teacher.fullName}</p>
+      <TeacherHub
+        teacherName={teacher.fullName}
+        courseCount={teacher.courses.length}
+        upcomingCount={lessons.filter((l) => l.status === "scheduled").length}
+        studentCount={studentCount}
+        isLive={Boolean(live)}
+      />
 
       {studio ? (
         <LiveStudio
@@ -54,35 +89,40 @@ export default async function TeacherHomePage() {
           status={studio.status}
           streamKey={studio.streamKey}
         />
-      ) : teacher.courses.length === 0 ? (
-        <div className="empty">Kurs yo&apos;q. Admin sizga kurs biriktirishi kerak.</div>
       ) : (
-        <div className="empty">Avval dars qo&apos;shing, keyin efirni shu yerdan boshlang.</div>
+        <section id="live" className="live-studio">
+          <span className="badge pending">Studio</span>
+          <h2 style={{ margin: "8px 0 6px" }}>Hali efir yo&apos;q</h2>
+          <p className="muted small" style={{ marginBottom: 12 }}>
+            «Hozir efir» bosing yoki pastda dars rejalang — keyin shu blokda OBS kaliti chiqadi.
+          </p>
+        </section>
       )}
 
       <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
 
-      {rest.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-          <h3 style={{ marginBottom: 4 }}>Boshqa darslar</h3>
-          {rest.map((lesson) => (
-            <LessonRow
-              key={lesson.id}
-              id={lesson.id}
-              titleUz={lesson.titleUz}
-              subtitle={`${lesson.courseTitle} · ${formatDateTime(lesson.scheduledAt)}`}
-              status={lesson.status}
-              actions={
-                <LessonActions
-                  lessonId={lesson.id}
-                  status={lesson.status}
-                  streamKey={lesson.streamKey}
-                />
-              }
-            />
-          ))}
-        </div>
-      ) : null}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+        <h3 style={{ marginBottom: 4 }}>Jadval</h3>
+        {rest.length === 0 && !studio ? (
+          <p className="muted small">Rejada dars yo&apos;q. Yuqoridan qo&apos;shing.</p>
+        ) : null}
+        {rest.map((lesson) => (
+          <LessonRow
+            key={lesson.id}
+            id={lesson.id}
+            titleUz={lesson.titleUz}
+            subtitle={`${lesson.courseTitle} · ${formatDateTime(lesson.scheduledAt)}`}
+            status={lesson.status}
+            actions={
+              <LessonActions
+                lessonId={lesson.id}
+                status={lesson.status}
+                streamKey={lesson.streamKey}
+              />
+            }
+          />
+        ))}
+      </div>
     </AppShell>
   );
 }

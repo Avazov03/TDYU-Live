@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 
 const schema = z.object({
   token: z.string().min(10),
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
       where: { id: invite.id },
       data: { usedAt: new Date() },
     });
+    await ensureTeacherWorkspace(invite.teacherId);
 
     return NextResponse.json({ ok: true, email });
   } catch (error) {

@@ -44,11 +44,15 @@ export function Sidebar({ active = "home", userRole, tariffTier }: SidebarProps)
       <div className={`sidebar${collapsed ? " collapsed" : ""}`} id="sidebar">
         <Link href="/teacher" className={`navitem${active === "teacher" ? " active" : ""}`}>
           <Icon name="play" />
-          <span className="navlabel">Darslarim</span>
+          <span className="navlabel">Studio</span>
+        </Link>
+        <Link href="/teacher#reja" className="navitem">
+          <Icon name="clock" />
+          <span className="navlabel">Reja</span>
         </Link>
         <Link href="/teacher/group" className={`navitem${active === "teacher-group" ? " active" : ""}`}>
           <Icon name="users" />
-          <span className="navlabel">Guruh</span>
+          <span className="navlabel">O&apos;quvchilar</span>
         </Link>
         <Link href="/teacher/assignments" className={`navitem${active === "teacher-assignments" ? " active" : ""}`}>
           <Icon name="list" />

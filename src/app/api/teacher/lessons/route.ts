@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 
 const schema = z.object({
-  courseId: z.string().uuid(),
+  courseId: z.string().trim().min(1),
   titleUz: z.string().trim().min(2),
   scheduledAt: z.string(),
 });

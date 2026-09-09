@@ -3,11 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+function defaultSlot() {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+}
+
 export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: string }[] }) {
   const router = useRouter();
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [titleUz, setTitleUz] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(defaultSlot);
   const [error, setError] = useState("");
 
   const submit = async (e: React.FormEvent) => {
@@ -23,14 +31,18 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
       return;
     }
     setTitleUz("");
+    setScheduledAt(defaultSlot());
     router.refresh();
   };
 
   if (courses.length === 0) return null;
 
   return (
-    <form onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 12 }}>Yangi dars</h3>
+    <form id="reja" onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
+      <h3 style={{ marginBottom: 6 }}>Darsni rejalash</h3>
+      <p className="small muted" style={{ marginBottom: 12 }}>
+        Mavzu va vaqtni belgilang. Efirni yuqoridagi Studio&apos;dan boshlaysiz.
+      </p>
       <div className="field">
         <label>Kurs</label>
         <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
