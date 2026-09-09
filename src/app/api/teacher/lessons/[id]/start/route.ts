@@ -36,6 +36,16 @@ export async function POST(
     stream = await createLiveStream(lesson.titleUz);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Mux xatosi";
+    if (message === "MUX_FREE_PLAN") {
+      return NextResponse.json(
+        {
+          error:
+            "Mux hisobi bepul tarifda — jonli efir yo'q. dashboard.mux.com → Billing: karta qo'shing, Video Live yoqiladi. Keyin shu tugmani qayta bosing.",
+          code: "mux_free_plan",
+        },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: message }, { status: 502 });
   }
   const updated = await prisma.lesson.update({

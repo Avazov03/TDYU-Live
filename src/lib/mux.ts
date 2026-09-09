@@ -45,6 +45,9 @@ export async function createLiveStream(lessonTitle: string): Promise<LiveStreamR
 
   if (!res.ok) {
     const text = await res.text();
+    if (/free plan/i.test(text) || /Live streams are unavailable/i.test(text)) {
+      throw new Error("MUX_FREE_PLAN");
+    }
     throw new Error(`Mux live-stream xato: ${res.status} ${text}`);
   }
 

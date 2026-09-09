@@ -37,7 +37,7 @@ export function LiveStudio({
     setLoading(true);
     setError("");
     const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, { method: "POST" });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
       setError(data.error || "Xatolik");
@@ -106,7 +106,16 @@ export function LiveStudio({
         </div>
       ) : null}
 
-      {error ? <p className="small" style={{ color: "var(--danger)", margin: "10px 0 0" }}>{error}</p> : null}
+      {error ? (
+        <div className="live-error">
+          <p>{error}</p>
+          {error.includes("dashboard.mux.com") ? (
+            <a href="https://dashboard.mux.com/settings/billing" target="_blank" rel="noreferrer">
+              Mux Billing ni ochish
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
