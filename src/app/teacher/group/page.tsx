@@ -67,16 +67,40 @@ export default async function TeacherGroupPage() {
     <AppShell active="teacher-group">
       <h2 style={{ marginBottom: 8 }}>O&apos;quvchilar</h2>
       <p className="muted small" style={{ marginBottom: 16 }}>
-        Kursni sotib olgan talabalar shu yerda. Tarif, davomat va sertifikat — Classroomdagi People.
+        Sizning kursingizga yozilgan talabalar. Tarif, davomat va sertifikat.
       </p>
       {workspace.courses.length === 0 ? (
         <p className="muted">Avval Studio&apos;da dars rejalang. O&apos;quvchilar obuna bo&apos;lgach ro&apos;yxat to&apos;ladi.</p>
       ) : null}
       {workspace.courses.map((course) => {
         const active = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
+        const attendedSum = active.reduce((n, s) => {
+          return n + course.lessons.filter((l) => l.attendance.some((a) => a.userId === s.userId)).length;
+        }, 0);
+        const attendPct =
+          active.length && course.lessons.length
+            ? Math.round((attendedSum / (active.length * course.lessons.length)) * 100)
+            : 0;
         return (
           <div key={course.id} style={{ marginBottom: 28 }}>
-            <h3 style={{ marginBottom: 12 }}>{course.titleUz}</h3>
+            <h3 style={{ marginBottom: 8 }}>{course.titleUz}</h3>
+            <div className="studio-kpis" style={{ marginBottom: 16 }}>
+              <div className="studio-kpi">
+                <span className="small muted">O&apos;quvchi</span>
+                <b>{active.length}</b>
+              </div>
+              <div className="studio-kpi">
+                <span className="small muted">1 / 2 / 3-tarif</span>
+                <b>
+                  {active.filter((s) => s.tier === "t1").length} / {active.filter((s) => s.tier === "t2").length} /{" "}
+                  {active.filter((s) => s.tier === "t3").length}
+                </b>
+              </div>
+              <div className="studio-kpi">
+                <span className="small muted">O&apos;rtacha davomat</span>
+                <b>{course.lessons.length ? `${attendPct}%` : "—"}</b>
+              </div>
+            </div>
             {active.length === 0 ? (
               <p className="muted small">Bu kursda faol o&apos;quvchi yo&apos;q.</p>
             ) : (
@@ -103,6 +127,9 @@ export default async function TeacherGroupPage() {
                             const attended = course.lessons.filter((l) =>
                               l.attendance.some((a) => a.userId === s.userId),
                             ).length;
+                            const pct = course.lessons.length
+                              ? Math.round((attended / course.lessons.length) * 100)
+                              : 0;
                             const hasCert = course.certificates.some((c) => c.userId === s.userId);
                             return (
                               <tr key={s.id}>
@@ -111,7 +138,7 @@ export default async function TeacherGroupPage() {
                                   <div className="small muted">{s.user.email}</div>
                                 </td>
                                 <td>
-                                  {attended}/{course.lessons.length}
+                                  {attended}/{course.lessons.length} ({pct}%)
                                   <div className="small muted">gacha {formatDateTime(s.endsAt)}</div>
                                 </td>
                                 <td>

@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getAnyActiveSubscription } from "@/lib/access";
-import { TARIFF_FEATURES, TARIFF_LABELS, formatSom } from "@/lib/tariffs";
+import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
+import { PLATFORM_PRICES, TARIFF_FEATURES, TARIFF_LABELS, formatSom } from "@/lib/tariffs";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
 import { BRAND } from "@/lib/brand";
@@ -12,19 +11,15 @@ export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
   const session = await auth();
-  const course = await prisma.course.findFirst({
-    where: { isPublished: true },
-    orderBy: { createdAt: "asc" },
-  });
   const sub = session?.user?.id ? await getAnyActiveSubscription(session.user.id) : null;
+  const entitlement =
+    !sub && session?.user?.id ? await getActiveEntitlement(session.user.id) : null;
 
-  const prices: { tier: TariffTier; price: number }[] = course
-    ? [
-        { tier: "t1", price: course.priceT1 },
-        { tier: "t2", price: course.priceT2 },
-        { tier: "t3", price: course.priceT3 },
-      ]
-    : [];
+  const prices: { tier: TariffTier; price: number }[] = [
+    { tier: "t1", price: PLATFORM_PRICES.t1 },
+    { tier: "t2", price: PLATFORM_PRICES.t2 },
+    { tier: "t3", price: PLATFORM_PRICES.t3 },
+  ];
 
   return (
     <div className="site">
@@ -35,13 +30,16 @@ export default async function LandingPage() {
         </p>
         <h1>TDYU professorlaridan jonli huquqiy kurslar</h1>
         <p className="site-hero-lead">
-          Avval tizimga kiring, tarifni tanlang, demo to&apos;lovdan so&apos;ng kabinet ochiladi.
-          Istalgan vaqt bosh sahifaga qaytishingiz mumkin.
+          Tarif tanlang, yo&apos;nalish va o&apos;qituvchini belgilang — shu o&apos;qituvchining darsiga yozilasiz.
         </p>
         <div className="row gap-12" style={{ justifyContent: "center", flexWrap: "wrap" }}>
           {sub ? (
             <Link href="/app" className="btn btn-primary">
               Kabinetga o&apos;tish
+            </Link>
+          ) : entitlement ? (
+            <Link href="/onboard" className="btn btn-primary">
+              O&apos;qituvchi tanlash
             </Link>
           ) : session?.user ? (
             <Link href="/#tariflar" className="btn btn-primary">
@@ -71,12 +69,17 @@ export default async function LandingPage() {
           <div className="stat-card">
             <div className="site-step-n">2</div>
             <h3>Tarif</h3>
-            <p className="muted small">Uch yo&apos;ldan birini tanlab, demo to&apos;lov qiling.</p>
+            <p className="muted small">1 / 2 / 3-tarif — demo to&apos;lov 30 kun.</p>
           </div>
           <div className="stat-card">
             <div className="site-step-n">3</div>
-            <h3>Kabinet</h3>
-            <p className="muted small">Darslar ochiladi. «Bosh sahifa» orqali saytga qaytasiz.</p>
+            <h3>Yo&apos;nalish</h3>
+            <p className="muted small">Fakultet va o&apos;qituvchini tanlang, kursiga yoziling.</p>
+          </div>
+          <div className="stat-card">
+            <div className="site-step-n">4</div>
+            <h3>Dars</h3>
+            <p className="muted small">Reja, jonli efir va yozuv — tarifingizga qarab.</p>
           </div>
         </div>
       </section>
@@ -85,40 +88,36 @@ export default async function LandingPage() {
         <h2>Loyiha haqida</h2>
         <p className="muted" style={{ maxWidth: 720 }}>
           {BRAND.name} — Toshkent davlat yuridik universiteti uchun pulli jonli-dars platformasi.
-          Talaba tarif bo&apos;yicha darslarni ko&apos;radi, o&apos;qituvchi efir va guruhni boshqaradi,
-          admin kurs va o&apos;qituvchilarni tasdiqlaydi.
+          Talaba o&apos;z o&apos;qituvchisiga yoziladi, o&apos;qituvchi guruh va efirni ko&apos;radi,
+          admin o&apos;qituvchilarni taklif qiladi.
         </p>
-        <div className="kpi-grid" style={{ marginTop: 24 }}>
-          <div className="stat-card">
-            <div className="small muted">Talaba</div>
-            <div className="num" style={{ fontSize: 18 }}>Tarif + dars kabineti</div>
-          </div>
-          <div className="stat-card">
-            <div className="small muted">O&apos;qituvchi</div>
-            <div className="num" style={{ fontSize: 18 }}>Efir, guruh, baho</div>
-          </div>
-          <div className="stat-card">
-            <div className="small muted">Admin</div>
-            <div className="num" style={{ fontSize: 18 }}>Kurs va o&apos;qituvchi</div>
-          </div>
-        </div>
       </section>
 
       <section id="tariflar" className="site-section">
         <h2>Tariflar</h2>
         <p className="muted" style={{ marginBottom: 20 }}>
-          Demo to&apos;lov 30 kun. To&apos;lovdan keyin kabinet ochiladi — xohlasangiz bosh sahifaga qaytasiz.
+          Demo to&apos;lov 30 kun. Keyin yo&apos;nalish va o&apos;qituvchini tanlaysiz.
         </p>
         {sub ? (
           <div className="card" style={{ maxWidth: 420 }}>
             <span className="badge success">{TARIFF_LABELS[sub.tier]} faol</span>
-            <p className="small muted" style={{ marginTop: 8 }}>{sub.course.titleUz}</p>
+            <p className="small muted" style={{ marginTop: 8 }}>
+              {sub.course.teacher.fullName} · {sub.course.titleUz}
+            </p>
             <Link href="/app" className="btn btn-primary" style={{ marginTop: 12 }}>
               Kabinetga o&apos;tish
             </Link>
           </div>
-        ) : !course ? (
-          <div className="empty">Hozircha kurs yo&apos;q.</div>
+        ) : entitlement ? (
+          <div className="card" style={{ maxWidth: 420 }}>
+            <span className="badge accent">{TARIFF_LABELS[entitlement.tier]} to&apos;langan</span>
+            <p className="small muted" style={{ marginTop: 8 }}>
+              Endi o&apos;qituvchini tanlang — kursga shundan keyin yozilasiz.
+            </p>
+            <Link href="/onboard" className="btn btn-primary" style={{ marginTop: 12 }}>
+              O&apos;qituvchi tanlash
+            </Link>
+          </div>
         ) : (
           <div className="tariff-grid">
             {prices.map(({ tier, price }) => (
@@ -132,7 +131,6 @@ export default async function LandingPage() {
                   ))}
                 </ul>
                 <CheckoutButton
-                  courseId={course.id}
                   tier={tier}
                   label={session?.user ? "Demo to'lash" : "Kirib to'lash"}
                 />

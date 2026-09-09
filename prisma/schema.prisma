@@ -74,6 +74,7 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
 
   teacherProfile Teacher?
+  entitlement    Entitlement?
   subscriptions  Subscription[]
   payments       Payment[]
   attendance     Attendance[]
@@ -185,6 +186,20 @@ model Subscription {
   @@map("subscriptions")
 }
 
+/** Platforma tarifi: to‘lovdan keyin o‘qituvchi tanlanadi. */
+model Entitlement {
+  id        String     @id @default(uuid())
+  userId    String     @unique @map("user_id")
+  tier      TariffTier
+  startsAt  DateTime   @map("starts_at")
+  endsAt    DateTime   @map("ends_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("entitlements")
+}
+
 model Lesson {
   id                 String       @id @default(uuid())
   courseId           String       @map("course_id")
@@ -271,15 +286,15 @@ model Certificate {
 model Payment {
   id        String          @id @default(uuid())
   userId    String          @map("user_id")
-  courseId  String          @map("course_id")
+  courseId  String?         @map("course_id")
   tier      TariffTier
   amount    Int
   status    PaymentStatus   @default(demo_paid)
   provider  PaymentProvider @default(demo)
   createdAt DateTime        @default(now()) @map("created_at")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
   @@map("payments")
 }

@@ -9,7 +9,7 @@ export function CheckoutButton({
   tier,
   label,
 }: {
-  courseId: string;
+  courseId?: string;
   tier: TariffTier;
   label: string;
 }) {
@@ -23,17 +23,17 @@ export function CheckoutButton({
     const res = await fetch("/api/payments/demo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, tier }),
+      body: JSON.stringify({ ...(courseId ? { courseId } : {}), tier }),
     });
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    const data = (await res.json().catch(() => ({}))) as { error?: string; next?: string };
     setLoading(false);
     if (!res.ok) {
       setError(data.error || "To'lov amalga oshmadi");
-      if (res.status === 401) router.push("/login?callbackUrl=/");
+      if (res.status === 401) router.push("/login?callbackUrl=/#tariflar");
       return;
     }
     router.refresh();
-    router.push("/app");
+    router.push(data.next === "onboard" ? "/onboard" : "/app");
   };
 
   return (

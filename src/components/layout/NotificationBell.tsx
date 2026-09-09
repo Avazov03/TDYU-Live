@@ -5,11 +5,21 @@ import { Icon } from "@/components/ui/Icon";
 
 type Item = {
   id: string;
+  type?: string;
   titleUz: string;
   messageUz: string;
+  relatedId?: string | null;
   isRead: boolean;
   createdAt: string;
 };
+
+function itemHref(item: Item) {
+  if (!item.relatedId) return null;
+  if (item.type === "lesson_live" || item.type === "lesson_starting") return `/learn/${item.relatedId}`;
+  if (item.type === "assignment") return "/assignments";
+  if (item.type === "certificate") return `/certificates/${item.relatedId}`;
+  return null;
+}
 
 export function NotificationBell({ unreadCount }: { unreadCount: number }) {
   const [open, setOpen] = useState(false);
@@ -64,14 +74,24 @@ export function NotificationBell({ unreadCount }: { unreadCount: number }) {
           {items.length === 0 ? (
             <div className="ddx-item muted">Hozircha xabar yo&apos;q</div>
           ) : (
-            items.map((item) => (
-              <div key={item.id} className="ddx-item" style={{ alignItems: "flex-start" }}>
+            items.map((item) => {
+              const href = itemHref(item);
+              const inner = (
                 <div>
                   <div style={{ fontWeight: item.isRead ? 400 : 600 }}>{item.titleUz}</div>
                   <div className="small muted">{item.messageUz}</div>
                 </div>
-              </div>
-            ))
+              );
+              return href ? (
+                <a key={item.id} href={href} className="ddx-item" style={{ alignItems: "flex-start" }}>
+                  {inner}
+                </a>
+              ) : (
+                <div key={item.id} className="ddx-item" style={{ alignItems: "flex-start" }}>
+                  {inner}
+                </div>
+              );
+            })
           )}
         </div>
       ) : null}

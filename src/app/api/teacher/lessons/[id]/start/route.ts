@@ -42,16 +42,12 @@ export async function POST(
     },
   });
 
-  await notifyCourseStudents(
-    lesson.courseId,
-    {
-      type: "lesson_live",
-      titleUz: "Dars boshlandi!",
-      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
-      relatedId: lesson.id,
-    },
-    "t2",
-  );
+  await notifyCourseStudents(lesson.courseId, {
+    type: "lesson_live",
+    titleUz: "Dars boshlandi!",
+    messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
+    relatedId: lesson.id,
+  });
 
   return NextResponse.json({
     lesson: updated,

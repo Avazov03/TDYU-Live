@@ -1,5 +1,11 @@
 import type { TariffTier } from "@/generated/prisma/client";
 
+export const PLATFORM_PRICES: Record<TariffTier, number> = {
+  t1: 150_000,
+  t2: 250_000,
+  t3: 400_000,
+};
+
 export const TARIFF_LABELS: Record<TariffTier, string> = {
   t1: "1-tarif — Yozuv",
   t2: "2-tarif — Jonli",

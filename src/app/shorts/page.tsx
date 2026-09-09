@@ -21,7 +21,10 @@ export default async function ShortsPage() {
   }
 
   const lives = await prisma.lesson.findMany({
-    where: { status: "live", course: { isPublished: true } },
+    where: {
+      status: "live",
+      course: user.role === "student" && sub ? { id: sub.courseId } : { isPublished: true },
+    },
     include: { course: { include: { teacher: { select: { id: true, fullName: true } } } } },
     orderBy: { scheduledAt: "desc" },
   });

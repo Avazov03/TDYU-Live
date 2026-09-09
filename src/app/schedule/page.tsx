@@ -17,13 +17,25 @@ export default async function SchedulePage() {
         },
       },
     },
-    include: { course: { select: { titleUz: true } } },
+    include: {
+      course: {
+        select: {
+          titleUz: true,
+          teacher: { select: { fullName: true } },
+        },
+      },
+    },
     orderBy: { scheduledAt: "asc" },
   });
+  const rank = { live: 0, scheduled: 1, ended: 2 } as const;
+  lessons.sort((a, b) => rank[a.status] - rank[b.status]);
 
   return (
     <AppShell active="schedule">
-      <h2 style={{ marginBottom: 16 }}>Jadval</h2>
+      <h2 style={{ marginBottom: 8 }}>Jadval</h2>
+      <p className="muted small" style={{ marginBottom: 16 }}>
+        O&apos;qituvchingizning dars rejalari. Jonli boshlanganda shu yerda «Jonli» chiqadi.
+      </p>
       {lessons.length === 0 ? (
         <div className="empty">Faol kurslaringizda dars yo&apos;q.</div>
       ) : (
@@ -33,7 +45,7 @@ export default async function SchedulePage() {
               key={lesson.id}
               id={lesson.id}
               titleUz={lesson.titleUz}
-              subtitle={`${lesson.course.titleUz} · ${formatDateTime(lesson.scheduledAt)}`}
+              subtitle={`${lesson.course.teacher.fullName} · ${lesson.course.titleUz} · ${formatDateTime(lesson.scheduledAt)}`}
               status={lesson.status}
             />
           ))}

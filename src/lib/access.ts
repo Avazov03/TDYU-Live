@@ -19,8 +19,10 @@ export async function requireStudentCabinet(callbackUrl: string) {
   if (isTeacherRole(session.user.role)) redirect("/teacher");
 
   const sub = await getAnyActiveSubscription(session.user.id);
-  if (!sub) redirect("/#tariflar");
-  return { user: session.user, sub };
+  if (sub) return { user: session.user, sub };
+  const entitlement = await getActiveEntitlement(session.user.id);
+  if (entitlement) redirect("/onboard");
+  redirect("/#tariflar");
 }
 
 /** Dashboard ichidagi umumiy sahifa (qidiruv, tarix): talabaga tarif kerak. */
@@ -31,16 +33,34 @@ export async function requireAppUser(callbackUrl: string) {
   }
   if (isStudentRole(session.user.role)) {
     const sub = await getAnyActiveSubscription(session.user.id);
-    if (!sub) redirect("/#tariflar");
-    return { user: session.user, sub };
+    if (sub) return { user: session.user, sub };
+    const entitlement = await getActiveEntitlement(session.user.id);
+    if (entitlement) redirect("/onboard");
+    redirect("/#tariflar");
   }
   return { user: session.user, sub: null };
+}
+
+export async function getActiveEntitlement(userId: string) {
+  const row = await prisma.entitlement.findUnique({ where: { userId } });
+  if (!row || !isSubscriptionActive(row.endsAt)) return null;
+  return row;
 }
 
 export async function getAnyActiveSubscription(userId: string) {
   const subs = await prisma.subscription.findMany({
     where: { userId },
-    include: { course: { select: { id: true, titleUz: true, isPublished: true } } },
+    include: {
+      course: {
+        select: {
+          id: true,
+          titleUz: true,
+          isPublished: true,
+          teacherId: true,
+          teacher: { select: { id: true, fullName: true } },
+        },
+      },
+    },
     orderBy: { endsAt: "desc" },
   });
   return subs.find((s) => isSubscriptionActive(s.endsAt)) ?? null;
@@ -83,7 +103,7 @@ export function accessMessage(
     case "unauthenticated":
       return "Darsni ko'rish uchun tizimga kiring.";
     case "no_subscription":
-      return "Bu kursga yozilmagansiz. Avval tarif tanlang.";
+      return "Bu o'qituvchi kursiga yozilmagansiz. Avval yo'nalish va o'qituvchini tanlang.";
     case "expired":
       return "Obuna muddati tugagan. Qayta to'lov qiling.";
     case "live_locked":

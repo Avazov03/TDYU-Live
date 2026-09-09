@@ -36,7 +36,7 @@ export default async function AdminPaymentsPage() {
                   {p.user.fullName}
                   <div className="small muted">{p.user.email}</div>
                 </td>
-                <td>{p.course.titleUz}</td>
+                <td>{p.course?.titleUz ?? "Tarif (o'qituvchi keyin)"}</td>
                 <td>{TARIFF_LABELS[p.tier]}</td>
                 <td>{formatSom(p.amount)}</td>
                 <td>
