@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 const schema = z.object({
   titleUz: z.string().trim().min(2),
   descriptionUz: z.string().trim().min(2),
-  teacherId: z.string().uuid(),
-  facultyId: z.string().uuid(),
-  subjectId: z.string().uuid(),
+  teacherId: z.string().trim().min(1),
+  facultyId: z.string().trim().min(1),
+  subjectId: z.string().trim().min(1),
   priceT1: z.number().int().min(0),
   priceT2: z.number().int().min(0),
   priceT3: z.number().int().min(0),

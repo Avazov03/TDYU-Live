@@ -25,7 +25,7 @@ export function CheckoutButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ courseId, tier }),
     });
-    const data = await res.json();
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
     setLoading(false);
     if (!res.ok) {
       setError(data.error || "To'lov amalga oshmadi");
