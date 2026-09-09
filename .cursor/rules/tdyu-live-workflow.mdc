@@ -25,4 +25,4 @@ git branch -M main
 git push -u manba main
 ```
 
-Commit/push — foydalanuvchi so‘raganda, **manba/main** ga. `.env` commit qilinmasin.
+Kod o‘zgagach agent **o‘zi** commit qiladi va `git push -u manba main` qiladi. `.env` commit qilinmasin.

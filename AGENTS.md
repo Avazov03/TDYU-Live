@@ -8,7 +8,7 @@ Bu papka **faqat TDYU Live**. https://open.okina.uz ga tegilmasin (boshqa loyiha
 - Kod o‘zgarishi: lint/type-check
 - **Deploy Open Tsul serveriga taqiqlangan** (`72.62.3.191`, `/var/www/open-tsul`)
 - Git: remote **manba** = `git@github.com:Avazov03/TDYU-Live.git`, branch **main**
-- `git push -u manba main` — foydalanuvchi so‘raganda; `.env` commit qilma
+- Kod o‘zgagach agent o‘zi commit qiladi va `git push -u manba main` qiladi; `.env` commit qilma
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
