@@ -47,6 +47,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
         (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id)),
   );
   const canJoinLive = lesson.status === "live" && (access.ok || staffJoin);
+  const canWatchVod = access.ok || staffJoin;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 
   const playbackId =
@@ -65,11 +66,17 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               subject={lesson.titleUz}
               moderator={staffJoin}
             />
-          ) : access.ok && lesson.recordingUrl ? (
+          ) : canWatchVod && lesson.recordingUrl ? (
             <div className="player-wrap">
-              <video src={lesson.recordingUrl} controls playsInline title={lesson.titleUz} />
+              <video
+                src={`/api/media/recording/${lesson.id}`}
+                controls
+                playsInline
+                preload="metadata"
+                title={lesson.titleUz}
+              />
             </div>
-          ) : access.ok && playbackId && !playbackId.startsWith("demo_") ? (
+          ) : canWatchVod && playbackId && !playbackId.startsWith("demo_") ? (
             <div className="player-wrap">
               <iframe
                 src={muxPlayerUrl(playbackId)}
@@ -78,7 +85,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                 title={lesson.titleUz}
               />
             </div>
-          ) : access.ok && (lesson.status === "ended" || lesson.status === "live") ? (
+          ) : canWatchVod && (lesson.status === "ended" || lesson.status === "live") ? (
             <div className="player-wrap">
               <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
                 <div>
@@ -145,10 +152,10 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             </p>
           ) : null}
 
-          {lesson.status === "live" || lesson.status === "ended" ? (
+          {lesson.status === "ended" ? (
             <LiveChat
               lessonId={lesson.id}
-              canSend={access.ok && canUseLiveChat(access.tier)}
+              canSend={(access.ok && canUseLiveChat(access.tier)) || staffJoin}
             />
           ) : null}
         </div>

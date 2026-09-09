@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { Icon } from "@/components/ui/Icon";
@@ -63,6 +64,7 @@ async function api(body: Record<string, unknown>) {
       data: { kind: string; sdp?: string; candidate?: RTCIceCandidateInit };
     }[];
     present?: PresentState;
+    pointer?: { on: boolean; x: number; y: number };
     chat?: ChatLine[];
     since?: number;
   };
@@ -70,12 +72,102 @@ async function api(body: Record<string, unknown>) {
 
 function recorderOptions(): MediaRecorderOptions {
   const opts: MediaRecorderOptions = { videoBitsPerSecond: 700_000, audioBitsPerSecond: 64_000 };
-  if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
-    opts.mimeType = "video/webm;codecs=vp9,opus";
+  if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
+    opts.mimeType = "video/webm;codecs=vp8,opus";
   } else if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm")) {
     opts.mimeType = "video/webm";
   }
   return opts;
+}
+
+function isOfficeFile(name: string, mime: string) {
+  const n = name.toLowerCase();
+  return (
+    /\.(docx?|pptx?|xlsx?)$/i.test(n) ||
+    mime.includes("officedocument") ||
+    mime.includes("msword") ||
+    mime.includes("ms-powerpoint") ||
+    mime.includes("ms-excel")
+  );
+}
+
+function isPdfFile(name: string, mime: string) {
+  return mime === "application/pdf" || name.toLowerCase().endsWith(".pdf");
+}
+
+function officeViewerSrc(fileUrl: string) {
+  const abs = `${window.location.origin}${fileUrl}`;
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(abs)}`;
+}
+
+function PresentPane({ present }: { present: PresentState }) {
+  if (!present) return null;
+  const mime = present.mime || "";
+  if (mime.startsWith("image/")) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img className="meet-slide-media" src={present.fileUrl} alt={present.fileName} />
+    );
+  }
+  if (mime.startsWith("video/")) {
+    return <video className="meet-slide-media" src={present.fileUrl} controls playsInline />;
+  }
+  if (isPdfFile(present.fileName, mime)) {
+    return <iframe className="meet-slide-media" src={`${present.fileUrl}#toolbar=1`} title={present.fileName} />;
+  }
+  if (isOfficeFile(present.fileName, mime)) {
+    return (
+      <iframe
+        className="meet-slide-media"
+        src={officeViewerSrc(present.fileUrl)}
+        title={present.fileName}
+        allow="fullscreen"
+      />
+    );
+  }
+  return (
+    <div className="meet-slide-file">
+      <Icon name="file" size={40} />
+      <p>{present.fileName}</p>
+      <a className="btn btn-sm" href={present.fileUrl} target="_blank" rel="noreferrer">
+        Ochish
+      </a>
+    </div>
+  );
+}
+
+function PresentBoard({
+  present,
+  pointer,
+  pointing,
+  onPointer,
+}: {
+  present: PresentState;
+  pointer: { on: boolean; x: number; y: number };
+  pointing?: boolean;
+  onPointer?: (x: number, y: number) => void;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const move = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!pointing || !onPointer || !boxRef.current) return;
+    const r = boxRef.current.getBoundingClientRect();
+    const x = r.width ? (e.clientX - r.left) / r.width : 0;
+    const y = r.height ? (e.clientY - r.top) / r.height : 0;
+    onPointer(Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y)));
+  };
+  return (
+    <div
+      ref={boxRef}
+      className={`meet-present-board${pointing ? " is-pointing" : ""}`}
+      onMouseMove={move}
+    >
+      <PresentPane present={present} />
+      {present ? <span className="meet-tile-name">{present.fileName}</span> : null}
+      {pointer.on ? (
+        <span className="meet-laser" style={{ left: `${pointer.x * 100}%`, top: `${pointer.y * 100}%` }} />
+      ) : null}
+    </div>
+  );
 }
 
 function VideoPane({
@@ -136,32 +228,6 @@ function VideoPane({
   );
 }
 
-function PresentPane({ present }: { present: PresentState }) {
-  if (!present) return null;
-  const mime = present.mime;
-  if (mime.startsWith("image/")) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img className="meet-slide-media" src={present.fileUrl} alt={present.fileName} />
-    );
-  }
-  if (mime.startsWith("video/")) {
-    return <video className="meet-slide-media" src={present.fileUrl} controls playsInline />;
-  }
-  if (mime === "application/pdf") {
-    return <iframe className="meet-slide-media" src={present.fileUrl} title={present.fileName} />;
-  }
-  return (
-    <div className="meet-slide-file">
-      <Icon name="file" size={40} />
-      <p>{present.fileName}</p>
-      <a className="btn btn-sm" href={present.fileUrl} target="_blank" rel="noreferrer">
-        Ochish
-      </a>
-    </div>
-  );
-}
-
 function useSpeaking(stream: MediaStream | null, enabled: boolean) {
   const [on, setOn] = useState(false);
   useEffect(() => {
@@ -215,14 +281,19 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const [remotes, setRemotes] = useState<{ info: PeerInfo; stream: MediaStream | null }[]>([]);
   const [selfInfo, setSelfInfo] = useState<PeerInfo | null>(null);
   const [present, setPresent] = useState<PresentState>(null);
+  const [pointer, setPointer] = useState({ on: false, x: 0.5, y: 0.5 });
+  const [pointerOn, setPointerOn] = useState(false);
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [error, setError] = useState("");
   const [micOn, setMicOn] = useState(Boolean(moderator));
   const [camOn, setCamOn] = useState(Boolean(moderator));
   const [handRaised, setHandRaised] = useState(false);
   const [focus, setFocus] = useState<Focus>("auto");
-  const [panel, setPanel] = useState<"none" | "chat" | "files" | "people" | "settings">("none");
+  const [panel, setPanel] = useState<"none" | "files" | "people" | "settings">("none");
   const [chatText, setChatText] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const lastPtrRef = useRef(0);
   const [assets, setAssets] = useState<{ id: string; fileName: string; fileUrl: string; mime: string }[]>([]);
   const [recording, setRecording] = useState(false);
   const [devices, setDevices] = useState<{ audio: MediaDeviceInfo[]; video: MediaDeviceInfo[] }>({
@@ -252,6 +323,20 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     [displayName, lessonId],
   );
 
+  const uploadRecording = useCallback(async () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state === "recording") rec.requestData();
+    await new Promise((r) => window.setTimeout(r, 250));
+    const blob = new Blob(chunksRef.current, { type: "video/webm" });
+    if (blob.size < 8000) return null;
+    const fd = new FormData();
+    fd.append("file", blob, "lesson.webm");
+    const res = await fetch(`/api/teacher/lessons/${lessonId}/recording`, { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Yozuv yuklanmadi");
+    return (data.url as string) || null;
+  }, [lessonId]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -269,17 +354,10 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         }
         recorderRef.current = null;
         setRecording(false);
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
-        if (blob.size < 2000) return null;
-        const fd = new FormData();
-        fd.append("file", blob, "lesson.webm");
-        const res = await fetch(`/api/teacher/lessons/${lessonId}/recording`, { method: "POST", body: fd });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Yozuv yuklanmadi");
-        return (data.url as string) || null;
+        return uploadRecording();
       },
     }),
-    [lessonId, sendEvent],
+    [sendEvent, uploadRecording],
   );
 
   const upsertRemote = useCallback((id: string, stream: MediaStream) => {
@@ -449,6 +527,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         });
         sinceRef.current = snap.since ?? sinceRef.current;
         setPresent(snap.present ?? null);
+        if (snap.pointer) setPointer(snap.pointer);
         if (snap.chat) setChat(snap.chat);
         if (snap.self) setSelfInfo(snap.self);
         const liveIds = new Set((snap.peers ?? []).map((p) => p.id));
@@ -491,7 +570,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       } catch {
         /* poll retry */
       }
-    }, 1100);
+    }, 500);
 
     const connections = pcs.current;
     return () => {
@@ -543,6 +622,24 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     }
     prevSpeakRef.current = selfInfo.canSpeak;
   }, [moderator, selfInfo, sendEvent]);
+
+  useEffect(() => {
+    if (!moderator) return;
+    const tick = window.setInterval(() => {
+      void uploadRecording().catch(() => undefined);
+    }, 20000);
+    return () => window.clearInterval(tick);
+  }, [moderator, uploadRecording]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [chat]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(""), 4500);
+    return () => window.clearTimeout(t);
+  }, [notice]);
 
   const toggleMic = () => {
     if (!canSpeak && !moderator) {
@@ -616,7 +713,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       track.onended = () => {
         void stopShare();
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setNotice("Ekran ulashilmasdan qoldi.");
     }
   };
@@ -656,6 +754,26 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     if (!text) return;
     sendEvent({ kind: "chat", text });
     setChatText("");
+    void fetch(`/api/lessons/${lessonId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  };
+
+  const movePointer = (x: number, y: number) => {
+    setPointer({ on: true, x, y });
+    const now = Date.now();
+    if (now - lastPtrRef.current < 80) return;
+    lastPtrRef.current = now;
+    sendEvent({ kind: "pointer", pointerOn: true, x, y });
+  };
+
+  const togglePointer = () => {
+    const next = !pointerOn;
+    setPointerOn(next);
+    setPointer((p) => ({ ...p, on: next }));
+    sendEvent({ kind: "pointer", pointerOn: next, x: pointer.x, y: pointer.y });
   };
 
   const fullscreen = () => {
@@ -716,9 +834,13 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       <div className="meet-zoom">
         <div className="meet-stage">
           {stageKind === "content" && present ? (
-            <div className="meet-stage-main is-content" onClick={() => setFocus("content")} role="button" tabIndex={0}>
-              <PresentPane present={present} />
-              <span className="meet-tile-name">{present.fileName}</span>
+            <div className="meet-stage-main is-content">
+              <PresentBoard
+                present={present}
+                pointer={pointerOn || pointer.on ? { on: true, x: pointer.x, y: pointer.y } : pointer}
+                pointing={Boolean(moderator && pointerOn)}
+                onPointer={movePointer}
+              />
             </div>
           ) : null}
           {stageKind === "content" && sharing && !present ? (
@@ -785,6 +907,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             </div>
           ) : null}
         </div>
+        <div className="meet-rail">
         <aside className="meet-strip" aria-label="Ishtirokchilar">
           {hasContent && stageKind !== "content" ? (
             <div className="meet-tile is-compact is-slide" onClick={() => setFocus("content")} role="button" tabIndex={0}>
@@ -855,50 +978,46 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
               </div>
             ))}
         </aside>
+        <aside className="meet-chat-dock" aria-label="Jonli chat">
+          <div className="meet-chat-head">Jonli chat</div>
+          <div className="meet-chat-list">
+            {chat.length === 0 ? <p className="small muted">Hali xabar yo‘q. Yozing — hammaga ko‘rinadi.</p> : null}
+            {chat.map((line) => (
+              <p key={line.id}>
+                <strong>{line.name}: </strong>
+                {line.text}
+              </p>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="meet-chat-send">
+            <input
+              ref={chatInputRef}
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendChat();
+              }}
+              placeholder="Xabar yozing..."
+            />
+            <button className="btn btn-sm btn-primary" type="button" onClick={sendChat}>
+              Yubor
+            </button>
+          </div>
+        </aside>
+        </div>
       </div>
 
       {panel !== "none" ? (
         <div className="meet-drawer">
           <div className="meet-drawer-head">
             <strong>
-              {panel === "chat"
-                ? "Chat"
-                : panel === "files"
-                  ? "Fayllar"
-                  : panel === "people"
-                    ? "Ishtirokchilar"
-                    : "Sozlama"}
+              {panel === "files" ? "Fayllar" : panel === "people" ? "Ishtirokchilar" : "Sozlama"}
             </strong>
             <button type="button" className="meet-icon-btn" onClick={() => setPanel("none")}>
               <Icon name="x" size={16} />
             </button>
           </div>
-          {panel === "chat" ? (
-            <>
-              <div className="meet-chat-list">
-                {chat.length === 0 ? <p className="small muted">Hali xabar yo‘q.</p> : null}
-                {chat.map((line) => (
-                  <p key={line.id}>
-                    <strong>{line.name}: </strong>
-                    {line.text}
-                  </p>
-                ))}
-              </div>
-              <div className="meet-chat-send">
-                <input
-                  value={chatText}
-                  onChange={(e) => setChatText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendChat();
-                  }}
-                  placeholder="Xabar..."
-                />
-                <button className="btn btn-sm btn-primary" type="button" onClick={sendChat}>
-                  Yubor
-                </button>
-              </div>
-            </>
-          ) : null}
           {panel === "files" && moderator ? (
             <div className="meet-files">
               <label className="btn btn-sm">
@@ -1039,13 +1158,21 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
               >
                 <Icon name="file" size={18} />
               </button>
+              <button
+                className={`meet-icon-btn${pointerOn ? " is-active" : ""}`}
+                type="button"
+                title="Tayoqcha"
+                onClick={togglePointer}
+              >
+                <Icon name="pointer" size={18} />
+              </button>
             </>
           ) : null}
           <button
-            className={`meet-icon-btn${panel === "chat" ? " is-active" : ""}`}
+            className="meet-icon-btn"
             type="button"
             title="Chat"
-            onClick={() => setPanel(panel === "chat" ? "none" : "chat")}
+            onClick={() => chatInputRef.current?.focus()}
           >
             <Icon name="chat" size={18} />
           </button>

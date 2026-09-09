@@ -17,10 +17,12 @@ export type PresentState = {
   mime: string;
 } | null;
 
+export type PointerState = { on: boolean; x: number; y: number };
+
 export type ChatLine = { id: number; from: string; name: string; text: string };
 
 export type SignalPayload = {
-  kind: "offer" | "answer" | "ice" | "hand" | "grant" | "revoke" | "present" | "chat" | "state";
+  kind: "offer" | "answer" | "ice" | "hand" | "grant" | "revoke" | "present" | "chat" | "state" | "pointer";
   sdp?: string;
   candidate?: {
     candidate?: string;
@@ -35,6 +37,9 @@ export type SignalPayload = {
   text?: string;
   micOn?: boolean;
   camOn?: boolean;
+  pointerOn?: boolean;
+  x?: number;
+  y?: number;
 };
 
 export type LiveSignal = { id: number; from: string; to: string; data: SignalPayload };
@@ -46,6 +51,7 @@ type RoomState = {
   messages: LiveSignal[];
   chat: ChatLine[];
   present: PresentState;
+  pointer: PointerState;
   seq: number;
   chatSeq: number;
 };
@@ -60,7 +66,7 @@ const MAX_MESSAGES = 500;
 function room(lessonId: string) {
   let state = rooms.get(lessonId);
   if (!state) {
-    state = { peers: new Map(), messages: [], chat: [], present: null, seq: 0, chatSeq: 0 };
+    state = { peers: new Map(), messages: [], chat: [], present: null, pointer: { on: false, x: 0.5, y: 0.5 }, seq: 0, chatSeq: 0 };
     rooms.set(lessonId, state);
   }
   return state;
@@ -102,7 +108,8 @@ export function snapshot(state: RoomState, peerId: string, since: number) {
     self: self ? publicPeer(self) : null,
     messages,
     present: state.present,
-    chat: state.chat.slice(-40),
+    pointer: state.pointer,
+    chat: state.chat.slice(-80),
     since: state.seq,
   };
 }
@@ -192,7 +199,14 @@ export function applyRoomEvent(lessonId: string, from: string, data: SignalPaylo
 
   if (data.kind === "present" && me.role === "moderator") {
     state.present = data.present ?? null;
+    if (!state.present) state.pointer = { on: false, x: 0.5, y: 0.5 };
     pushLiveSignal(lessonId, from, "*", { kind: "present", present: state.present });
+  }
+
+  if (data.kind === "pointer" && me.role === "moderator") {
+    const x = Math.min(1, Math.max(0, Number(data.x) || 0));
+    const y = Math.min(1, Math.max(0, Number(data.y) || 0));
+    state.pointer = { on: Boolean(data.pointerOn), x, y };
   }
 
   if (data.kind === "chat" && data.text) {

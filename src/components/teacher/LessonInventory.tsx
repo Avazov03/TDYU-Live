@@ -67,7 +67,7 @@ export function LessonInventory({ lessonId, canPresent, onPresent }: LessonInven
         <div>
           <h3 style={{ fontSize: 15, margin: 0 }}>Dars fayllari</h3>
           <p className="small muted" style={{ margin: "4px 0 0" }}>
-            Slayd, PDF yoki rasmni oldindan saqlang. Efirda «Namoyish» bosing — asosiy ekranni egallaydi.
+            Slayd, PDF, Word yoki PowerPoint yuklang. Efirda «Namoyish» — asosiy ekranda ochiladi. Tayoqcha bilan kerakli joyni ko‘rsatishingiz mumkin.
           </p>
         </div>
         <label className={`btn btn-sm${busy ? " is-busy" : ""}`}>

@@ -936,10 +936,16 @@ tr:last-child td { border-bottom: none; }
 .meet-zoom {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 168px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   min-height: 0;
   gap: 8px;
   padding: 8px;
+}
+.meet-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
 }
 .meet-stage {
   position: relative;
@@ -978,6 +984,30 @@ tr:last-child td { border-bottom: none; }
   color: #ddd;
   padding: 24px;
 }
+.meet-present-board {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.meet-present-board.is-pointing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: none;
+}
+.meet-laser {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 50%;
+  background: #ff2d2d;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.85), 0 0 16px 6px rgba(255,45,45,.65);
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+}
 .meet-pip {
   position: absolute;
   right: 12px;
@@ -995,6 +1025,7 @@ tr:last-child td { border-bottom: none; }
   gap: 8px;
   overflow: auto;
   min-height: 0;
+  max-height: 42%;
   padding-right: 2px;
 }
 .meet-strip-item { display: flex; flex-direction: column; gap: 4px; }
@@ -1144,6 +1175,22 @@ tr:last-child td { border-bottom: none; }
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
+.meet-chat-dock {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  background: #141416;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.meet-chat-head {
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
 .meet-chat-list, .meet-files, .meet-people, .meet-settings {
   flex: 1;
   overflow: auto;
@@ -1196,11 +1243,13 @@ tr:last-child td { border-bottom: none; }
 @media (max-width: 800px) {
   .meet-zoom {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) 112px;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
+  .meet-rail { max-height: 46%; }
   .meet-strip {
     flex-direction: row;
     overflow-x: auto;
+    max-height: 112px;
   }
   .meet-strip-item, .meet-tile.is-compact { flex: 0 0 140px; width: 140px; height: 96px; }
   .meet-pip { width: 120px; height: 76px; }

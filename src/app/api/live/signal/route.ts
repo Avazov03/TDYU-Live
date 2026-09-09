@@ -23,6 +23,7 @@ const eventKind = z.enum([
   "present",
   "chat",
   "state",
+  "pointer",
 ]);
 
 const postSchema = z.object({
@@ -52,6 +53,9 @@ const postSchema = z.object({
       text: z.string().max(400).optional(),
       micOn: z.boolean().optional(),
       camOn: z.boolean().optional(),
+      pointerOn: z.boolean().optional(),
+      x: z.number().min(0).max(1).optional(),
+      y: z.number().min(0).max(1).optional(),
     })
     .optional(),
 });
