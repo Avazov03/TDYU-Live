@@ -12,7 +12,7 @@ function muxAuthHeader() {
   return `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`;
 }
 
-export { muxPlayerUrl } from "./mux-player";
+export { muxPlayerUrl, MUX_RTMP_URL } from "./mux-player";
 
 export async function createLiveStream(lessonTitle: string): Promise<LiveStreamResult> {
   const auth = muxAuthHeader();
