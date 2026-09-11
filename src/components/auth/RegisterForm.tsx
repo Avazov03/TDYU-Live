@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { AuthLayout } from "./AuthLayout";
 import { GlassField } from "./GlassField";
 import styles from "./auth.module.css";
+import { BRAND } from "@/lib/brand";
 
 function GoogleIcon() {
   return (
@@ -84,7 +85,7 @@ export function RegisterForm({ googleEnabled = false }: RegisterFormProps) {
   return (
     <AuthLayout>
       <h2 className={styles.title}>Ro&apos;yxatdan o&apos;tish</h2>
-      <p className={styles.subtitle}>TDYU Live&apos;dan foydalanish uchun hisob yarating</p>
+      <p className={styles.subtitle}>{BRAND.name}&apos;dan foydalanish uchun hisob yarating</p>
 
       <form className={styles.form} onSubmit={handleSubmit}>
         <GlassField

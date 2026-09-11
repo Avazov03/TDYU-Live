@@ -23,7 +23,7 @@ async function sendTelegram(chatId: string, text: string) {
 
 async function sendEmail(to: string, subject: string, text: string) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || "TDYU Live <noreply@localhost>";
+  const from = process.env.EMAIL_FROM || "LexLive <noreply@localhost>";
   if (!key) return;
   await fetch("https://api.resend.com/emails", {
     method: "POST",

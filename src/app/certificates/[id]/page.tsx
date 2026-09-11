@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { PrintButton } from "@/components/certificate/PrintButton";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function CertificatePrintPage({
   return (
     <AppShellNarrow active="certificates">
       <div className="certificate">
-        <div className="small muted">TDYU LIVE</div>
+        <div className="small muted">{BRAND.name.toUpperCase()}</div>
         <h1>Sertifikat</h1>
         <p>
           Ushbu hujjat <b>{cert.user.fullName}</b> ning{" "}

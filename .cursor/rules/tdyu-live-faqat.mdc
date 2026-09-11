@@ -1,11 +1,11 @@
 ---
-description: TDYU Live — Open Tsul ga tegilmasin; o'z serveri tdyu-live.zonic.fit
+description: LexLive — Open Tsul ga tegilmasin; o'z serveri lex-live.zonic.fit
 alwaysApply: true
 ---
 
-# TDYU Live — taqiq (boshqa loyiha)
+# LexLive — taqiq (boshqa loyiha)
 
-Bu papka **faqat TDYU Live**.
+Bu papka **faqat LexLive**.
 
 **Tegilmasin:**
 - https://open.okina.uz
@@ -14,4 +14,4 @@ Bu papka **faqat TDYU Live**.
 
 Bu sayt **boshqa loyiha**. Deploy, SSH, DNS, SSL qilma.
 
-TDYU Live serveri: **tdyu-live.zonic.fit** (`3.79.57.253`). Mahalliy: `http://localhost:3000`.
+LexLive serveri: **lex-live.zonic.fit** (`3.79.57.253`). Mahalliy: `http://localhost:3000`.

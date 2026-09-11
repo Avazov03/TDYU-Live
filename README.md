@@ -1,4 +1,4 @@
-# TDYU Live
+# LexLive
 
 Toshkent davlat yuridik universiteti uchun jonli dars va kurs platformasi.
 

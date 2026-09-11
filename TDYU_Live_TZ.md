@@ -1,6 +1,6 @@
-# TDYU Live — Texnik topshiriq
+# LexLive — Texnik topshiriq
 
-**TDYU Live** — Toshkent davlat yuridik universiteti uchun pulli jonli-dars va kurs platformasi. Interfeys **YouTube uslubida** (dark/light, sidebar, video kartochka, watch layout). Videolar YouTube’da saqlanmaydi — **Mux** live + VOD.
+**LexLive** — Toshkent davlat yuridik universiteti uchun pulli jonli-dars va kurs platformasi. Interfeys **YouTube uslubida** (dark/light, sidebar, video kartochka, watch layout). Videolar YouTube’da saqlanmaydi — **Mux** live + VOD.
 
 Mahalliy: http://localhost:3000
 

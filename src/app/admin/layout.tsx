@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, isAdminRole } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { BRAND } from "@/lib/brand";
 
 export default async function AdminLayout({
   children,
@@ -21,5 +22,5 @@ export default async function AdminLayout({
 }
 
 export async function generateMetadata() {
-  return { title: "TDYU Live — Admin" };
+  return { title: `${BRAND.name} — Admin` };
 }

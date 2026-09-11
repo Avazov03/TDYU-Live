@@ -1,11 +1,11 @@
 ---
-description: TDYU Live server — tdyu-live.zonic.fit, Open Tsul ga tegilmasin
+description: LexLive server — lex-live.zonic.fit, Open Tsul ga tegilmasin
 alwaysApply: true
 ---
 
-# TDYU Live — server
+# LexLive — server
 
-Domen: **https://tdyu-live.zonic.fit**  
+Domen: **https://lex-live.zonic.fit**  
 Public IPv4: `3.79.57.253`  
 Private IPv4: `172.26.11.220`  
 Public IPv6: `2a05:d014:1091:2d00:768b:8b11:2d63:34ae`  

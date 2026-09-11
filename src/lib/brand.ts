@@ -1,5 +1,5 @@
 export const BRAND = {
-  name: "TDYU Live",
-  short: "TL",
+  name: "LexLive",
+  short: "LL",
   tagline: "Jonli dars va kurslar",
 };

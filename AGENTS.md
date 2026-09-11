@@ -1,10 +1,10 @@
-# TDYU Live — Agent qoidalari
+# LexLive — Agent qoidalari
 
-Bu papka **faqat TDYU Live**. https://open.okina.uz ga tegilmasin (boshqa loyiha).
+Bu papka **faqat LexLive**. https://open.okina.uz ga tegilmasin (boshqa loyiha).
 
 ## Ish
 
-- Mahalliy: `http://localhost:3000` · production: `https://tdyu-live.zonic.fit`
+- Mahalliy: `http://localhost:3000` · production: `https://lex-live.zonic.fit`
 - Kod o‘zgarishi: lint/type-check
 - **Deploy Open Tsul serveriga taqiqlangan** (`72.62.3.191`, `/var/www/open-tsul`)
 - Git: remote **manba** = `git@github.com:Avazov03/TDYU-Live.git`, branch **main**

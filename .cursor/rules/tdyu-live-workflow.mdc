@@ -1,11 +1,11 @@
 ---
-description: TDYU Live — mahalliy + tdyu-live.zonic.fit, Open Tsul yo'q
+description: LexLive — mahalliy + lex-live.zonic.fit, Open Tsul yo'q
 alwaysApply: true
 ---
 
-# TDYU Live — workflow
+# LexLive — workflow
 
-Loyiha: **TDYU Live**. Ish: shu papka, `http://localhost:3000`, production `https://tdyu-live.zonic.fit`.
+Loyiha: **LexLive**. Ish: shu papka, `http://localhost:3000`, production `https://lex-live.zonic.fit`.
 
 ## Taqiqlangan
 
