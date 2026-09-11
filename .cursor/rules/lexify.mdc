@@ -9,6 +9,8 @@ Yangi chatda foydalanuvchidan GitHub yoki server so‘ralmasin — shu fayl yeta
 
 Loyiha: **Lexify**. Mahalliy: `http://localhost:3000`. Production: `https://lexify.zonic.fit`.
 
+Dizayn manbasi: `DESIGN.md`. Landing/UI skill: `.cursor/skills/lexify-design/`. E2E: `npm run test:e2e`.
+
 ## GitHub
 
 - Remote nomi: **manba** (`origin` emas)

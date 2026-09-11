@@ -25,14 +25,12 @@ export default async function LandingPage() {
     <div className="site">
       <SiteHeader />
       <section className="site-hero">
-        <p className="small" style={{ letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.85 }}>
-          {BRAND.name}
-        </p>
-        <h1>TDYU professorlaridan jonli huquqiy kurslar</h1>
+        <h1 className="site-hero-name">{BRAND.name}</h1>
+        <p className="site-hero-tag">TDYU professorlaridan jonli huquqiy kurslar</p>
         <p className="site-hero-lead">
           Tarif tanlang, yo&apos;nalish va o&apos;qituvchini belgilang — shu o&apos;qituvchining darsiga yozilasiz.
         </p>
-        <div className="row gap-12" style={{ justifyContent: "center", flexWrap: "wrap" }}>
+        <div className="site-hero-cta">
           {sub ? (
             <Link href="/app" className="btn btn-primary">
               Kabinetga o&apos;tish

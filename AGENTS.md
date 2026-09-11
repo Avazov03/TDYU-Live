@@ -10,6 +10,8 @@ Bu papka **faqat Lexify**. https://open.okina.uz ga tegilmasin (boshqa loyiha).
 - Git: remote **manba** = `git@github.com:Avazov03/TDYU-Live.git`, branch **main**
 - Kod o‘zgagach avtomatik commit/push/deploy qilma. Bir marta so‘ra; «qil» desagina qil. `.env` commit qilma
 - To‘liq GitHub + server: `.cursor/rules/lexify.mdc`
+- Dizayn / landing: `DESIGN.md` · skill: `.cursor/skills/lexify-design/`
+- Brauzer smoke: `npm run test:e2e`
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
