@@ -1,11 +1,11 @@
 ---
-description: LexLive — mahalliy + lex-live.zonic.fit, Open Tsul yo'q
+description: Lexify — mahalliy + lexify.zonic.fit, Open Tsul yo'q
 alwaysApply: true
 ---
 
-# LexLive — workflow
+# Lexify — workflow
 
-Loyiha: **LexLive**. Ish: shu papka, `http://localhost:3000`, production `https://lex-live.zonic.fit`.
+Loyiha: **Lexify**. Ish: shu papka, `http://localhost:3000`, production `https://lexify.zonic.fit`.
 
 ## Taqiqlangan
 

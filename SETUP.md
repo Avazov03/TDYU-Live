@@ -1,4 +1,4 @@
-# LexLive — O'rnatish bo'yicha qo'llanma
+# Lexify — O'rnatish bo'yicha qo'llanma
 
 Mahalliy ish: `http://localhost:3000`.
 
@@ -53,7 +53,7 @@ Port 5432 band bo‘lsa, `.env` dagi `DATABASE_URL` da boshqa port (masalan 5434
 
 ## Production
 
-Domen: **https://lex-live.zonic.fit** (server `3.79.57.253`).  
+Domen: **https://lexify.zonic.fit** (server `3.79.57.253`).  
 Open Tsul (`https://open.okina.uz`) ga deploy qilinmasin.
 
 App: `/var/www/tdyu-live`, PM2 `tdyu-live`, port `3100`.

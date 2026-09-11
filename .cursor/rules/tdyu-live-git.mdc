@@ -1,9 +1,9 @@
 ---
-description: LexLive GitHub — har kod o'zgarishida commit va manba/main push
+description: Lexify GitHub — har kod o'zgarishida commit va manba/main push
 alwaysApply: true
 ---
 
-# LexLive — Git
+# Lexify — Git
 
 Repo: `git@github.com:Avazov03/TDYU-Live.git`  
 Remote: **manba** (origin emas). Branch: **main**.

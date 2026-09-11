@@ -1,6 +1,6 @@
-# LexLive — Texnik topshiriq
+# Lexify — Texnik topshiriq
 
-**LexLive** — Toshkent davlat yuridik universiteti uchun pulli jonli-dars va kurs platformasi. Interfeys **YouTube uslubida** (dark/light, sidebar, video kartochka, watch layout). Videolar YouTube’da saqlanmaydi — **Mux** live + VOD.
+**Lexify** — Toshkent davlat yuridik universiteti uchun pulli jonli-dars va kurs platformasi. Interfeys **YouTube uslubida** (dark/light, sidebar, video kartochka, watch layout). Videolar YouTube’da saqlanmaydi — **Mux** live + VOD.
 
 Mahalliy: http://localhost:3000
 

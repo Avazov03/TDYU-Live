@@ -1,11 +1,11 @@
 ---
-description: LexLive — Open Tsul ga tegilmasin; o'z serveri lex-live.zonic.fit
+description: Lexify — Open Tsul ga tegilmasin; o'z serveri lexify.zonic.fit
 alwaysApply: true
 ---
 
-# LexLive — taqiq (boshqa loyiha)
+# Lexify — taqiq (boshqa loyiha)
 
-Bu papka **faqat LexLive**.
+Bu papka **faqat Lexify**.
 
 **Tegilmasin:**
 - https://open.okina.uz
@@ -14,4 +14,4 @@ Bu papka **faqat LexLive**.
 
 Bu sayt **boshqa loyiha**. Deploy, SSH, DNS, SSL qilma.
 
-LexLive serveri: **lex-live.zonic.fit** (`3.79.57.253`). Mahalliy: `http://localhost:3000`.
+Lexify serveri: **lexify.zonic.fit** (`3.79.57.253`). Mahalliy: `http://localhost:3000`.
