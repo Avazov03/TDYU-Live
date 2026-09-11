@@ -16,8 +16,10 @@ test.describe("Lexify landing", () => {
     await expect(page.locator(".site-hero-cta .btn").first()).toBeVisible();
   });
 
-  test("tariflar section is reachable", async ({ page }) => {
-    await page.goto("/#tariflar");
-    await expect(page.locator("#tariflar")).toBeVisible();
+  test("notch navbar links to landing sections", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Qanday" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Loyiha" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Tariflar" }).first()).toBeVisible();
   });
 });

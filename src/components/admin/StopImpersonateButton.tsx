@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-export function StopImpersonateButton() {
+type Props = {
+  label?: string;
+  className?: string;
+};
+
+export function StopImpersonateButton({
+  label = "Admin'ga qaytish",
+  className = "btn btn-sm btn-primary",
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +30,8 @@ export function StopImpersonateButton() {
   };
 
   return (
-    <button type="button" className="btn btn-sm btn-primary" disabled={loading} onClick={back}>
-      {loading ? "..." : "Admin'ga qaytish"}
+    <button type="button" className={className} disabled={loading} onClick={back}>
+      {loading ? "..." : label}
     </button>
   );
 }

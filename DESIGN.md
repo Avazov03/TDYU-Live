@@ -53,6 +53,15 @@ Mahalliy: `http://localhost:3000` · Production: `https://lexify.zonic.fit`
 
 Matnlar o‘zgarmaydi — faqat joylashuv va o‘lcham.
 
+### Header — Notch Navbar (Vengeance)
+
+- Komponent: `src/components/site/LexifyNotchNavbar.tsx`
+- Chap: Qanday · Loyiha · markazda Lx Lexify
+- O‘ng: Tariflar + auth
+- Mehmon: Kirish · Ro‘yxatdan o‘tish
+- Kirgan: avatar + ism · Kabinet (yoki Tarif tanlash) · Chiqish
+- Mobil: hamburger menyu
+
 ---
 
 ## Agent vositalari (nima / qachon)

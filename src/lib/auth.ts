@@ -153,6 +153,7 @@ providers.push(
           id: user.id,
           email: user.email,
           name: user.fullName,
+          image: user.avatarUrl,
           role: user.role,
         };
       } catch (error) {

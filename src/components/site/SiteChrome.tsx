@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { getAnyActiveSubscription } from "@/lib/access";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { BRAND } from "@/lib/brand";
-import { SiteSignOut } from "@/components/site/SiteSignOut";
-import { StopImpersonateButton } from "@/components/admin/StopImpersonateButton";
+import { prisma } from "@/lib/prisma";
+import { LexifyNotchNavbar } from "@/components/site/LexifyNotchNavbar";
 
 export async function SiteHeader() {
   const session = await auth();
@@ -22,60 +22,39 @@ export async function SiteHeader() {
         ? "/app"
         : null;
 
-  return (
-    <header className="site-nav">
-      <Link href="/" className="logo">
-        <span className="mark">{BRAND.short}</span>
-        <span>{BRAND.name}</span>
-      </Link>
-      <nav className="site-nav-links">
-        <Link href="/#haqida">Loyiha</Link>
-        <Link href="/#tariflar">Tariflar</Link>
-      </nav>
-      <div className="site-nav-actions">
-        {session?.impersonatorId ? (
-          <>
-            <span className="badge pending">Admin → o&apos;qituvchi</span>
-            <StopImpersonateButton />
-          </>
-        ) : session?.user ? (
-          <>
-            {cabinetHref ? (
-              <Link href={cabinetHref} className="btn btn-primary">
-                Kabinet
-              </Link>
-            ) : (
-              <Link href="/#tariflar" className="btn btn-primary">
-                Tarif tanlash
-              </Link>
-            )}
-            <SiteSignOut />
-          </>
-        ) : (
-          <>
-            <Link href="/login" className="btn btn-sm">
-              Kirish
-            </Link>
-            <Link href="/register" className="btn btn-primary">
-              Ro&apos;yxatdan o&apos;tish
-            </Link>
-          </>
-        )}
-      </div>
-    </header>
-  );
+  const profile =
+    session?.user?.id
+      ? await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { fullName: true, avatarUrl: true },
+        })
+      : null;
+
+  const user = session?.user
+    ? {
+        name: profile?.fullName || session.user.name || session.user.email || "Foydalanuvchi",
+        image: profile?.avatarUrl || session.user.image || null,
+      }
+    : null;
+
+  return <LexifyNotchNavbar cabinetHref={cabinetHref} user={user} />;
 }
 
 export function SiteFooter() {
   return (
-    <footer className="site-footer">
-      <div>
-        <b>{BRAND.name}</b>
-        <p className="small muted" style={{ margin: "6px 0 0" }}>
-          TDYU professorlaridan jonli dars va kurslar.
-        </p>
+    <footer className="lx-footer">
+      <div className="lx-footer-inner">
+        <div className="lx-footer-brand">
+          <span className="lx-footer-name">{BRAND.name}</span>
+          <p>TDYU professorlaridan jonli dars va kurslar.</p>
+        </div>
+        <nav className="lx-footer-nav" aria-label="Pastki menyu">
+          <Link href="/#qanday">Qanday</Link>
+          <Link href="/#haqida">Loyiha</Link>
+          <Link href="/#tariflar">Tariflar</Link>
+        </nav>
+        <p className="lx-footer-copy">© {new Date().getFullYear()} {BRAND.name}</p>
       </div>
-      <div className="small muted">© {new Date().getFullYear()} {BRAND.name}</div>
     </footer>
   );
 }
