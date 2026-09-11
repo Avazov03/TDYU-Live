@@ -4,8 +4,13 @@ import { createContext, useContext, useEffect, useSyncExternalStore } from "reac
 
 type Theme = "dark" | "light";
 
-const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({
+const ThemeContext = createContext<{
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
+}>({
   theme: "dark",
+  setTheme: () => {},
   toggleTheme: () => {},
 });
 
@@ -29,22 +34,30 @@ function subscribeTheme(onStoreChange: () => void) {
   };
 }
 
+function applyTheme(next: Theme) {
+  document.documentElement.setAttribute("data-theme", next);
+  document.documentElement.classList.toggle("dark", next === "dark");
+  localStorage.setItem("ot-theme", next);
+  window.dispatchEvent(new Event("ot-theme-change"));
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
+    applyTheme(theme);
   }, [theme]);
 
+  const setTheme = (next: Theme) => {
+    applyTheme(next);
+  };
+
   const toggleTheme = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("ot-theme", next);
-    window.dispatchEvent(new Event("ot-theme-change"));
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

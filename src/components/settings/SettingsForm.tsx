@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 type SettingsData = {
   fullName: string;
@@ -11,7 +12,7 @@ type SettingsData = {
 };
 
 export function SettingsForm({ initial }: { initial: SettingsData }) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -38,11 +39,9 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
           <label>Til</label>
           <input readOnly value={initial.language.toUpperCase()} />
         </div>
-        <div className="row gap-12" style={{ justifyContent: "space-between" }}>
+        <div className="row gap-12" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <span>Mavzu: {theme === "dark" ? "Qorong'u" : "Yorug'"}</span>
-          <button type="button" className="btn btn-sm" onClick={toggleTheme}>
-            Mavzuni almashtirish
-          </button>
+          <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className="iconbtn" />
         </div>
       </div>
     </div>

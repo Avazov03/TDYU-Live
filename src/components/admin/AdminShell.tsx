@@ -7,6 +7,7 @@ import { BRAND } from "@/lib/brand";
 import { Icon } from "@/components/ui/Icon";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { initials } from "@/lib/utils";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ const NAV = [
 
 export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <>
@@ -37,9 +38,7 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
           <Link href="/" className="btn btn-sm">
             Bosh sahifa
           </Link>
-          <button className="iconbtn" type="button" onClick={toggleTheme} aria-label="Mavzu">
-            <Icon name={theme === "dark" ? "moon" : "sun"} />
-          </button>
+          <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className="iconbtn" />
           <span className="avatar sm">{initials(userName)}</span>
           <button type="button" className="btn btn-sm" onClick={() => signOut({ callbackUrl: "/" })}>
             Chiqish

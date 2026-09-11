@@ -10,13 +10,12 @@ import {
   CircleHelp,
   CreditCard,
   Menu,
-  Moon,
-  Sun,
   X,
 } from "lucide-react";
 import { initials } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 type Props = {
   cabinetHref?: string | null;
@@ -52,11 +51,13 @@ function Avatar({ name, image }: { name: string; image?: string | null }) {
 }
 
 function ThemeBtn() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   return (
-    <button type="button" className="vn-icon-btn" onClick={toggleTheme} aria-label="Mavzu">
-      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
+    <AnimatedThemeToggler
+      theme={theme}
+      onThemeChange={setTheme}
+      className="vn-theme-toggle"
+    />
   );
 }
 

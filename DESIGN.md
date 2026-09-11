@@ -17,17 +17,20 @@ Mahalliy: `http://localhost:3000` · Production: `https://lexify.zonic.fit`
 
 ### Hozirgi CSS tokenlar (`globals.css`)
 
-**Dark**
-- `--bg` `#0f0f0f`
-- `--surface` `#1b1b1b`
+Brend accent **rejimga bog‘liq** (matn/fon neytral qoladi):
+
+**Dark** — teal (LEXIFY wordmark)
+- `--bg` `#0f0f0f` · `--surface` `#1b1b1b`
 - `--text` `#f1f1f1` · `--text-2` `#aaaaaa`
-- `--accent` `#3b7bf0` · `--accent-700` `#2a5cc2`
-- Hero nom gradienti: `#9fc9c4` → `#4a9a96` → `#d4e6e2`
+- `--accent` `#4a9a96` · `--accent-700` `#3a7d7a` · `--accent-100` `#1a3030`
+- Hero gradient: `#9fc9c4` → `#4a9a96` → `#d4e6e2`
 
-**Light**
-- `--bg` `#ffffff` · `--accent` `#2a5cc2`
+**Light** — ko‘k (LEXIFY wordmark)
+- `--bg` `#ffffff` · `--surface` `#f7f7f7`
+- `--accent` `#3b7bf0` · `--accent-700` `#2a5cc2` · `--accent-100` `#e4ecfb`
+- Hero gradient: `#5b9cf5` → `#3b7bf0` → `#2a5cc2`
 
-> Rang palitrasi foydalanuvchi tasdiqlamaguncha ommaviy o‘zgartirilmasin.
+Logo mark, primary tugmalar, badge, focus, featured tarif — hammasi `var(--accent)`.
 
 ---
 

@@ -1,17 +1,22 @@
 "use client";
 
 import { SparklesCore } from "@/components/ui/sparkles";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 export function HeroSparkles() {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
   return (
     <div className="site-hero-sparkles" aria-hidden>
       <SparklesCore
-        id="lexify-hero-sparkles"
+        key={theme}
+        id={`lexify-hero-sparkles-${theme}`}
         background="transparent"
         minSize={0.4}
         maxSize={1.2}
-        particleDensity={120}
-        particleColor="#FFFFFF"
+        particleDensity={isLight ? 100 : 120}
+        particleColor={isLight ? "#3b7bf0" : "#9fc9c4"}
         speed={1.5}
         className="site-hero-sparkles-canvas"
       />

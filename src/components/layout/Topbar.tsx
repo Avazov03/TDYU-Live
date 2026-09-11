@@ -11,6 +11,7 @@ import { initials } from "@/lib/utils";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { BRAND } from "@/lib/brand";
 import { StopImpersonateButton } from "@/components/admin/StopImpersonateButton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 type TopbarProps = {
   loggedIn?: boolean;
@@ -29,7 +30,7 @@ export function Topbar({
   unreadCount = 0,
   impersonating = false,
 }: TopbarProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -69,14 +70,7 @@ export function Topbar({
             Bosh sahifa
           </Link>
         )}
-        <button
-          className="iconbtn"
-          type="button"
-          aria-label="Mavzu"
-          onClick={toggleTheme}
-        >
-          <Icon name={theme === "dark" ? "moon" : "sun"} />
-        </button>
+        <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className="iconbtn" />
         {loggedIn ? (
           <>
             {userRole && isAdminRole(userRole) ? (
