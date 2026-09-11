@@ -12,6 +12,18 @@ export const TARIFF_LABELS: Record<TariffTier, string> = {
   t3: "3-tarif — Premium",
 };
 
+export const TARIFF_SHORT: Record<TariffTier, string> = {
+  t1: "Yozuv",
+  t2: "Jonli",
+  t3: "Premium",
+};
+
+export const TARIFF_BLURBS: Record<TariffTier, string> = {
+  t1: "Yozib olingan darslarni o'z tempingizda ko'ring.",
+  t2: "Jonli efir va savol-javob — jamoaviy o'qish uchun.",
+  t3: "Premium: ustuvor chat va birinchi navbatda tekshiruv.",
+};
+
 export const TARIFF_FEATURES: Record<TariffTier, string[]> = {
   t1: ["Yozib olingan darslar"],
   t2: ["Yozib olingan darslar", "Jonli efir", "Efirda savol berish"],

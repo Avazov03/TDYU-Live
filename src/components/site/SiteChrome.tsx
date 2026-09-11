@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getAnyActiveSubscription } from "@/lib/access";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
-import { BRAND } from "@/lib/brand";
 import { prisma } from "@/lib/prisma";
 import { LexifyNotchNavbar } from "@/components/site/LexifyNotchNavbar";
+
+export { SiteFooter } from "@/components/site/SiteFooter";
 
 export async function SiteHeader() {
   const session = await auth();
@@ -38,23 +38,4 @@ export async function SiteHeader() {
     : null;
 
   return <LexifyNotchNavbar cabinetHref={cabinetHref} user={user} />;
-}
-
-export function SiteFooter() {
-  return (
-    <footer className="lx-footer">
-      <div className="lx-footer-inner">
-        <div className="lx-footer-brand">
-          <span className="lx-footer-name">{BRAND.name}</span>
-          <p>TDYU professorlaridan jonli dars va kurslar.</p>
-        </div>
-        <nav className="lx-footer-nav" aria-label="Pastki menyu">
-          <Link href="/#qanday">Qanday</Link>
-          <Link href="/#haqida">Loyiha</Link>
-          <Link href="/#tariflar">Tariflar</Link>
-        </nav>
-        <p className="lx-footer-copy">© {new Date().getFullYear()} {BRAND.name}</p>
-      </div>
-    </footer>
-  );
 }

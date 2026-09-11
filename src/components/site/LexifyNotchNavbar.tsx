@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
   CircleHelp,
   CreditCard,
+  Home,
   Menu,
   X,
 } from "lucide-react";
@@ -23,22 +25,101 @@ type Props = {
 };
 
 type NavItem = {
+  id: string;
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
 };
 
 const NAV: NavItem[] = [
-  { label: "Qanday", href: "/#qanday", icon: CircleHelp },
-  { label: "Loyiha", href: "/#haqida", icon: BookOpen },
-  { label: "Tariflar", href: "/#tariflar", icon: CreditCard },
+  { id: "bosh", label: "Bosh sahifa", href: "/#bosh", icon: Home },
+  { id: "qanday", label: "Qanday", href: "/#qanday", icon: CircleHelp },
+  { id: "haqida", label: "Loyiha", href: "/#haqida", icon: BookOpen },
+  { id: "tariflar", label: "Tariflar", href: "/#tariflar", icon: CreditCard },
 ];
 
-function NavLink({ href, icon: Icon, label }: NavItem) {
+const SECTION_IDS = NAV.map((item) => item.id);
+
+function scrollToSection(id: string) {
+  if (id === "bosh") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    history.replaceState(null, "", "/#bosh");
+    return;
+  }
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  history.replaceState(null, "", `/#${id}`);
+}
+
+function useActiveSection() {
+  const pathname = usePathname();
+  const [active, setActive] = useState("bosh");
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash && SECTION_IDS.includes(hash)) setActive(hash);
+    };
+    syncFromHash();
+
+    const onScroll = () => {
+      if (window.scrollY < 80) {
+        setActive("bosh");
+        return;
+      }
+      let current = "bosh";
+      for (const id of SECTION_IDS) {
+        if (id === "bosh") continue;
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top <= 120) current = id;
+      }
+      setActive(current);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("hashchange", syncFromHash);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("hashchange", syncFromHash);
+    };
+  }, [pathname]);
+
+  return pathname === "/" ? active : null;
+}
+
+function NavLink({
+  item,
+  active,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const Icon = item.icon;
+
   return (
-    <Link href={href} className="vn-link">
+    <Link
+      href={item.href}
+      className={`vn-link${active ? " is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      onClick={(e) => {
+        if (pathname === "/") {
+          e.preventDefault();
+          scrollToSection(item.id);
+        }
+        onNavigate?.();
+      }}
+    >
       <Icon size={16} aria-hidden />
-      <span>{label}</span>
+      <span>{item.label}</span>
     </Link>
   );
 }
@@ -50,12 +131,16 @@ function Avatar({ name, image }: { name: string; image?: string | null }) {
   return <span className="vn-avatar vn-avatar-fallback">{initials(name || "U") || "U"}</span>;
 }
 
-function ThemeBtn() {
+function ThemeBtn({ onPop }: { onPop: () => void }) {
   const { theme, setTheme } = useTheme();
   return (
     <AnimatedThemeToggler
       theme={theme}
-      onThemeChange={setTheme}
+      duration={520}
+      onThemeChange={(next) => {
+        onPop();
+        setTheme(next);
+      }}
       className="vn-theme-toggle"
     />
   );
@@ -63,10 +148,37 @@ function ThemeBtn() {
 
 export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const active = useActiveSection();
+  const pathname = usePathname();
+
+  const popHeader = () => {
+    const el = headerRef.current;
+    if (!el) return;
+    el.classList.remove("is-theme-pop");
+    void el.offsetWidth;
+    el.classList.add("is-theme-pop");
+    if (popTimer.current) clearTimeout(popTimer.current);
+    popTimer.current = setTimeout(() => el.classList.remove("is-theme-pop"), 700);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (popTimer.current) clearTimeout(popTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash || !SECTION_IDS.includes(hash)) return;
+    requestAnimationFrame(() => scrollToSection(hash));
+  }, [pathname]);
 
   return (
     <>
-      <header className="vn-header">
+      <header className="vn-header" ref={headerRef}>
         <div className="vn-wing" aria-hidden>
           <svg className="vn-wing-lines" preserveAspectRatio="none">
             <line x1="0" y1="39.5" x2="100%" y2="39.5" />
@@ -93,27 +205,41 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
               <button
                 type="button"
                 className="vn-menu"
-                aria-label="Menyu"
+                aria-label={open ? "Menyuni yopish" : "Menyuni ochish"}
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
               >
                 {open ? <X size={20} /> : <Menu size={20} />}
               </button>
-              <Link href="/" className="vn-logo" aria-label={BRAND.name}>
+              <Link
+                href="/#bosh"
+                className="vn-logo"
+                aria-label={BRAND.name}
+                onClick={(e) => {
+                  if (pathname === "/") {
+                    e.preventDefault();
+                    scrollToSection("bosh");
+                  }
+                }}
+              >
                 <span className="vn-logo-mark">{BRAND.short}</span>
                 <span className="vn-logo-text">{BRAND.name}</span>
               </Link>
             </div>
 
             <div className="vn-right">
-              <nav className="vn-nav">
+              <nav className="vn-nav" aria-label="Asosiy menyu">
                 {NAV.map((item) => (
-                  <NavLink key={item.href} {...item} />
+                  <NavLink
+                    key={item.id}
+                    item={item}
+                    active={active === item.id}
+                  />
                 ))}
               </nav>
 
               <div className="vn-actions">
-                <ThemeBtn />
+                <ThemeBtn onPop={popHeader} />
                 {user ? (
                   <>
                     <Link
@@ -168,9 +294,21 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.2 }}
           >
-            <nav className="vn-drawer-nav">
+            <nav className="vn-drawer-nav" aria-label="Mobil menyu">
               {NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="vn-drawer-link" onClick={() => setOpen(false)}>
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={`vn-drawer-link${active === item.id ? " is-active" : ""}`}
+                  aria-current={active === item.id ? "page" : undefined}
+                  onClick={(e) => {
+                    if (pathname === "/") {
+                      e.preventDefault();
+                      scrollToSection(item.id);
+                    }
+                    setOpen(false);
+                  }}
+                >
                   <item.icon size={18} aria-hidden />
                   <span>{item.label}</span>
                 </Link>

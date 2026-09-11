@@ -8,10 +8,12 @@ export function CheckoutButton({
   courseId,
   tier,
   label,
+  className,
 }: {
   courseId?: string;
   tier: TariffTier;
   label: string;
+  className?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,13 @@ export function CheckoutButton({
   };
 
   return (
-    <div>
-      <button type="button" className="btn btn-primary" onClick={pay} disabled={loading}>
+    <div className="lx-ace-cta-wrap">
+      <button
+        type="button"
+        className={className || "btn btn-primary"}
+        onClick={pay}
+        disabled={loading}
+      >
         {loading ? "To'lanmoqda..." : label}
       </button>
       {error ? <div className="small" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div> : null}
