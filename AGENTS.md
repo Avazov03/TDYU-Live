@@ -8,7 +8,8 @@ Bu papka **faqat Lexify**. https://open.okina.uz ga tegilmasin (boshqa loyiha).
 - Kod o‘zgarishi: lint/type-check
 - **Deploy Open Tsul serveriga taqiqlangan** (`72.62.3.191`, `/var/www/open-tsul`)
 - Git: remote **manba** = `git@github.com:Avazov03/TDYU-Live.git`, branch **main**
-- Kod o‘zgagach agent o‘zi commit qiladi va `git push -u manba main` qiladi; `.env` commit qilma
+- Kod o‘zgagach avtomatik commit/push/deploy qilma. Bir marta so‘ra; «qil» desagina qil. `.env` commit qilma
+- To‘liq GitHub + server: `.cursor/rules/lexify.mdc`
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know

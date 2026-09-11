@@ -1,5 +1,5 @@
 ---
-description: Lexify server — lexify.zonic.fit, Open Tsul ga tegilmasin
+description: Lexify server — lexify.zonic.fit; deploy faqat ruxsat bo'lsa
 alwaysApply: true
 ---
 
@@ -13,6 +13,6 @@ SSH: `ubuntu@3.79.57.253`
 SSH kalit (lokal, gitga kiritilmasin): `.secrets/tdyu-live-server.pem`  
 App: `/var/www/tdyu-live` (PM2 `tdyu-live`, port 3100)
 
-Kod o‘zgagach: shu serverga deploy + `git push -u manba main`. `.env` va `.pem` commit qilinmasin.
+Deploy **faqat** foydalanuvchi «qil» / «deploy qil» deganda. `.env` va `.pem` commit qilinmasin.
 
 **Tegilmasin:** https://open.okina.uz , `72.62.3.191`, `/var/www/open-tsul`

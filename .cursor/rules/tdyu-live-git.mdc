@@ -1,5 +1,5 @@
 ---
-description: Lexify GitHub — har kod o'zgarishida commit va manba/main push
+description: Lexify GitHub — commit va manba/main push faqat foydalanuvchi ruxsat bersa
 alwaysApply: true
 ---
 
@@ -8,12 +8,10 @@ alwaysApply: true
 Repo: `git@github.com:Avazov03/TDYU-Live.git`  
 Remote: **manba** (origin emas). Branch: **main**.
 
-Kod o‘zgagach agent **o‘zi** commit qiladi va `git push -u manba main` qiladi. Foydalanuvchidan qayta so‘ralmasin.
+Kod o‘zgagach agent **o‘zi** commit/push qilmasin. Avval so‘rasin. Faqat foydalanuvchi ruxsat bersa:
 
 ```
-git remote add manba git@github.com:Avazov03/TDYU-Live.git
-git branch -M main
 git push -u manba main
 ```
 
-`.env` commit qilinmasin.
+`.env` va `.secrets/` commit qilinmasin.

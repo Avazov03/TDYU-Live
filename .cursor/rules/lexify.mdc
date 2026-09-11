@@ -1,0 +1,46 @@
+---
+description: Lexify — GitHub, server, va commit/push/deploy faqat so'ralganda
+alwaysApply: true
+---
+
+# Lexify — doimiy kontekst
+
+Yangi chatda foydalanuvchidan GitHub yoki server so‘ralmasin — shu fayl yetarli.
+
+Loyiha: **Lexify**. Mahalliy: `http://localhost:3000`. Production: `https://lexify.zonic.fit`.
+
+## GitHub
+
+- Remote nomi: **manba** (`origin` emas)
+- Repo: `git@github.com:Avazov03/TDYU-Live.git`
+- Branch: **main**
+- Commitga kiritilmasin: `.env`, `.pem`, `.secrets/`
+
+```
+git remote add manba git@github.com:Avazov03/TDYU-Live.git
+git push -u manba main
+```
+
+## Server
+
+- Domen: **https://lexify.zonic.fit**
+- Public IPv4: `3.79.57.253`
+- Private IPv4: `172.26.11.220`
+- Public IPv6: `2a05:d014:1091:2d00:768b:8b11:2d63:34ae`
+- SSH: `ubuntu@3.79.57.253`
+- Kalit (gitga kiritilmasin): `.secrets/tdyu-live-server.pem`
+- App: `/var/www/tdyu-live` (PM2 `tdyu-live`, port 3100)
+
+**Tegilmasin:** https://open.okina.uz , `72.62.3.191`, `/var/www/open-tsul`
+
+## Kod o‘zgagach — avtomatik qilma
+
+Commit, `git push` va server deploy **o‘zing qilma**.
+
+Ish tugagach **bir marta** so‘ra:
+
+> Kod tayyor. Commit, GitHub (`manba/main`) ga push va serverga deploy qilaymi?
+
+- «qil» / «ha» / «ha, hammasi» → commit → `git push -u manba main` → shu serverga deploy
+- Faqat bittasini aytsa — shuni qil
+- O‘zgarish yo‘q bo‘lsa — so‘rama

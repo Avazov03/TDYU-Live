@@ -1,5 +1,5 @@
 ---
-description: Lexify — mahalliy + lexify.zonic.fit, Open Tsul yo'q
+description: Lexify — mahalliy + lexify.zonic.fit, Open Tsul yo'q; commit/push/deploy so'ralganda
 alwaysApply: true
 ---
 
@@ -15,14 +15,8 @@ https://open.okina.uz va uning serveriga (deploy, SSH, migrate, SSL) **hech qach
 
 O‘zgarishdan oldin tushunganingni tasdiqla — tasdiqlanmaguncha kod yozma.
 
-## Git
+## Git va deploy
 
-Remote nomi: **manba** (origin emas).
+Kod o‘zgagach **avtomatik** commit/push/deploy qilma. Ish tugagach bir marta so‘ra. Faqat «qil» desagina: commit, `git push -u manba main`, keyin Lexify serveriga deploy. `.env` va `.pem` commit qilinmasin.
 
-```
-git remote add manba git@github.com:Avazov03/TDYU-Live.git
-git branch -M main
-git push -u manba main
-```
-
-Kod o‘zgagach agent **o‘zi** commit qiladi va `git push -u manba main` qiladi. `.env` commit qilinmasin.
+Batafsil: `.cursor/rules/lexify.mdc`
