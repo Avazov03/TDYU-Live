@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, isAdminRole } from "@/lib/auth";
+import { viewerCanSeeCredentials } from "@/lib/super-admin";
 import { prisma } from "@/lib/prisma";
 import { createInviteToken, inviteExpiresAt, inviteUrl } from "@/lib/invite";
 import { notifyUser } from "@/lib/notify";
@@ -51,7 +52,11 @@ export async function POST(req: Request) {
       },
     });
     const url = inviteUrl(invite.token);
-    return NextResponse.json({ teacher: existing, inviteUrl: url, reused: true }, { status: 201 });
+    const canSeeSecrets = await viewerCanSeeCredentials(session.user.id, session.user.role);
+    return NextResponse.json(
+      { teacher: canSeeSecrets ? existing : { id: existing.id, fullName: existing.fullName }, inviteUrl: url, reused: true },
+      { status: 201 },
+    );
   }
 
   const teacher = await prisma.teacher.create({
@@ -82,7 +87,14 @@ export async function POST(req: Request) {
     email: teacher.contactEmail,
   });
 
-  return NextResponse.json({ teacher, inviteUrl: url }, { status: 201 });
+  const canSeeSecrets = await viewerCanSeeCredentials(session.user.id, session.user.role);
+  return NextResponse.json(
+    {
+      teacher: canSeeSecrets ? teacher : { id: teacher.id, fullName: teacher.fullName },
+      inviteUrl: url,
+    },
+    { status: 201 },
+  );
   } catch (error) {
     console.error("admin_teacher_create_failed", error);
     return NextResponse.json(

@@ -16,6 +16,7 @@ type AdminShellProps = {
 
 const NAV = [
   { href: "/admin", label: "Boshqaruv", icon: "home" as const, exact: true },
+  { href: "/admin/users", label: "Foydalanuvchilar", icon: "users" as const },
   { href: "/admin/teachers", label: "O'qituvchilar", icon: "users" as const },
   { href: "/admin/courses", label: "Kurslar", icon: "list" as const },
   { href: "/admin/payments", label: "To'lovlar", icon: "msquare" as const },

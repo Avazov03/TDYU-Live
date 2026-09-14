@@ -1,13 +1,17 @@
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { viewerCanSeeCredentials } from "@/lib/super-admin";
 import { TARIFF_LABELS, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPaymentsPage() {
+  const session = await auth();
+  const canSeeSecrets = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
   const payments = await prisma.payment.findMany({
     include: {
-      user: { select: { fullName: true, email: true } },
+      user: { select: { fullName: true, email: canSeeSecrets } },
       course: { select: { titleUz: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -34,7 +38,7 @@ export default async function AdminPaymentsPage() {
               <tr key={p.id}>
                 <td>
                   {p.user.fullName}
-                  <div className="small muted">{p.user.email}</div>
+                  {canSeeSecrets ? <div className="small muted">{p.user.email}</div> : null}
                 </td>
                 <td>{p.course?.titleUz ?? "Tarif (o'qituvchi keyin)"}</td>
                 <td>{TARIFF_LABELS[p.tier]}</td>

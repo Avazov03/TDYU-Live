@@ -58,11 +58,13 @@ export function AdminTeachersManager({
   invites,
   faculties,
   subjects,
+  canSeeSecrets,
 }: {
   teachers: TeacherRow[];
   invites: InviteRow[];
   faculties: { id: string; nameUz: string }[];
   subjects: { id: string; facultyId: string; nameUz: string }[];
+  canSeeSecrets: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -164,11 +166,11 @@ export function AdminTeachersManager({
 
   const exportCsv = () => {
     const lines = [
-      ["F.I.SH.", "Login", "Fan", "Fakultet", "Holat", "Oxirgi kirish", "Kurs"].join(","),
+      ["F.I.SH.", ...(canSeeSecrets ? ["Login"] : []), "Fan", "Fakultet", "Holat", "Oxirgi kirish", "Kurs"].join(","),
       ...filtered.map((t) =>
         [
           `"${t.fullName.replaceAll('"', '""')}"`,
-          t.login,
+          ...(canSeeSecrets ? [t.login] : []),
           `"${t.subjectName.replaceAll('"', '""')}"`,
           `"${t.facultyName.replaceAll('"', '""')}"`,
           statusLabel(t.status),
@@ -191,7 +193,10 @@ export function AdminTeachersManager({
         <div>
           <h2>O&apos;qituvchilar boshqaruvi</h2>
           <p className="small muted" style={{ marginTop: 4 }}>
-            Jami {teachers.length} o&apos;qituvchi. Parolni tiklasangiz yangi parol bir marta ko&apos;rinadi va nusxalanadi.
+            Jami {teachers.length} o&apos;qituvchi.
+          {canSeeSecrets
+            ? " Parolni tiklasangiz yangi parol bir marta ko'rinadi va nusxalanadi."
+            : " Login, email va parol faqat super adminga ko'rinadi."}
           </p>
         </div>
         <div className="staff-head-actions">
@@ -277,8 +282,8 @@ export function AdminTeachersManager({
           <thead>
             <tr>
               <th>F.I.SH.</th>
-              <th>Login</th>
-              <th>Parol</th>
+              {canSeeSecrets ? <th>Login</th> : null}
+              {canSeeSecrets ? <th>Parol</th> : null}
               <th>Rol</th>
               <th>Fan</th>
               <th>Holat</th>
@@ -303,32 +308,36 @@ export function AdminTeachersManager({
                         <span>{t.fullName}</span>
                       </div>
                     </td>
-                    <td>
-                      <span className="staff-login">@{t.login.split("@")[0]}</span>
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className="staff-pw">
-                        <span>{visible ? pw : "********"}</span>
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          aria-label="Ko'rsat"
-                          onClick={() => setShowPw((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
-                        >
-                          <Icon name={visible ? "eyeoff" : "eye"} size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="iconbtn"
-                          aria-label="Nusxalash"
-                          onClick={() => {
-                            void copyText(pw || t.login).then(() => markCopied(`copy-${t.id}`));
-                          }}
-                        >
-                          <Icon name="copy" size={15} />
-                        </button>
-                      </div>
-                    </td>
+                    {canSeeSecrets ? (
+                      <td>
+                        <span className="staff-login">@{t.login.split("@")[0]}</span>
+                      </td>
+                    ) : null}
+                    {canSeeSecrets ? (
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="staff-pw">
+                          <span>{visible ? pw : "********"}</span>
+                          <button
+                            type="button"
+                            className="iconbtn"
+                            aria-label="Ko'rsat"
+                            onClick={() => setShowPw((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
+                          >
+                            <Icon name={visible ? "eyeoff" : "eye"} size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="iconbtn"
+                            aria-label="Nusxalash"
+                            onClick={() => {
+                              void copyText(pw || t.login).then(() => markCopied(`copy-${t.id}`));
+                            }}
+                          >
+                            <Icon name="copy" size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
                     <td>
                       <span className="badge accent">O&apos;qituvchi</span>
                     </td>
@@ -345,7 +354,7 @@ export function AdminTeachersManager({
                   </tr>
                   {open ? (
                     <tr className="staff-detail-row">
-                      <td colSpan={8}>
+                      <td colSpan={canSeeSecrets ? 8 : 6}>
                         <div className="staff-detail">
                           <div className="staff-detail-head">
                             <span className="avatar">{initials(t.fullName)}</span>
@@ -360,14 +369,18 @@ export function AdminTeachersManager({
                             </div>
                           </div>
                           <div className="staff-detail-grid">
-                            <div>
-                              <div className="small muted">Login</div>
-                              <div>{t.login}</div>
-                            </div>
-                            <div>
-                              <div className="small muted">Email</div>
-                              <div>{t.contactEmail}</div>
-                            </div>
+                            {canSeeSecrets ? (
+                              <div>
+                                <div className="small muted">Login</div>
+                                <div>{t.login}</div>
+                              </div>
+                            ) : null}
+                            {canSeeSecrets ? (
+                              <div>
+                                <div className="small muted">Email</div>
+                                <div>{t.contactEmail}</div>
+                              </div>
+                            ) : null}
                             <div>
                               <div className="small muted">Fan</div>
                               <div>{t.subjectName}</div>
@@ -397,14 +410,16 @@ export function AdminTeachersManager({
                           ) : null}
                           <div className="staff-detail-actions" onClick={(e) => e.stopPropagation()}>
                             <ImpersonateTeacherButton teacherId={t.id} className="btn btn-sm" />
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              disabled={busyId === t.id}
-                              onClick={() => void resetPassword(t.id)}
-                            >
-                              Parolni tiklash
-                            </button>
+                            {canSeeSecrets ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                disabled={busyId === t.id}
+                                onClick={() => void resetPassword(t.id)}
+                              >
+                                Parolni tiklash
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               className="btn btn-sm btn-danger"

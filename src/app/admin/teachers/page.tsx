@@ -1,6 +1,8 @@
 import { AdminTeachersManager, type InviteRow, type TeacherRow } from "@/components/admin/AdminTeachersManager";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { inviteUrl } from "@/lib/invite";
+import { viewerCanSeeCredentials } from "@/lib/super-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,8 @@ function teacherStatus(hasAccount: boolean, isBlocked: boolean): TeacherRow["sta
 }
 
 export default async function AdminTeachersPage() {
+  const session = await auth();
+  const canSeeSecrets = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
   const now = new Date();
   const [teachers, faculties, subjects, invites] = await Promise.all([
     prisma.teacher.findMany({
@@ -46,12 +50,12 @@ export default async function AdminTeachersPage() {
     return {
       id: t.id,
       fullName: t.fullName,
-      contactEmail: t.contactEmail,
-      login: t.user?.email ?? t.contactEmail,
+      contactEmail: canSeeSecrets ? t.contactEmail : "",
+      login: canSeeSecrets ? (t.user?.email ?? t.contactEmail) : "",
       facultyName: t.faculty.nameUz,
       subjectName: t.subject.nameUz,
       hasAccount,
-      hasPassword: Boolean(t.user?.passwordHash),
+      hasPassword: canSeeSecrets ? Boolean(t.user?.passwordHash) : false,
       isBlocked,
       status: teacherStatus(hasAccount, isBlocked),
       lastLoginAt: t.user?.lastLoginAt?.toISOString() ?? null,
@@ -70,6 +74,7 @@ export default async function AdminTeachersPage() {
 
   return (
     <AdminTeachersManager
+      canSeeSecrets={canSeeSecrets}
       teachers={teacherRows}
       invites={inviteRows}
       faculties={faculties.map((f) => ({ id: f.id, nameUz: f.nameUz }))}

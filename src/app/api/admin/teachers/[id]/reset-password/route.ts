@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { auth, isAdminRole } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { ensureTeacherUser } from "@/lib/teacher-account";
+import { viewerCanSeeCredentials } from "@/lib/super-admin";
 
 export async function POST(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+  const allowed = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
+  if (!allowed) {
+    return NextResponse.json({ error: "Faqat super admin" }, { status: 403 });
   }
 
   const { id } = await ctx.params;
