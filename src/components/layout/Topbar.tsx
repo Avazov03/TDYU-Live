@@ -46,7 +46,7 @@ export function Topbar({
     <div className="topbar">
       <div className="topbar-left">
         <button
-          className="iconbtn"
+          className="iconbtn acet-menu-btn"
           type="button"
           aria-label="Menyu"
           onClick={() => window.dispatchEvent(new CustomEvent("toggle-sidebar"))}

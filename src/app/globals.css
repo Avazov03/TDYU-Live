@@ -920,8 +920,39 @@ tr:last-child td { border-bottom: none; }
   background: var(--surface);
 }
 .certificate h1 { font-size: 36px; margin: 12px 0 20px; }
+/* Aceternity sidebar — site .sidebar rules must not restyle it */
+.acet-sidebar {
+  background-color: #f5f5f5;
+  color: #404040;
+}
+html[data-theme="dark"] .acet-sidebar {
+  background-color: #262626;
+  color: #e5e5e5;
+}
+.acet-drawer {
+  background-color: #fff;
+  color: #404040;
+}
+html[data-theme="dark"] .acet-drawer {
+  background-color: #171717;
+  color: #e5e5e5;
+}
+@media (max-width: 767px) {
+  .shell:has(.acet-sidebar) { flex-direction: column; }
+  .topbar .acet-menu-btn { display: none; }
+}
+@media (min-width: 768px) {
+  .topbar .acet-menu-btn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acet-sidebar, .acet-sidebar *, .acet-drawer, .acet-drawer * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @media print {
-  .topbar, .sidebar, .no-print { display: none !important; }
+  .topbar, .sidebar, .acet-sidebar, .acet-drawer, .no-print { display: none !important; }
   .shell { display: block; }
   .main { padding: 0; }
   .main-inner { max-width: none; }

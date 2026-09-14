@@ -1,0 +1,46 @@
+---
+description: Port UI library components without restyling — keep visual DNA, adapt only content/accent.
+alwaysApply: true
+---
+
+# UI kutubxona porti
+
+Vazifa: zamonaviy UI elementini loyihaga **tashlab qo‘yish**, qayta dizayn qilmaslik.
+
+## Manba (o‘ylab topma)
+
+1. Aceternity UI — https://ui.aceternity.com/
+   - Sidebar: https://ui.aceternity.com/components/sidebar
+   - Container Scroll Animation: https://ui.aceternity.com/components/container-scroll-animation
+2. Magic UI — https://magicui.design/
+   - Animated Theme Toggler: https://magicui.design/docs/components/animated-theme-toggler
+   - Scroll Progress: https://magicui.design/docs/components/scroll-progress
+   - Interactive Grid Pattern: https://magicui.design/docs/components/interactive-grid-pattern
+3. Vengeance UI — https://www.vengenceui.com/
+   - Interactive Particles: https://www.vengenceui.com/docs/components/interactive-particles
+   - Stagger Text: https://www.vengenceui.com/docs/components/stagger-text
+
+Boshqa komponent: avval rasmiy sahifa + manba kodni o‘qi. Taxminiy “o‘xshash” UI yozma.
+
+## Yangi kutubxona — avtomatik esla
+
+Foydalanuvchi yangi UI kutubxona yoki komponent URL bersa va u yuqoridagi ro‘yxatda yo‘q bo‘lsa: so‘ramasdan shu faylga qo‘sh (nom + aniq URL + qaysi komponent). Eski qatorlarni o‘chirma. Keyingi chat shu ro‘yxatdan o‘qiydi.
+
+## Port tartibi
+
+1. Rasmiy demo + kodni o‘qi.
+2. Muqaddas: o‘lcham, rang, radius, hover, motion egri chizig‘i, ikonka, ochiq/yopiq holat.
+3. Stackga mosla (vanilla JS + CSS OK). React/Next/Tailwind’ni majburan o‘rnatma. Framer Motion → CSS transition.
+4. Moslashuv FAQAT: 1 ta brend accent, shrift, matn/rasm/link, i18n, mavjud route/nav/data.
+5. Koddan oldin 4 qator: URL, nima saqlanadi, nima moslanadi, qaysi fayllar.
+6. Tugagach: “kutubxonadan saqlangan” vs “o‘zim yozgan (faqat moslashuv)”.
+
+## Taqiqlangan
+
+- Kutubxonani “chiroyliroq” qilib qayta chizish (rang, layout, radius, shadow, ikonka, easing).
+- O‘qilmasa/siqilsa — palitrasini o‘ylab topma. Avval sayt CSS konflikti (overflow, tema ranglari). Faqat shu konfliktni scope qil.
+- Dropdown/menyuni `position:fixed` / `overflow:hidden` bilan kesish yoki uchirish. Menyu tugma ostida.
+- Hover titrashi. Kengayish: width/opacity, ~0.35–0.4s `cubic-bezier(0.22, 1, 0.36, 1)`; chiqishda qisqa delay.
+- Boshqa bo‘limlarga tegish. Olib tashlashda class/script/i18n ni tozalab olib tashla.
+- `prefers-reduced-motion: reduce` da animatsiyani o‘chir.
+- Mobil: kutubxona qanday qilsa (drawer va h.k.) — shuni takrorla.

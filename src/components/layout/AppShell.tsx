@@ -26,7 +26,12 @@ export async function AppShell({ children, active = "home", mainClassName }: App
         impersonating={Boolean(session?.impersonatorId)}
       />
       <div className="shell">
-        <Sidebar active={active} userRole={shell.userRole} tariffTier={sub?.tier ?? null} />
+        <Sidebar
+          active={active}
+          userRole={shell.userRole}
+          userName={shell.userName}
+          tariffTier={sub?.tier ?? null}
+        />
         <main className={mainClassName ? `main ${mainClassName}` : "main"}>
           <div className="main-inner">{children}</div>
         </main>
