@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import Link, { type LinkProps } from "next/link";
+import Link from "next/link";
 import React, { createContext, useContext, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
@@ -182,7 +182,7 @@ export const SidebarLink = ({
 }: {
   link: SidebarLinks;
   className?: string;
-} & LinkProps) => {
+} & Omit<React.ComponentProps<typeof Link>, "href" | "className">) => {
   const { open, animate } = useSidebar();
   return (
     <Link
