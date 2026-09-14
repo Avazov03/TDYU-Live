@@ -16,27 +16,27 @@ export async function AppShell({ children, active = "home", mainClassName }: App
   const sub = session?.user?.id ? await getAnyActiveSubscription(session.user.id) : null;
 
   return (
-    <>
-      <Topbar
-        loggedIn={shell.loggedIn}
-        userName={shell.userName}
-        userEmail={shell.userEmail}
+    <div className="shell acet-shell">
+      <Sidebar
+        active={active}
         userRole={shell.userRole}
-        unreadCount={shell.unreadCount}
-        impersonating={Boolean(session?.impersonatorId)}
+        userName={shell.userName}
+        tariffTier={sub?.tier ?? null}
       />
-      <div className="shell">
-        <Sidebar
-          active={active}
-          userRole={shell.userRole}
+      <div className="acet-pane">
+        <Topbar
+          loggedIn={shell.loggedIn}
           userName={shell.userName}
-          tariffTier={sub?.tier ?? null}
+          userEmail={shell.userEmail}
+          userRole={shell.userRole}
+          unreadCount={shell.unreadCount}
+          impersonating={Boolean(session?.impersonatorId)}
         />
         <main className={mainClassName ? `main ${mainClassName}` : "main"}>
           <div className="main-inner">{children}</div>
         </main>
       </div>
-    </>
+    </div>
   );
 }
 

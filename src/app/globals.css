@@ -937,12 +937,37 @@ html[data-theme="dark"] .acet-drawer {
   background-color: #171717;
   color: #e5e5e5;
 }
+.acet-shell {
+  align-items: stretch;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+html[data-theme="dark"] .acet-shell {
+  background-color: #262626;
+}
+.acet-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-top-left-radius: 1rem;
+  border-top: 1px solid #e5e5e5;
+  border-left: 1px solid #e5e5e5;
+}
+html[data-theme="dark"] .acet-pane {
+  border-top-color: #404040;
+  border-left-color: #404040;
+}
+.acet-pane > .topbar { position: sticky; top: 0; }
 @media (max-width: 767px) {
   .shell:has(.acet-sidebar) { flex-direction: column; }
+  .acet-pane { border-radius: 0; border: none; }
   .topbar .acet-menu-btn { display: none; }
 }
 @media (min-width: 768px) {
   .topbar .acet-menu-btn { display: none; }
+  .acet-pane .topbar-left { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .acet-sidebar, .acet-sidebar *, .acet-drawer, .acet-drawer * {

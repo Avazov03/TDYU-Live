@@ -53,7 +53,7 @@ export function Topbar({
         >
           <Icon name="menu" />
         </button>
-        <Link href="/" className="logo">
+        <Link href="/" className="logo topbar-brand md:hidden">
             <span className="mark">{BRAND.short}</span>
             <span>{BRAND.name}</span>
         </Link>
