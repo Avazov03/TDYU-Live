@@ -60,7 +60,20 @@ function roleLabel(role: UserRole) {
 }
 
 async function copyText(value: string) {
-  await navigator.clipboard.writeText(value);
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const field = document.createElement("textarea");
+    field.value = value;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.left = "-9999px";
+    document.body.appendChild(field);
+    field.select();
+    document.execCommand("copy");
+    field.remove();
+  }
 }
 
 export function AdminUsersManager({
@@ -90,22 +103,52 @@ export function AdminUsersManager({
     });
   }, [users, query, roleFilter, canSeeSecrets]);
 
+  const markCopied = (key: string) => {
+    setCopied(key);
+    window.setTimeout(() => setCopied(""), 1600);
+  };
+
   const resetPassword = async (userId: string) => {
     setBusyId(userId);
     setError("");
+    setOpenId(userId);
     const res = await fetch(`/api/admin/users/${userId}/reset-password`, { method: "POST" });
     const data = await res.json();
     setBusyId("");
     if (!res.ok) {
       setError(data.error || "Parol tiklanmadi");
-      return;
+      return "";
     }
     setRevealed((prev) => ({ ...prev, [userId]: data.password }));
     setShowPw((prev) => ({ ...prev, [userId]: true }));
-    await copyText(data.password);
-    setCopied(userId);
-    window.setTimeout(() => setCopied(""), 1600);
     router.refresh();
+    return data.password as string;
+  };
+
+  const revealPassword = async (userId: string) => {
+    if (revealed[userId]) {
+      setShowPw((prev) => ({ ...prev, [userId]: !prev[userId] }));
+      setOpenId(userId);
+      return;
+    }
+    const password = await resetPassword(userId);
+    if (password) {
+      await copyText(password);
+      markCopied(`pw-${userId}`);
+    }
+  };
+
+  const copyPassword = async (userId: string) => {
+    const password = revealed[userId] || (await resetPassword(userId));
+    if (!password) return;
+    await copyText(password);
+    markCopied(`pw-${userId}`);
+  };
+
+  const copyValue = async (key: string, value: string) => {
+    if (!value) return;
+    await copyText(value);
+    markCopied(key);
   };
 
   const colSpan = canSeeSecrets ? 8 : 6;
@@ -186,18 +229,27 @@ export function AdminUsersManager({
                     {canSeeSecrets ? (
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="staff-pw">
-                          <span>{visible ? pw : user.hasPassword ? "********" : "yo'q"}</span>
-                          {pw ? (
-                            <button
-                              type="button"
-                              className="iconbtn"
-                              aria-label="Ko'rsat"
-                              onClick={() => setShowPw((prev) => ({ ...prev, [user.id]: !prev[user.id] }))}
-                            >
-                              <Icon name={visible ? "eyeoff" : "eye"} size={15} />
-                            </button>
-                          ) : null}
+                          <span>{visible ? pw : "Ko'rsatish"}</span>
+                          <button
+                            type="button"
+                            className="iconbtn"
+                            aria-label="Ko'rsat"
+                            disabled={busyId === user.id}
+                            onClick={() => void revealPassword(user.id)}
+                          >
+                            <Icon name={visible ? "eyeoff" : "eye"} size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="iconbtn"
+                            aria-label="Nusxalash"
+                            disabled={busyId === user.id}
+                            onClick={() => void copyPassword(user.id)}
+                          >
+                            <Icon name="copy" size={15} />
+                          </button>
                         </div>
+                        {copied === `pw-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
                       </td>
                     ) : null}
                     <td>
@@ -226,24 +278,69 @@ export function AdminUsersManager({
                   {open ? (
                     <tr className="staff-detail-row">
                       <td colSpan={colSpan}>
-                        <div className="staff-detail">
-                          <div className="staff-detail-grid">
-                            {canSeeSecrets ? (
+                        <div className="account-card" onClick={(e) => e.stopPropagation()}>
+                          <div className="account-card-head">
+                            <div className="staff-name">
+                              <span className="avatar">{initials(user.fullName)}</span>
                               <div>
-                                <div className="small muted">Email</div>
-                                <div>{user.email}</div>
+                                <div style={{ fontWeight: 600 }}>{user.fullName}</div>
+                                <div className="staff-detail-badges">
+                                  <span className={`badge ${user.role === "admin" ? "accent" : user.role === "teacher" ? "pending" : ""}`}>
+                                    {roleLabel(user.role)}
+                                  </span>
+                                  {user.isSuperAdmin ? <span className="badge accent">Super</span> : null}
+                                  <span className={`badge ${user.isBlocked ? "danger" : "success"}`}>
+                                    {user.isBlocked ? "Bloklangan" : "Aktiv"}
+                                  </span>
+                                </div>
                               </div>
-                            ) : null}
+                            </div>
+                          </div>
+                          {canSeeSecrets ? (
+                            <div className="account-creds">
+                              <div className="account-field">
+                                <div className="small muted">Login</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={user.email ?? ""} />
+                                  <button type="button" className="iconbtn" aria-label="Loginni nusxalash" onClick={() => void copyValue(`login-${user.id}`, user.email ?? "")}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `login-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
+                              </div>
+                              <div className="account-field">
+                                <div className="small muted">Email</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={user.email ?? ""} />
+                                  <button type="button" className="iconbtn" aria-label="Emailni nusxalash" onClick={() => void copyValue(`mail-${user.id}`, user.email ?? "")}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `mail-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
+                              </div>
+                              <div className="account-field">
+                                <div className="small muted">Parol</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={visible ? pw : ""} placeholder="Ko'rsatish yangi parol beradi" />
+                                  <button type="button" className="iconbtn" aria-label="Parolni ko'rsatish" disabled={busyId === user.id} onClick={() => void revealPassword(user.id)}>
+                                    <Icon name={visible ? "eyeoff" : "eye"} size={15} />
+                                  </button>
+                                  <button type="button" className="iconbtn" aria-label="Parolni nusxalash" disabled={busyId === user.id} onClick={() => void copyPassword(user.id)}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `pw-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="account-facts">
                             <div>
                               <div className="small muted">Oxirgi kirish</div>
                               <div>{formatWhen(user.lastLoginAt)}</div>
                             </div>
                             <div>
                               <div className="small muted">Tarif</div>
-                              <div>
-                                {user.tariff ?? "Yo'q"}
-                                {user.tariffUntil ? ` · ${formatWhen(user.tariffUntil)}` : ""}
-                              </div>
+                              <div>{user.tariff ?? "Yo'q"}{user.tariffUntil ? ` · ${formatWhen(user.tariffUntil)}` : ""}</div>
                             </div>
                             <div>
                               <div className="small muted">Kurslar</div>
@@ -281,15 +378,6 @@ export function AdminUsersManager({
                               <div className="small muted">To&apos;lovlar</div>
                               <div>{user.paymentCount}</div>
                             </div>
-                            {canSeeSecrets ? (
-                              <div>
-                                <div className="small muted">Kirish</div>
-                                <div>
-                                  {user.hasPassword ? "Parol bor" : "Parol yo'q"}
-                                  {user.loginViaGoogle ? " · Google" : ""}
-                                </div>
-                              </div>
-                            ) : null}
                           </div>
                           {user.courses.length > 0 ? (
                             <div style={{ marginBottom: 14 }}>
@@ -312,18 +400,28 @@ export function AdminUsersManager({
                               {user.role === "teacher" ? "Kurs yo'q." : "Obuna yo'q."}
                             </p>
                           )}
-                          {canSeeSecrets && pw ? (
-                            <p className="small muted">
-                              Yangi parol: <code>{pw}</code> {copied === user.id ? "(nusxalandi)" : ""}
-                            </p>
+                          {canSeeSecrets ? (
+                            <p className="small muted account-note">Eski parol saqlanmaydi. Ko&apos;z yoki nusxa yangi parol yaratadi va nusxalaydi.</p>
                           ) : null}
                           {canSeeSecrets ? (
-                            <div className="staff-detail-actions" onClick={(e) => e.stopPropagation()}>
+                            <div className="staff-detail-actions">
                               <button
                                 type="button"
                                 className="btn btn-sm"
                                 disabled={busyId === user.id}
-                                onClick={() => void resetPassword(user.id)}
+                                onClick={() => void revealPassword(user.id)}
+                              >
+                                {visible ? "Yashirish" : "Ko'rsatish"}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                disabled={busyId === user.id}
+                                onClick={() => void resetPassword(user.id).then((password) => {
+                                  if (!password) return;
+                                  void copyText(password);
+                                  markCopied(`pw-${user.id}`);
+                                })}
                               >
                                 Yangi parol
                               </button>

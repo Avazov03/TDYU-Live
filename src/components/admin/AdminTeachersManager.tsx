@@ -50,7 +50,20 @@ function statusLabel(status: TeacherRow["status"]) {
 }
 
 async function copyText(value: string) {
-  await navigator.clipboard.writeText(value);
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const field = document.createElement("textarea");
+    field.value = value;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.left = "-9999px";
+    document.body.appendChild(field);
+    field.select();
+    document.execCommand("copy");
+    field.remove();
+  }
 }
 
 export function AdminTeachersManager({
@@ -134,18 +147,44 @@ export function AdminTeachersManager({
   const resetPassword = async (teacherId: string) => {
     setBusyId(teacherId);
     setError("");
+    setOpenId(teacherId);
     const res = await fetch(`/api/admin/teachers/${teacherId}/reset-password`, { method: "POST" });
     const data = await res.json();
     setBusyId("");
     if (!res.ok) {
       setError(data.error || "Parol tiklanmadi");
-      return;
+      return "";
     }
     setRevealed((prev) => ({ ...prev, [teacherId]: data.password }));
     setShowPw((prev) => ({ ...prev, [teacherId]: true }));
-    await copyText(data.password);
-    markCopied(`pw-${teacherId}`);
     router.refresh();
+    return data.password as string;
+  };
+
+  const revealPassword = async (teacherId: string) => {
+    if (revealed[teacherId]) {
+      setShowPw((prev) => ({ ...prev, [teacherId]: !prev[teacherId] }));
+      setOpenId(teacherId);
+      return;
+    }
+    const password = await resetPassword(teacherId);
+    if (password) {
+      await copyText(password);
+      markCopied(`pw-${teacherId}`);
+    }
+  };
+
+  const copyPassword = async (teacherId: string) => {
+    const password = revealed[teacherId] || (await resetPassword(teacherId));
+    if (!password) return;
+    await copyText(password);
+    markCopied(`pw-${teacherId}`);
+  };
+
+  const copyValue = async (key: string, value: string) => {
+    if (!value) return;
+    await copyText(value);
+    markCopied(key);
   };
 
   const toggleBlock = async (t: TeacherRow) => {
@@ -310,18 +349,19 @@ export function AdminTeachersManager({
                     </td>
                     {canSeeSecrets ? (
                       <td>
-                        <span className="staff-login">@{t.login.split("@")[0]}</span>
+                        <span className="staff-login">{t.login}</span>
                       </td>
                     ) : null}
                     {canSeeSecrets ? (
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="staff-pw">
-                          <span>{visible ? pw : "********"}</span>
+                          <span>{visible ? pw : "Ko'rsatish"}</span>
                           <button
                             type="button"
                             className="iconbtn"
                             aria-label="Ko'rsat"
-                            onClick={() => setShowPw((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
+                            disabled={busyId === t.id}
+                            onClick={() => void revealPassword(t.id)}
                           >
                             <Icon name={visible ? "eyeoff" : "eye"} size={15} />
                           </button>
@@ -329,13 +369,13 @@ export function AdminTeachersManager({
                             type="button"
                             className="iconbtn"
                             aria-label="Nusxalash"
-                            onClick={() => {
-                              void copyText(pw || t.login).then(() => markCopied(`copy-${t.id}`));
-                            }}
+                            disabled={busyId === t.id}
+                            onClick={() => void copyPassword(t.id)}
                           >
                             <Icon name="copy" size={15} />
                           </button>
                         </div>
+                        {copied === `pw-${t.id}` ? <div className="small muted">Nusxalandi</div> : null}
                       </td>
                     ) : null}
                     <td>
@@ -355,32 +395,59 @@ export function AdminTeachersManager({
                   {open ? (
                     <tr className="staff-detail-row">
                       <td colSpan={canSeeSecrets ? 8 : 6}>
-                        <div className="staff-detail">
-                          <div className="staff-detail-head">
-                            <span className="avatar">{initials(t.fullName)}</span>
-                            <div>
-                              <div style={{ fontWeight: 600 }}>{t.fullName}</div>
-                              <div className="staff-detail-badges">
-                                <span className="badge accent">O&apos;qituvchi</span>
-                                <span className={`badge ${t.status === "active" ? "success" : t.status === "blocked" ? "danger" : "pending"}`}>
-                                  {statusLabel(t.status)}
-                                </span>
+                        <div className="account-card" onClick={(e) => e.stopPropagation()}>
+                          <div className="account-card-head">
+                            <div className="staff-name">
+                              <span className="avatar">{initials(t.fullName)}</span>
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{t.fullName}</div>
+                                <div className="staff-detail-badges">
+                                  <span className="badge accent">O&apos;qituvchi</span>
+                                  <span className={`badge ${t.status === "active" ? "success" : t.status === "blocked" ? "danger" : "pending"}`}>
+                                    {statusLabel(t.status)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div className="staff-detail-grid">
-                            {canSeeSecrets ? (
-                              <div>
+                          {canSeeSecrets ? (
+                            <div className="account-creds">
+                              <div className="account-field">
                                 <div className="small muted">Login</div>
-                                <div>{t.login}</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={t.login} />
+                                  <button type="button" className="iconbtn" aria-label="Loginni nusxalash" onClick={() => void copyValue(`login-${t.id}`, t.login)}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `login-${t.id}` ? <div className="small muted">Nusxalandi</div> : null}
                               </div>
-                            ) : null}
-                            {canSeeSecrets ? (
-                              <div>
+                              <div className="account-field">
                                 <div className="small muted">Email</div>
-                                <div>{t.contactEmail}</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={t.contactEmail} />
+                                  <button type="button" className="iconbtn" aria-label="Emailni nusxalash" onClick={() => void copyValue(`mail-${t.id}`, t.contactEmail)}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `mail-${t.id}` ? <div className="small muted">Nusxalandi</div> : null}
                               </div>
-                            ) : null}
+                              <div className="account-field">
+                                <div className="small muted">Parol</div>
+                                <div className="account-field-row">
+                                  <input readOnly value={visible ? pw : ""} placeholder="Ko'rsatish yangi parol beradi" />
+                                  <button type="button" className="iconbtn" aria-label="Parolni ko'rsatish" disabled={busyId === t.id} onClick={() => void revealPassword(t.id)}>
+                                    <Icon name={visible ? "eyeoff" : "eye"} size={15} />
+                                  </button>
+                                  <button type="button" className="iconbtn" aria-label="Parolni nusxalash" disabled={busyId === t.id} onClick={() => void copyPassword(t.id)}>
+                                    <Icon name="copy" size={15} />
+                                  </button>
+                                </div>
+                                {copied === `pw-${t.id}` ? <div className="small muted">Nusxalandi</div> : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="account-facts">
                             <div>
                               <div className="small muted">Fan</div>
                               <div>{t.subjectName}</div>
@@ -398,26 +465,25 @@ export function AdminTeachersManager({
                               <div>{formatLoginAt(t.lastLoginAt)}</div>
                             </div>
                           </div>
-                          {pw ? (
-                            <p className="small muted">
-                              Yangi parol: <code>{pw}</code> {copied === `pw-${t.id}` ? "(nusxalandi)" : ""}
-                            </p>
+                          {canSeeSecrets ? (
+                            <p className="small muted account-note">Eski parol saqlanmaydi. Ko&apos;z yoki nusxa yangi parol yaratadi va nusxalaydi.</p>
                           ) : null}
                           {t.inviteUrl ? (
-                            <p className="small muted">
-                              Invite: <code>{t.inviteUrl}</code>
-                            </p>
+                            <div className="account-field">
+                              <div className="small muted">Taklif havolasi</div>
+                              <div className="account-field-row">
+                                <input readOnly value={t.inviteUrl} />
+                                <button type="button" className="iconbtn" aria-label="Havolani nusxalash" onClick={() => void copyValue(`inv-${t.id}`, t.inviteUrl || "")}>
+                                  <Icon name="copy" size={15} />
+                                </button>
+                              </div>
+                            </div>
                           ) : null}
-                          <div className="staff-detail-actions" onClick={(e) => e.stopPropagation()}>
+                          <div className="staff-detail-actions">
                             <ImpersonateTeacherButton teacherId={t.id} className="btn btn-sm" />
                             {canSeeSecrets ? (
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                disabled={busyId === t.id}
-                                onClick={() => void resetPassword(t.id)}
-                              >
-                                Parolni tiklash
+                              <button type="button" className="btn btn-sm" disabled={busyId === t.id} onClick={() => void resetPassword(t.id)}>
+                                Yangi parol
                               </button>
                             ) : null}
                             <button
