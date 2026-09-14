@@ -1,0 +1,2 @@
+ALTER TABLE "lessons" ADD COLUMN IF NOT EXISTS "summary_uz" TEXT;
+ALTER TABLE "lessons" ADD COLUMN IF NOT EXISTS "cover_url" TEXT;

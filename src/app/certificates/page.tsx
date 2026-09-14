@@ -6,43 +6,47 @@ import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function thumbTone(id: string) {
-  const n = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return `tone-${(n % 6) + 1}`;
-}
-
 export default async function CertificatesPage() {
   const { user } = await requireStudentCabinet("/certificates");
 
   const items = await prisma.certificate.findMany({
     where: { userId: user.id },
-    include: { course: { select: { titleUz: true } } },
+    include: { course: { include: { teacher: { select: { id: true, fullName: true } } } } },
     orderBy: { issuedAt: "desc" },
   });
 
+  const groups = new Map<string, { name: string; items: typeof items }>();
+  for (const item of items) {
+    const key = item.course.teacher.id;
+    const group = groups.get(key) ?? { name: item.course.teacher.fullName, items: [] };
+    group.items.push(item);
+    groups.set(key, group);
+  }
+
   return (
     <AppShell active="certificates">
-      <h2 style={{ marginBottom: 16 }}>Sertifikatlar</h2>
-      {items.length === 0 ? (
-        <div className="empty">Hali sertifikat yo&apos;q.</div>
-      ) : (
-        <div className="grid">
-          {items.map((c) => (
-            <Link key={c.id} href={`/certificates/${c.id}`} className="vcard">
-              <div className={`thumb course-thumb ${thumbTone(c.id)}`}>
-                <span className="thumb-play" aria-hidden>▶</span>
-                <span className="dur">PDF</span>
-              </div>
-              <div className="vmeta">
-                <div className="vinfo">
-                  <h3>{c.course.titleUz}</h3>
-                  <p>{formatDateTime(c.issuedAt)}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="lx-board">
+        <p className="lx-kicker">Sertifikatlar</p>
+        <h2>Qaysi o&apos;qituvchi, qaysi kurs</h2>
+        <p className="muted small lx-lead">Hujjat. Video kartasi emas.</p>
+        {items.length === 0 ? <div className="empty">Hali sertifikat yo&apos;q.</div> : null}
+        {[...groups.entries()].map(([id, group]) => (
+          <section key={id} className="lx-group">
+            <h3>{group.name}</h3>
+            <div className="lx-stack">
+              {group.items.map((item) => (
+                <Link key={item.id} href={`/certificates/${item.id}`} className="lx-row">
+                  <div>
+                    <p className="lx-kicker">{formatDateTime(item.issuedAt)}</p>
+                    <h3>{item.course.titleUz}</h3>
+                    <p className="small muted" style={{ margin: 0 }}>Ochish va yuklab olish</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </AppShell>
   );
 }

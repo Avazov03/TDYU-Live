@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { SubmitForm } from "@/components/assignment/SubmitForm";
-import { requireStudentCabinet } from "@/lib/access";
+import { getActiveSubscriptions, requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { isPriorityTier } from "@/lib/tariffs";
@@ -8,68 +8,84 @@ import { isPriorityTier } from "@/lib/tariffs";
 export const dynamic = "force-dynamic";
 
 export default async function AssignmentsPage() {
-  const { user, sub } = await requireStudentCabinet("/assignments");
+  const { user } = await requireStudentCabinet("/assignments");
+  const subs = await getActiveSubscriptions(user.id);
+  const courseIds = subs.map((s) => s.course.id);
+  const priority = subs.some((s) => isPriorityTier(s.tier));
 
   const items = await prisma.assignment.findMany({
-    where: {
-      course: {
-        subscriptions: {
-          some: { userId: user.id, endsAt: { gt: new Date() } },
-        },
-      },
-    },
+    where: { courseId: { in: courseIds } },
     include: {
-      course: { select: { titleUz: true } },
+      course: { include: { teacher: { select: { id: true, fullName: true } } } },
       submissions: { where: { userId: user.id } },
     },
     orderBy: { dueAt: "asc" },
   });
 
+  const byTeacher = new Map<string, { name: string; courses: Map<string, { id: string; title: string; items: typeof items }> }>();
+  for (const item of items) {
+    const teacher = byTeacher.get(item.course.teacher.id) ?? {
+      name: item.course.teacher.fullName,
+      courses: new Map(),
+    };
+    const course = teacher.courses.get(item.courseId) ?? { id: item.courseId, title: item.course.titleUz, items: [] };
+    course.items.push(item);
+    teacher.courses.set(item.courseId, course);
+    byTeacher.set(item.course.teacher.id, teacher);
+  }
+
   return (
     <AppShell active="assignments">
-      <h2 style={{ marginBottom: 16 }}>Topshiriqlar</h2>
-      {isPriorityTier(sub.tier) ? (
-        <p className="small muted" style={{ marginTop: -8, marginBottom: 16 }}>
-          3-tarif: ishingiz o&apos;qituvchida birinchi navbatda ko&apos;rinadi.
+      <div className="lx-board">
+        <p className="lx-kicker">Topshiriqlar</p>
+        <h2>Kimdan va qaysi kursdan</h2>
+        <p className="muted small lx-lead">
+          Avval o&apos;qituvchi, keyin uning kursi. Bir nechta o&apos;qituvchi aralashmaydi.
         </p>
-      ) : null}
-      {items.length === 0 ? (
-        <div className="empty">Faol kurslaringizda topshiriq yo&apos;q.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {items.map((a) => {
-            const sub = a.submissions[0];
-            const tone = `tone-${(a.id.split("").reduce((n, c) => n + c.charCodeAt(0), 0) % 6) + 1}`;
-            return (
-              <div key={a.id} className="watch-rec-card" style={{ alignItems: "flex-start", display: "flex", gap: 12 }}>
-                <div className={`rec-thumb course-thumb ${tone}`}>
-                  <span className="thumb-play sm" aria-hidden>▶</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{ fontSize: 15, margin: "0 0 4px" }}>{a.titleUz}</h3>
-                  <p className="small muted" style={{ margin: 0 }}>
-                    {a.course.titleUz} · Muddat: {formatDateTime(a.dueAt)}
-                  </p>
-                  <p className="muted" style={{ margin: "10px 0" }}>{a.descriptionUz}</p>
-                  {sub ? (
-                    <div>
-                      <span className="badge success">Topshirilgan</span>
-                      {sub.grade != null ? (
-                        <p style={{ marginTop: 8 }}>Baho: <b>{sub.grade}</b></p>
-                      ) : (
-                        <p className="small muted" style={{ marginTop: 8 }}>Tekshiruv kutilmoqda</p>
-                      )}
-                      {sub.teacherNote ? <p className="small">{sub.teacherNote}</p> : null}
-                    </div>
-                  ) : (
-                    <SubmitForm assignmentId={a.id} />
-                  )}
+        {priority ? (
+          <p className="small muted" style={{ marginTop: -8 }}>3-tarifdagi ishingiz o&apos;qituvchida birinchi navbatda.</p>
+        ) : null}
+        {items.length === 0 ? <div className="empty">Faol kurslaringizda topshiriq yo&apos;q.</div> : null}
+        {[...byTeacher.entries()].map(([id, teacher]) => (
+          <section key={id} className="lx-group">
+            <h3>{teacher.name}</h3>
+            {[...teacher.courses.values()].map((course) => (
+              <div key={course.id} style={{ marginBottom: 16 }}>
+                <p className="lx-kicker">{course.title}</p>
+                <div className="lx-stack">
+                  {course.items.map((item) => {
+                    const sent = item.submissions[0];
+                    const late = !sent && item.dueAt < new Date();
+                    return (
+                      <article key={item.id} className="lx-row">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3>{item.titleUz}</h3>
+                          <p className="small muted" style={{ margin: 0 }}>Muddat: {formatDateTime(item.dueAt)}</p>
+                          <p style={{ margin: "10px 0" }}>{item.descriptionUz}</p>
+                          {sent ? (
+                            <div>
+                              <span className="badge success">{sent.grade != null ? `Baho: ${sent.grade}` : "Topshirilgan"}</span>
+                              {sent.grade == null ? <p className="small muted">Tekshiruv kutilmoqda</p> : null}
+                              {sent.teacherNote ? <p className="small">{sent.teacherNote}</p> : null}
+                            </div>
+                          ) : (
+                            <div>
+                              <span className={`badge ${late ? "danger" : "pending"}`}>{late ? "Kechikkan" : "Ochiq"}</span>
+                              <div style={{ marginTop: 10 }}>
+                                <SubmitForm assignmentId={item.id} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </section>
+        ))}
+      </div>
     </AppShell>
   );
 }

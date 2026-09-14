@@ -64,17 +64,17 @@ export function TeacherHub({
           <Icon name="clock" size={22} />
           <h3>Darsni rejalash</h3>
           <p className="small muted">
-            Mavzu, sana va vaqt. Keyin shu sahifadan «Efirni boshlash». Zoomdagi Schedule meeting.
+            Mavzu, vaqt, qisqa matn va banner. Efirni keyin Studio&apos;dan boshlaysiz.
           </p>
-          <a href="#reja" className="btn btn-sm btn-primary">Reja qo&apos;shish</a>
+          <Link href="/teacher/reja" className="btn btn-sm btn-primary">Reja qo&apos;shish</Link>
         </article>
         <article className="studio-card">
           <Icon name="users" size={22} />
           <h3>O&apos;quvchilar</h3>
           <p className="small muted">
-            Kim obuna, qaysi tarif, davomat va sertifikat. Classroomdagi People.
+            Kurs bo&apos;yicha kim yozilgan, qaysi mavzuni ochgan, qaysi kursga sertifikat.
           </p>
-          <Link href="/teacher/group" className="btn btn-sm btn-primary">Guruhni ochish</Link>
+          <Link href="/teacher/group" className="btn btn-sm btn-primary">O&apos;quvchilar</Link>
         </article>
       </div>
     </>

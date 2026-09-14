@@ -1,8 +1,9 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { LessonRow } from "@/components/lesson/LessonRow";
 import { requireAppUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
+import { dayTitle, localDayKey } from "@/lib/plan";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -11,29 +12,49 @@ export default async function HistoryPage() {
 
   const items = await prisma.attendance.findMany({
     where: { userId: user.id },
-    include: { lesson: { include: { course: { select: { titleUz: true } } } } },
+    include: {
+      lesson: {
+        include: {
+          course: { include: { teacher: { select: { fullName: true } } } },
+        },
+      },
+    },
     orderBy: { joinedAt: "desc" },
     take: 50,
   });
 
+  const byDay = new Map<string, typeof items>();
+  for (const item of items) {
+    const key = localDayKey(item.joinedAt);
+    const list = byDay.get(key) ?? [];
+    list.push(item);
+    byDay.set(key, list);
+  }
+
   return (
     <AppShell active="history">
-      <h2 style={{ marginBottom: 16 }}>Tomosha tarixi</h2>
-      {items.length === 0 ? (
-        <div className="empty">Hali dars ko&apos;rilmagan.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((a) => (
-            <LessonRow
-              key={a.id}
-              id={a.lesson.id}
-              titleUz={a.lesson.titleUz}
-              subtitle={`${a.lesson.course.titleUz} · ${formatDateTime(a.joinedAt)}`}
-              status={a.lesson.status}
-            />
-          ))}
-        </div>
-      )}
+      <div className="lx-board">
+        <p className="lx-kicker">Ko&apos;rilganlar</p>
+        <h2>Ochgan darslaringiz</h2>
+        <p className="muted small lx-lead">Bu reja emas. Faqat siz kirgan mavzular, kun bo&apos;yicha.</p>
+        {items.length === 0 ? <div className="empty">Hali dars ochilmagan.</div> : null}
+        {[...byDay.entries()].map(([key, rows]) => (
+          <section key={key} className="lx-group">
+            <h3>{dayTitle(rows[0]?.joinedAt ?? new Date(key))}</h3>
+            <div className="lx-stack">
+              {rows.map((row) => (
+                <Link key={row.id} href={`/learn/${row.lesson.id}`} className="lx-row">
+                  <div>
+                    <p className="lx-kicker">{row.lesson.course.teacher.fullName} · {formatDateTime(row.joinedAt)}</p>
+                    <h3>{row.lesson.titleUz}</h3>
+                    <p className="small muted" style={{ margin: 0 }}>{row.lesson.course.titleUz}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </AppShell>
   );
 }

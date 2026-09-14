@@ -7,6 +7,8 @@ import { getTeacherForUser } from "@/lib/teacher";
 const schema = z.object({
   courseId: z.string().trim().min(1),
   titleUz: z.string().trim().min(2),
+  summaryUz: z.string().trim().max(500).optional().or(z.literal("")),
+  coverUrl: z.string().trim().url().optional().or(z.literal("")),
   scheduledAt: z.string(),
 });
 
@@ -30,6 +32,8 @@ export async function POST(req: Request) {
     data: {
       courseId: course.id,
       titleUz: parsed.data.titleUz,
+      summaryUz: parsed.data.summaryUz || null,
+      coverUrl: parsed.data.coverUrl || null,
       scheduledAt: new Date(parsed.data.scheduledAt),
     },
   });

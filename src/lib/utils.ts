@@ -53,6 +53,7 @@ export function localizedField<T extends Record<string, unknown>>(
 
 export function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("uz-UZ", {
+    timeZone: "Asia/Tashkent",
     day: "2-digit",
     month: "short",
     year: "numeric",

@@ -15,6 +15,8 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
   const router = useRouter();
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [titleUz, setTitleUz] = useState("");
+  const [summaryUz, setSummaryUz] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
   const [scheduledAt, setScheduledAt] = useState(defaultSlot);
   const [error, setError] = useState("");
 
@@ -23,7 +25,7 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
     const res = await fetch("/api/teacher/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, titleUz, scheduledAt }),
+      body: JSON.stringify({ courseId, titleUz, summaryUz, coverUrl, scheduledAt }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -31,6 +33,8 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
       return;
     }
     setTitleUz("");
+    setSummaryUz("");
+    setCoverUrl("");
     setScheduledAt(defaultSlot());
     router.refresh();
   };
@@ -39,9 +43,9 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
 
   return (
     <form id="reja" onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 6 }}>Darsni rejalash</h3>
+      <h3 style={{ marginBottom: 6 }}>Mavzuni rejalash</h3>
       <p className="small muted" style={{ marginBottom: 12 }}>
-        Mavzu va vaqtni belgilang. Efirni yuqoridagi Studio&apos;dan boshlaysiz.
+        Qaysi kurs, qachon, nima o&apos;tiladi. Banner ixtiyoriy — bo&apos;lmasa yozuv kadri chiqadi.
       </p>
       <div className="field">
         <label>Kurs</label>
@@ -52,8 +56,16 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
         </select>
       </div>
       <div className="field">
-        <label>Sarlavha</label>
+        <label>Mavzu</label>
         <input value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
+      </div>
+      <div className="field">
+        <label>Qisqa ma&apos;lumot</label>
+        <textarea value={summaryUz} onChange={(e) => setSummaryUz(e.target.value)} maxLength={500} rows={3} />
+      </div>
+      <div className="field">
+        <label>Banner rasmi (ixtiyoriy URL)</label>
+        <input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://" />
       </div>
       <div className="field">
         <label>Sana va vaqt</label>

@@ -67,10 +67,10 @@ export default async function TeacherGroupPage() {
     <AppShell active="teacher-group">
       <h2 style={{ marginBottom: 8 }}>O&apos;quvchilar</h2>
       <p className="muted small" style={{ marginBottom: 16 }}>
-        Sizning kursingizga yozilgan talabalar. Tarif, davomat va sertifikat.
+        Avval kurs, keyin odam. Bir nechta kurs aralashmaydi. Sertifikat shu kursga tegishli.
       </p>
       {workspace.courses.length === 0 ? (
-        <p className="muted">Avval Studio&apos;da dars rejalang. O&apos;quvchilar obuna bo&apos;lgach ro&apos;yxat to&apos;ladi.</p>
+        <p className="muted">Avval Rejada dars qo&apos;shing. O&apos;quvchilar obuna bo&apos;lgach ro&apos;yxat to&apos;ladi.</p>
       ) : null}
       {workspace.courses.map((course) => {
         const active = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
@@ -124,9 +124,10 @@ export default async function TeacherGroupPage() {
                         </thead>
                         <tbody>
                           {students.map((s) => {
-                            const attended = course.lessons.filter((l) =>
+                            const seen = course.lessons.filter((l) =>
                               l.attendance.some((a) => a.userId === s.userId),
-                            ).length;
+                            );
+                            const attended = seen.length;
                             const pct = course.lessons.length
                               ? Math.round((attended / course.lessons.length) * 100)
                               : 0;
@@ -139,9 +140,15 @@ export default async function TeacherGroupPage() {
                                 </td>
                                 <td>
                                   {attended}/{course.lessons.length} ({pct}%)
+                                  <div className="small muted">
+                                    {seen.length
+                                      ? `${seen.slice(0, 3).map((l) => l.titleUz).join(" · ")}${seen.length > 3 ? ` · +${seen.length - 3}` : ""}`
+                                      : "Hali mavzu ochilmagan"}
+                                  </div>
                                   <div className="small muted">gacha {formatDateTime(s.endsAt)}</div>
                                 </td>
                                 <td>
+                                  <div className="small muted" style={{ marginBottom: 6 }}>{course.titleUz}</div>
                                   {tier === "t1" ? (
                                     <span className="small muted">Yozuv tarifi</span>
                                   ) : hasCert ? (

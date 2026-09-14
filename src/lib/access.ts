@@ -47,6 +47,28 @@ export async function getActiveEntitlement(userId: string) {
   return row;
 }
 
+export async function getActiveSubscriptions(userId: string) {
+  const subs = await prisma.subscription.findMany({
+    where: { userId },
+    include: {
+      course: {
+        select: {
+          id: true,
+          titleUz: true,
+          descriptionUz: true,
+          isPublished: true,
+          teacherId: true,
+          teacher: { select: { id: true, fullName: true } },
+          subject: { select: { nameUz: true } },
+          faculty: { select: { nameUz: true } },
+        },
+      },
+    },
+    orderBy: { endsAt: "desc" },
+  });
+  return subs.filter((s) => isSubscriptionActive(s.endsAt));
+}
+
 export async function getAnyActiveSubscription(userId: string) {
   const subs = await prisma.subscription.findMany({
     where: { userId },

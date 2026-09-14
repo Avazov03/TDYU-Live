@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
+import Link from "next/link";
 import { LiveStudio } from "@/components/teacher/LiveStudio";
-import { LessonActions } from "@/components/teacher/LessonActions";
-import { LessonRow } from "@/components/lesson/LessonRow";
 import { TeacherHub } from "@/components/teacher/TeacherHub";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +22,7 @@ export default async function TeacherHomePage() {
       courses: {
         include: {
           lessons: { orderBy: { scheduledAt: "desc" } },
-          subscriptions: { select: { endsAt: true } },
+          subscriptions: { select: { endsAt: true, userId: true } },
         },
       },
     },
@@ -51,7 +49,7 @@ export default async function TeacherHomePage() {
       courses: {
         include: {
           lessons: { orderBy: { scheduledAt: "desc" } },
-          subscriptions: { select: { endsAt: true } },
+          subscriptions: { select: { endsAt: true, userId: true } },
         },
       },
     },
@@ -62,13 +60,20 @@ export default async function TeacherHomePage() {
     c.lessons.map((l) => ({ ...l, courseTitle: c.titleUz })),
   );
   const live = lessons.find((l) => l.status === "live");
-  const next = lessons.find((l) => l.status === "scheduled");
+  const next = lessons
+    .filter((l) => l.status === "scheduled")
+    .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())[0];
   const studio = live ?? next;
-  const rest = lessons.filter((l) => l.id !== studio?.id);
-  const studentCount = teacher.courses.reduce(
-    (n, c) => n + c.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length,
-    0,
-  );
+  const studentIds = new Set<string>();
+  for (const course of teacher.courses) {
+    for (const row of course.subscriptions) {
+      if (isSubscriptionActive(row.endsAt)) studentIds.add(row.userId);
+    }
+  }
+  const studentCount = studentIds.size;
+  const pending = await prisma.submission.count({
+    where: { grade: null, assignment: { course: { teacherId: teacher.id } } },
+  });
 
   return (
     <AppShell active="teacher">
@@ -95,35 +100,18 @@ export default async function TeacherHomePage() {
           <span className="badge pending">Studio</span>
           <h2 style={{ margin: "8px 0 6px" }}>Hali efir yo&apos;q</h2>
           <p className="muted small" style={{ marginBottom: 12 }}>
-            «Hozir efir» bosing yoki pastda dars rejalang — keyin shu yerda kamera ochiladi.
+            «Hozir efir» bosing yoki Rejada mavzu qo&apos;shing — keyin shu yerda kamera ochiladi.
           </p>
+          <Link href="/teacher/reja" className="btn btn-sm btn-primary">Rejaga o&apos;tish</Link>
         </section>
       )}
 
-      <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-        <h3 style={{ marginBottom: 4 }}>Jadval</h3>
-        {rest.length === 0 && !studio ? (
-          <p className="muted small">Rejada dars yo&apos;q. Yuqoridan qo&apos;shing.</p>
-        ) : null}
-        {rest.map((lesson) => (
-          <LessonRow
-            key={lesson.id}
-            id={lesson.id}
-            titleUz={lesson.titleUz}
-            subtitle={`${lesson.courseTitle} · ${formatDateTime(lesson.scheduledAt)}`}
-            status={lesson.status}
-            actions={
-              <LessonActions
-                lessonId={lesson.id}
-                status={lesson.status}
-                streamKey={lesson.streamKey}
-              />
-            }
-          />
-        ))}
-      </div>
+      {pending > 0 ? (
+        <p className="small" style={{ marginTop: 16 }}>
+          Tekshirilmagan ish: <b>{pending}</b>.{" "}
+          <Link href="/teacher/assignments">Topshiriqlarga o&apos;tish</Link>
+        </p>
+      ) : null}
     </AppShell>
   );
 }

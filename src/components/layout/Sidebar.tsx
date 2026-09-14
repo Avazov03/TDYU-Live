@@ -37,6 +37,7 @@ export type NavKey =
   | "teacher"
   | "teacher-group"
   | "teacher-assignments"
+  | "teacher-reja"
   | "admin"
   | "catalog"
   | "my-courses";
@@ -87,7 +88,7 @@ function linksFor(props: SidebarProps): Array<SidebarLinks & { title?: string; l
   if (isTeacherRole(userRole)) {
     return [
       { ...nav("Studio", "/teacher", MonitorPlay), key: "teacher", current: active === "teacher" },
-      { ...nav("Reja", "/teacher#reja", Calendar), key: "reja" },
+      { ...nav("Reja", "/teacher/reja", Calendar), key: "reja", current: active === "teacher-reja" },
       { ...nav("O'quvchilar", "/teacher/group", Users), key: "group", current: active === "teacher-group" },
       { ...nav("Topshiriqlar", "/teacher/assignments", ClipboardList), key: "tasks", current: active === "teacher-assignments" },
       { ...nav("Bosh sahifa", "/", Home), key: "home" },
@@ -102,7 +103,7 @@ function linksFor(props: SidebarProps): Array<SidebarLinks & { title?: string; l
   }
 
   return [
-    { ...nav("Asosiy", "/app", LayoutDashboard), key: "app", current: isHome },
+    { ...nav("Bugun", "/app", LayoutDashboard), key: "app", current: isHome },
     {
       ...nav("Shorts", "/shorts", Clapperboard, {
         locked: shortsLocked,
@@ -111,9 +112,9 @@ function linksFor(props: SidebarProps): Array<SidebarLinks & { title?: string; l
       key: "shorts",
       current: active === "shorts",
     },
-    { ...nav("Obunalar", "/my-courses", Library), key: "subs", current: isSubs },
-    { ...nav("Tarix", "/history", History), key: "history", current: active === "history" },
-    { ...nav("Jadval", "/schedule", Calendar), key: "schedule", current: active === "schedule" },
+    { ...nav("Kurslarim", "/my-courses", Library), key: "subs", current: isSubs },
+    { ...nav("Ko'rilganlar", "/history", History), key: "history", current: active === "history" },
+    { ...nav("Dars reja", "/schedule", Calendar), key: "schedule", current: active === "schedule" },
     { ...nav("Topshiriqlar", "/assignments", ClipboardList), key: "tasks", current: active === "assignments" },
     { ...nav("Sertifikatlar", "/certificates", Award), key: "certs", current: active === "certificates" },
     { ...nav("Bosh sahifa", "/", Home), key: "site" },

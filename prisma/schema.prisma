@@ -204,6 +204,8 @@ model Lesson {
   id                 String       @id @default(uuid())
   courseId           String       @map("course_id")
   titleUz            String       @map("title_uz")
+  summaryUz          String?      @map("summary_uz") @db.Text
+  coverUrl           String?      @map("cover_url")
   scheduledAt        DateTime     @map("scheduled_at")
   status             LessonStatus @default(scheduled)
   muxLiveStreamId    String?      @map("mux_live_stream_id")

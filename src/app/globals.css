@@ -921,6 +921,47 @@ tr:last-child td { border-bottom: none; }
 }
 .certificate h1 { font-size: 36px; margin: 12px 0 20px; }
 /* Aceternity sidebar — site .sidebar rules must not restyle it */
+.acet-timeline h2,
+.acet-timeline h3 {
+  font-weight: 700;
+}
+.lx-board h2 { font-size: 22px; margin: 0 0 6px; }
+.lx-lead { margin: 0 0 18px; max-width: 640px; }
+.lx-section { margin-top: 28px; }
+.lx-section h3 { font-size: 15px; margin: 0 0 10px; }
+.lx-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 8px;
+}
+.lx-stack { display: flex; flex-direction: column; gap: 10px; }
+.lx-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.lx-row h3 { font-size: 15px; margin: 0 0 4px; }
+.lx-cover {
+  width: 148px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+@media (max-width: 640px) {
+  .lx-row { flex-direction: column; }
+  .lx-cover { width: 100%; }
+}
+.lx-group { margin-top: 22px; }
+.lx-group > h3 { font-size: 16px; margin: 0 0 10px; }
 .acet-sidebar {
   background-color: #f5f5f5;
   color: #404040;
