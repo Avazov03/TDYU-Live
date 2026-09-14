@@ -54,7 +54,7 @@ export default async function StudentAppPage() {
         <p className="lx-kicker">Bugun</p>
         <h2>Nima qilish kerak</h2>
         <p className="muted small lx-lead">
-          {subs.length} ta kurs · {teachers} ta o&apos;qituvchi. Bu yer bitta kurs lentasi emas.
+          {subs.length} ta kurs · {teachers} ta o&apos;qituvchi
         </p>
 
         {live.length === 0 && upcoming.length === 0 && due.length === 0 && !lastSeen ? (
@@ -66,15 +66,16 @@ export default async function StudentAppPage() {
             <h3>Hozir jonli</h3>
             <div className="lx-stack">
               {live.map((lesson) => (
-                <Link key={lesson.id} href={`/learn/${lesson.id}`} className="lx-row">
+                <Link key={lesson.id} href={`/learn/${lesson.id}`} className="lx-row is-live">
                   <div>
                     <p className="lx-kicker">{lesson.course.teacher.fullName}</p>
                     <h3>{lesson.titleUz}</h3>
                     <p className="small muted" style={{ margin: 0 }}>{lesson.course.titleUz}</p>
                     <span className="badge danger" style={{ marginTop: 8, display: "inline-block" }}>
-                      {canWatchLive(tierByCourse.get(lesson.courseId) ?? "t1") ? "Jonli" : "1-tarifda yozuvdan keyin"}
+                      {canWatchLive(tierByCourse.get(lesson.courseId) ?? "t1") ? "Jonli" : "Yozuvdan keyin"}
                     </span>
                   </div>
+                  <span className="lx-go">Kirish</span>
                 </Link>
               ))}
             </div>
@@ -97,6 +98,7 @@ export default async function StudentAppPage() {
                 <h3>{lastSeen.lesson.titleUz}</h3>
                 <p className="small muted" style={{ margin: 0 }}>{lastSeen.lesson.course.titleUz}</p>
               </div>
+              <span className="lx-go">Davom</span>
             </Link>
           </section>
         ) : null}
@@ -112,6 +114,7 @@ export default async function StudentAppPage() {
                     <h3>{item.titleUz}</h3>
                     <p className="small muted" style={{ margin: 0 }}>{item.course.titleUz}</p>
                   </div>
+                  <span className="lx-go">Ochish</span>
                 </Link>
               ))}
             </div>

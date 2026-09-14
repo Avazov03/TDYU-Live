@@ -28,7 +28,7 @@ export default async function CertificatesPage() {
       <div className="lx-board">
         <p className="lx-kicker">Sertifikatlar</p>
         <h2>Qaysi o&apos;qituvchi, qaysi kurs</h2>
-        <p className="muted small lx-lead">Hujjat. Video kartasi emas.</p>
+        <p className="muted small lx-lead">Chop etish yoki saqlash uchun oching.</p>
         {items.length === 0 ? <div className="empty">Hali sertifikat yo&apos;q.</div> : null}
         {[...groups.entries()].map(([id, group]) => (
           <section key={id} className="lx-group">
@@ -39,8 +39,9 @@ export default async function CertificatesPage() {
                   <div>
                     <p className="lx-kicker">{formatDateTime(item.issuedAt)}</p>
                     <h3>{item.course.titleUz}</h3>
-                    <p className="small muted" style={{ margin: 0 }}>Ochish va yuklab olish</p>
+                    <p className="small muted" style={{ margin: 0 }}>Chop etish</p>
                   </div>
+                  <span className="lx-go">Ochish</span>
                 </Link>
               ))}
             </div>

@@ -26,7 +26,6 @@ export function CreateAssignmentForm({ courses }: { courses: { id: string; title
 
   return (
     <form onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 12 }}>Yangi topshiriq</h3>
       <div className="field">
         <label>Kurs</label>
         <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>

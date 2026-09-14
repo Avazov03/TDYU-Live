@@ -107,10 +107,13 @@ export default async function TeacherHomePage() {
       )}
 
       {pending > 0 ? (
-        <p className="small" style={{ marginTop: 16 }}>
-          Tekshirilmagan ish: <b>{pending}</b>.{" "}
-          <Link href="/teacher/assignments">Topshiriqlarga o&apos;tish</Link>
-        </p>
+        <Link href="/teacher/assignments" className="lx-row" style={{ marginTop: 16 }}>
+          <div>
+            <p className="lx-kicker">Tekshiruv</p>
+            <h3>{pending} ta ish baholanmagan</h3>
+          </div>
+          <span className="lx-go">Ochish</span>
+        </Link>
       ) : null}
     </AppShell>
   );

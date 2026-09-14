@@ -140,15 +140,12 @@ export default async function TeacherGroupPage() {
                                 </td>
                                 <td>
                                   {attended}/{course.lessons.length} ({pct}%)
-                                  <div className="small muted">
-                                    {seen.length
-                                      ? `${seen.slice(0, 3).map((l) => l.titleUz).join(" · ")}${seen.length > 3 ? ` · +${seen.length - 3}` : ""}`
-                                      : "Hali mavzu ochilmagan"}
+                                  <div className="small muted" title={seen.map((l) => l.titleUz).join(", ")}>
+                                    {seen.length ? `${seen.length} ta mavzu ochilgan` : "Hali ochilmagan"}
                                   </div>
                                   <div className="small muted">gacha {formatDateTime(s.endsAt)}</div>
                                 </td>
                                 <td>
-                                  <div className="small muted" style={{ marginBottom: 6 }}>{course.titleUz}</div>
                                   {tier === "t1" ? (
                                     <span className="small muted">Yozuv tarifi</span>
                                   ) : hasCert ? (

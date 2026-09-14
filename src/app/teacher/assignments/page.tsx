@@ -60,10 +60,13 @@ export default async function TeacherAssignmentsPage() {
         <p className="lx-kicker">Topshiriqlar</p>
         <h2>Avval kurs, keyin kim topshirdi</h2>
         <p className="muted small lx-lead">
-          Har bir vazifa o&apos;z kursida. Topshirganlar va topshirmaganlar alohida. 3-tarif ishlari birinchi.
+          Kurs ichida kim topshirdi va kim topshirmadi. 3-tarif birinchi.
         </p>
       </div>
-      <CreateAssignmentForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
+      <details className="lx-disclosure">
+        <summary>Yangi topshiriq</summary>
+        <CreateAssignmentForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
+      </details>
       {teacher.courses.map((course) => {
         const students = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
         return (
@@ -118,7 +121,9 @@ export default async function TeacherAssignmentsPage() {
                   {missing.length === 0 ? (
                     <p className="small muted">Hammasi topshirdi.</p>
                   ) : (
-                    <p className="small" style={{ margin: 0 }}>{missing.map((s) => s.user.fullName).join(", ")}</p>
+                    <div className="lx-miss">
+                      {missing.map((s) => <span key={s.userId}>{s.user.fullName}</span>)}
+                    </div>
                   )}
                 </article>
               );

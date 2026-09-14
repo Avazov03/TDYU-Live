@@ -38,7 +38,7 @@ export default async function MyCoursesPage() {
         <p className="lx-kicker">Kurslarim</p>
         <h2>O&apos;qituvchi, keyin uning kurslari</h2>
         <p className="muted small lx-lead">
-          Bir o&apos;qituvchining bir nechta kursi va turli o&apos;qituvchilar alohida.
+          Har bir o&apos;qituvchining kurslari alohida.
         </p>
         {subs.length === 0 ? <div className="empty">Hali kurs yo&apos;q.</div> : null}
         {[...groups.entries()].map(([id, group]) => (
@@ -49,7 +49,7 @@ export default async function MyCoursesPage() {
                 const active = isSubscriptionActive(sub.endsAt);
                 const next = sub.course.lessons[0];
                 return (
-                  <Link key={sub.id} href={`/courses/${sub.course.id}`} className="lx-row">
+                  <Link key={sub.id} href={`/courses/${sub.course.id}`} className={`lx-row${active ? "" : " is-dim"}`}>
                     <div>
                       <p className="lx-kicker">{sub.course.subject.nameUz}</p>
                       <h3>{sub.course.titleUz}</h3>
@@ -60,6 +60,7 @@ export default async function MyCoursesPage() {
                         {active ? TARIFF_LABELS[sub.tier] : "Muddati tugagan"}
                       </span>
                     </div>
+                    <span className="lx-go">Ochish</span>
                   </Link>
                 );
               })}

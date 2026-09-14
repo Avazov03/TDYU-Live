@@ -62,7 +62,7 @@ export default async function SchedulePage() {
       ) : (
         <Timeline
           title="Dars reja"
-          description="Qachon, qaysi o'qituvchi, qaysi kurs va nima o'tiladi. Bu ko'rilganlar tarixi emas."
+          description="Vaqt, o'qituvchi, kurs va qisqa mazmun."
           data={data}
         />
       )}

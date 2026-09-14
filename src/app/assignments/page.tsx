@@ -40,7 +40,7 @@ export default async function AssignmentsPage() {
         <p className="lx-kicker">Topshiriqlar</p>
         <h2>Kimdan va qaysi kursdan</h2>
         <p className="muted small lx-lead">
-          Avval o&apos;qituvchi, keyin uning kursi. Bir nechta o&apos;qituvchi aralashmaydi.
+          O&apos;qituvchi, keyin kurs. Holat har bir vazifaning o&apos;zida.
         </p>
         {priority ? (
           <p className="small muted" style={{ marginTop: -8 }}>3-tarifdagi ishingiz o&apos;qituvchida birinchi navbatda.</p>

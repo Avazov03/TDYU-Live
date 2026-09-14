@@ -43,7 +43,6 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
 
   return (
     <form id="reja" onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 6 }}>Mavzuni rejalash</h3>
       <p className="small muted" style={{ marginBottom: 12 }}>
         Qaysi kurs, qachon, nima o&apos;tiladi. Banner ixtiyoriy — bo&apos;lmasa yozuv kadri chiqadi.
       </p>

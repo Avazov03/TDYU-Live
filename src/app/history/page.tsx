@@ -36,7 +36,7 @@ export default async function HistoryPage() {
       <div className="lx-board">
         <p className="lx-kicker">Ko&apos;rilganlar</p>
         <h2>Ochgan darslaringiz</h2>
-        <p className="muted small lx-lead">Bu reja emas. Faqat siz kirgan mavzular, kun bo&apos;yicha.</p>
+        <p className="muted small lx-lead">Siz kirgan mavzular, kun bo&apos;yicha.</p>
         {items.length === 0 ? <div className="empty">Hali dars ochilmagan.</div> : null}
         {[...byDay.entries()].map(([key, rows]) => (
           <section key={key} className="lx-group">
@@ -49,6 +49,7 @@ export default async function HistoryPage() {
                     <h3>{row.lesson.titleUz}</h3>
                     <p className="small muted" style={{ margin: 0 }}>{row.lesson.course.titleUz}</p>
                   </div>
+                  <span className="lx-go">Ochish</span>
                 </Link>
               ))}
             </div>

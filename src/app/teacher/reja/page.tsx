@@ -72,15 +72,16 @@ export default async function TeacherRejaPage() {
 
   return (
     <AppShell active="teacher-reja">
-      <div className="lx-board" style={{ marginBottom: 8 }}>
+      <details className="lx-disclosure" {...(data.length === 0 ? { open: true } : {})}>
+        <summary>Mavzu qo&apos;shish</summary>
         <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
-      </div>
+      </details>
       {data.length === 0 ? (
         <div className="empty">Rejada dars yo&apos;q. Yuqoridan mavzu, vaqt va qisqa matn qo&apos;shing.</div>
       ) : (
         <Timeline
           title="Dars reja"
-          description="Qachon, qaysi kurs va nima o'tiladi. O'quvchi ham shu rejani ko'radi. Studio faqat bugungi dars."
+          description="Vaqt, kurs va qisqa mazmun. O'quvchi ham shuni ko'radi."
           data={data}
         />
       )}

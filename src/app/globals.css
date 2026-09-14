@@ -925,6 +925,23 @@ tr:last-child td { border-bottom: none; }
 .acet-timeline h3 {
   font-weight: 700;
 }
+/* Timeline is a full-page block. Inside the cabinet pane it must not paint a second sheet or stick 160px under a topbar that is already outside the scroller. */
+.acet-pane .acet-timeline {
+  background: transparent;
+}
+.acet-pane .acet-timeline > div:first-child {
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+.acet-pane .acet-timeline .max-w-sm { max-width: 40rem; }
+.acet-pane .acet-timeline .pt-10 { padding-top: 1.25rem; }
+.acet-pane .acet-timeline .top-40 { top: 0.5rem; }
+.acet-pane .acet-timeline .sticky { max-width: 9.5rem; }
+@media (min-width: 768px) {
+  .acet-pane .acet-timeline .md\:pt-40 { padding-top: 1.5rem; }
+  .acet-pane .acet-timeline .md\:text-5xl { font-size: 1.65rem; line-height: 1.15; }
+  .acet-pane .acet-timeline .md\:text-4xl { font-size: 1.75rem; line-height: 1.2; }
+}
 .lx-board h2 { font-size: 22px; margin: 0 0 6px; }
 .lx-lead { margin: 0 0 18px; max-width: 640px; }
 .lx-section { margin-top: 28px; }
@@ -946,8 +963,46 @@ tr:last-child td { border-bottom: none; }
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
+  color: inherit;
+  text-decoration: none;
 }
+a.lx-row { cursor: pointer; }
+a.lx-row:hover { border-color: var(--accent); background: var(--surface-2); }
+a.lx-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lx-row.is-live { border-color: var(--danger); }
+.lx-row.is-dim { opacity: 0.62; }
 .lx-row h3 { font-size: 15px; margin: 0 0 4px; }
+.lx-row h3 a { color: inherit; text-decoration: none; }
+.lx-go {
+  margin-left: auto;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.lx-miss { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.lx-miss span {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.lx-disclosure {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 16px;
+}
+.lx-disclosure > summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  font-weight: 600;
+  list-style: none;
+}
+.lx-disclosure > summary::-webkit-details-marker { display: none; }
+.lx-disclosure[open] > summary { border-bottom: 1px solid var(--border); }
+.lx-disclosure .card { border: none; margin: 0; background: transparent; }
 .lx-cover {
   width: 148px;
   aspect-ratio: 16 / 9;
