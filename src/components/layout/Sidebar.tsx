@@ -223,7 +223,7 @@ export function Sidebar({
 
   return (
     <SidebarProvider open={open} setOpen={setOpen} animate={!reduced}>
-      <DesktopSidebar className="justify-between gap-10 h-screen sticky top-0">
+      <DesktopSidebar className="justify-between gap-10 h-full">
         <SidebarNav items={items} userName={displayName} logoHref={logoHref} />
       </DesktopSidebar>
       <MobileSidebar className="justify-between gap-10">
