@@ -951,15 +951,30 @@ html[data-theme="dark"] .acet-shell {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  border-top-left-radius: 1rem;
+  border-radius: 1rem 0 0 1rem;
   border-top: 1px solid #e5e5e5;
   border-left: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
 }
 html[data-theme="dark"] .acet-pane {
   border-top-color: #404040;
   border-left-color: #404040;
+  border-bottom-color: #404040;
 }
-.acet-pane > .topbar { position: sticky; top: 0; }
+.acet-pane > .topbar {
+  position: sticky;
+  top: 0;
+  border-top-left-radius: 1rem;
+  overflow: visible;
+}
+.acet-pane > .main {
+  border-bottom-left-radius: 1rem;
+}
+@media (min-width: 768px) {
+  .acet-shell .acet-sidebar {
+    border-radius: 1rem 0 0 1rem;
+  }
+}
 @media (max-width: 767px) {
   .shell:has(.acet-sidebar) { flex-direction: column; }
   .acet-pane { border-radius: 0; border: none; }
