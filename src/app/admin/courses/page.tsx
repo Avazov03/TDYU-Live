@@ -1,5 +1,6 @@
 import { AdminCoursesManager } from "@/components/admin/AdminCoursesManager";
 import { prisma } from "@/lib/prisma";
+import { isSubscriptionActive } from "@/lib/tariffs";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,12 @@ export default async function AdminCoursesPage() {
         teacher: { select: { fullName: true } },
         faculty: { select: { nameUz: true } },
         subject: { select: { nameUz: true } },
+        subscriptions: { select: { endsAt: true } },
         _count: { select: { lessons: true, subscriptions: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.teacher.findMany({ select: { id: true, fullName: true } }),
+    prisma.teacher.findMany({ select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
     prisma.faculty.findMany({ orderBy: { order: "asc" } }),
     prisma.subject.findMany(),
   ]);
@@ -32,6 +34,7 @@ export default async function AdminCoursesPage() {
         priceT3: c.priceT3,
         lessonCount: c._count.lessons,
         studentCount: c._count.subscriptions,
+        activeStudentCount: c.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length,
       }))}
       teachers={teachers}
       faculties={faculties.map((f) => ({ id: f.id, nameUz: f.nameUz }))}

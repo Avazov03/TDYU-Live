@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { initials } from "@/lib/utils";
 
 type UserRole = "student" | "teacher" | "admin";
-type RoleFilter = "all" | UserRole;
+type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
 
 export type AdminUserCourse = {
   title: string;
@@ -15,6 +15,7 @@ export type AdminUserCourse = {
   tier?: string;
   active?: boolean;
   endsAt?: string;
+  teacher?: string;
 };
 
 export type AdminUserRow = {
@@ -45,18 +46,13 @@ export type AdminUserRow = {
 function formatWhen(iso: string | null) {
   if (!iso) return "Hali kirmagan";
   return new Intl.DateTimeFormat("uz-UZ", {
+    timeZone: "Asia/Tashkent",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
-}
-
-function roleLabel(role: UserRole) {
-  if (role === "admin") return "Admin";
-  if (role === "teacher") return "O'qituvchi";
-  return "O'quvchi";
 }
 
 async function copyText(value: string) {
@@ -85,7 +81,7 @@ export function AdminUsersManager({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [showPw, setShowPw] = useState<Record<string, boolean>>({});
@@ -96,12 +92,22 @@ export function AdminUsersManager({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return users.filter((user) => {
-      if (roleFilter !== "all" && user.role !== roleFilter) return false;
+      if (statusFilter === "blocked" && !user.isBlocked) return false;
+      if (statusFilter === "active" && user.isBlocked) return false;
+      if (statusFilter === "subscribed" && !user.hasSubscription) return false;
+      if (statusFilter === "none" && user.hasSubscription) return false;
       if (!q) return true;
-      const haystack = [user.fullName, canSeeSecrets ? user.email : ""].filter(Boolean).join(" ").toLowerCase();
+      const haystack = [
+        user.fullName,
+        canSeeSecrets ? user.email : "",
+        ...user.courses.map((c) => `${c.title} ${c.teacher ?? ""}`),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
       return haystack.includes(q);
     });
-  }, [users, query, roleFilter, canSeeSecrets]);
+  }, [users, query, statusFilter, canSeeSecrets]);
 
   const markCopied = (key: string) => {
     setCopied(key);
@@ -151,18 +157,37 @@ export function AdminUsersManager({
     markCopied(key);
   };
 
+  const toggleBlock = async (user: AdminUserRow) => {
+    setBusyId(user.id);
+    setError("");
+    const res = await fetch(`/api/admin/users/${user.id}/block`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocked: !user.isBlocked }),
+    });
+    const data = await res.json();
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || "Holat o'zgarmadi");
+      return;
+    }
+    router.refresh();
+  };
+
   const colSpan = canSeeSecrets ? 8 : 6;
+  const activeCount = users.filter((u) => !u.isBlocked && u.hasSubscription).length;
 
   return (
     <>
       <div className="staff-head">
         <div>
-          <h2>Foydalanuvchilar</h2>
+          <p className="lx-kicker" style={{ marginBottom: 4 }}>O&apos;quvchilar</p>
+          <h2>Talabalar</h2>
           <p className="small muted" style={{ marginTop: 4 }}>
-            Jami {users.length}.{" "}
+            Jami {users.length} · faol obuna {activeCount}. O&apos;qituvchilar alohida sahifada.
             {canSeeSecrets
-              ? "Login va email ochiq. Asl parol saqlanmaydi — yangi parol bir marta ko'rinadi."
-              : "Login, email va parol faqat super adminga ko'rinadi."}
+              ? " Login ochiq; yangi parol bir marta ko'rinadi."
+              : " Login va parol faqat super adminga."}
           </p>
         </div>
       </div>
@@ -175,18 +200,19 @@ export function AdminUsersManager({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={canSeeSecrets ? "Ism yoki email..." : "Ism..."}
+            placeholder={canSeeSecrets ? "Ism, email yoki kurs..." : "Ism yoki kurs..."}
           />
         </div>
         <select
           className="staff-filter"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
         >
-          <option value="all">Barcha rollar</option>
-          <option value="student">O'quvchi</option>
-          <option value="teacher">O'qituvchi</option>
-          <option value="admin">Admin</option>
+          <option value="all">Barchasi</option>
+          <option value="subscribed">Faol obuna</option>
+          <option value="none">Obunasiz</option>
+          <option value="active">Bloklanmagan</option>
+          <option value="blocked">Bloklangan</option>
         </select>
       </div>
 
@@ -197,9 +223,9 @@ export function AdminUsersManager({
               <th>F.I.SH.</th>
               {canSeeSecrets ? <th>Login</th> : null}
               {canSeeSecrets ? <th>Parol</th> : null}
-              <th>Rol</th>
-              <th>Obuna</th>
-              <th>Ro&apos;yxat</th>
+              <th>Tarif</th>
+              <th>Kurslar</th>
+              <th>Oxirgi kirish</th>
               <th>Holat</th>
               <th></th>
             </tr>
@@ -253,19 +279,14 @@ export function AdminUsersManager({
                       </td>
                     ) : null}
                     <td>
-                      <span className={`badge ${user.role === "admin" ? "accent" : user.role === "teacher" ? "pending" : ""}`}>
-                        {roleLabel(user.role)}
-                      </span>
-                      {user.isSuperAdmin ? <span className="badge accent" style={{ marginLeft: 6 }}>Super</span> : null}
-                    </td>
-                    <td>
                       {user.hasSubscription ? (
                         <span className="badge success">{user.tariff}</span>
                       ) : (
                         <span className="small muted">Yo&apos;q</span>
                       )}
                     </td>
-                    <td className="small muted">{formatWhen(user.createdAt)}</td>
+                    <td className="small muted">{user.courseCount}</td>
+                    <td className="small muted">{formatWhen(user.lastLoginAt)}</td>
                     <td>
                       <span className={`badge ${user.isBlocked ? "danger" : "success"}`}>
                         {user.isBlocked ? "Bloklangan" : "Aktiv"}
@@ -285,10 +306,7 @@ export function AdminUsersManager({
                               <div>
                                 <div style={{ fontWeight: 600 }}>{user.fullName}</div>
                                 <div className="staff-detail-badges">
-                                  <span className={`badge ${user.role === "admin" ? "accent" : user.role === "teacher" ? "pending" : ""}`}>
-                                    {roleLabel(user.role)}
-                                  </span>
-                                  {user.isSuperAdmin ? <span className="badge accent">Super</span> : null}
+                                  <span className="badge">O&apos;quvchi</span>
                                   <span className={`badge ${user.isBlocked ? "danger" : "success"}`}>
                                     {user.isBlocked ? "Bloklangan" : "Aktiv"}
                                   </span>
@@ -306,17 +324,6 @@ export function AdminUsersManager({
                                     <Icon name="copy" size={15} />
                                   </button>
                                 </div>
-                                {copied === `login-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
-                              </div>
-                              <div className="account-field">
-                                <div className="small muted">Email</div>
-                                <div className="account-field-row">
-                                  <input readOnly value={user.email ?? ""} />
-                                  <button type="button" className="iconbtn" aria-label="Emailni nusxalash" onClick={() => void copyValue(`mail-${user.id}`, user.email ?? "")}>
-                                    <Icon name="copy" size={15} />
-                                  </button>
-                                </div>
-                                {copied === `mail-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
                               </div>
                               <div className="account-field">
                                 <div className="small muted">Parol</div>
@@ -329,11 +336,14 @@ export function AdminUsersManager({
                                     <Icon name="copy" size={15} />
                                   </button>
                                 </div>
-                                {copied === `pw-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
                               </div>
                             </div>
                           ) : null}
                           <div className="account-facts">
+                            <div>
+                              <div className="small muted">Ro&apos;yxatdan o&apos;tgan</div>
+                              <div>{formatWhen(user.createdAt)}</div>
+                            </div>
                             <div>
                               <div className="small muted">Oxirgi kirish</div>
                               <div>{formatWhen(user.lastLoginAt)}</div>
@@ -343,37 +353,13 @@ export function AdminUsersManager({
                               <div>{user.tariff ?? "Yo'q"}{user.tariffUntil ? ` · ${formatWhen(user.tariffUntil)}` : ""}</div>
                             </div>
                             <div>
-                              <div className="small muted">Kurslar</div>
-                              <div>{user.courseCount}</div>
-                            </div>
-                            <div>
-                              <div className="small muted">Tugatgan</div>
-                              <div>{user.completedCourses}</div>
-                            </div>
-                            <div>
-                              <div className="small muted">{user.role === "teacher" ? "Darslar" : "Qatnashgan darslar"}</div>
+                              <div className="small muted">Qatnashgan dars</div>
                               <div>{user.lessonCount}</div>
                             </div>
-                            {user.role === "teacher" ? (
-                              <>
-                                <div>
-                                  <div className="small muted">Efirlar</div>
-                                  <div>{user.liveCount}</div>
-                                </div>
-                                <div>
-                                  <div className="small muted">O&apos;quvchilar</div>
-                                  <div>{user.studentCount}</div>
-                                </div>
-                                <div>
-                                  <div className="small muted">Fan</div>
-                                  <div>{user.subjectName ?? "—"}</div>
-                                </div>
-                                <div>
-                                  <div className="small muted">Fakultet</div>
-                                  <div>{user.facultyName ?? "—"}</div>
-                                </div>
-                              </>
-                            ) : null}
+                            <div>
+                              <div className="small muted">Sertifikat</div>
+                              <div>{user.completedCourses}</div>
+                            </div>
                             <div>
                               <div className="small muted">To&apos;lovlar</div>
                               <div>{user.paymentCount}</div>
@@ -381,51 +367,67 @@ export function AdminUsersManager({
                           </div>
                           {user.courses.length > 0 ? (
                             <div style={{ marginBottom: 14 }}>
-                              <div className="small muted" style={{ marginBottom: 6 }}>
-                                {user.role === "teacher" ? "Kurslari" : "Obunalari"}
+                              <div className="small muted" style={{ marginBottom: 6 }}>Obunalari</div>
+                              <div className="lx-stack">
+                                {user.courses.map((course, index) => (
+                                  <div key={`${course.title}-${index}`} className="lx-row" style={{ padding: 10 }}>
+                                    <div>
+                                      <p className="lx-kicker" style={{ marginBottom: 2 }}>
+                                        {course.teacher ?? "O'qituvchi"} · {course.tier}
+                                        {course.active ? "" : " · tugagan"}
+                                      </p>
+                                      <h3 style={{ fontSize: 14 }}>{course.title}</h3>
+                                      {course.endsAt ? (
+                                        <p className="small muted" style={{ margin: 0 }}>
+                                          gacha {formatWhen(course.endsAt)}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                              {user.courses.map((course, index) => (
-                                <div key={`${course.title}-${index}`} className="small">
-                                  {course.title}
-                                  {user.role === "teacher"
-                                    ? ` · ${course.lessons} dars · ${course.students} o'quvchi`
-                                    : course.tier
-                                      ? ` · ${course.tier}${course.active ? "" : " · tugagan"}`
-                                      : ""}
-                                </div>
-                              ))}
                             </div>
                           ) : (
-                            <p className="small muted" style={{ marginBottom: 14 }}>
-                              {user.role === "teacher" ? "Kurs yo'q." : "Obuna yo'q."}
-                            </p>
+                            <p className="small muted" style={{ marginBottom: 14 }}>Obuna yo&apos;q.</p>
                           )}
+                          <div className="staff-detail-actions">
+                            <button
+                              type="button"
+                              className={`btn btn-sm${user.isBlocked ? "" : " btn-danger"}`}
+                              disabled={busyId === user.id}
+                              onClick={() => void toggleBlock(user)}
+                            >
+                              {user.isBlocked ? "Blokdan chiqarish" : "Bloklash"}
+                            </button>
+                            {canSeeSecrets ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  disabled={busyId === user.id}
+                                  onClick={() => void revealPassword(user.id)}
+                                >
+                                  {visible ? "Yashirish" : "Parolni ko'rsat"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  disabled={busyId === user.id}
+                                  onClick={() => void resetPassword(user.id).then((password) => {
+                                    if (!password) return;
+                                    void copyText(password);
+                                    markCopied(`pw-${user.id}`);
+                                  })}
+                                >
+                                  Yangi parol
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
                           {canSeeSecrets ? (
-                            <p className="small muted account-note">Eski parol saqlanmaydi. Ko&apos;z yoki nusxa yangi parol yaratadi va nusxalaydi.</p>
-                          ) : null}
-                          {canSeeSecrets ? (
-                            <div className="staff-detail-actions">
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                disabled={busyId === user.id}
-                                onClick={() => void revealPassword(user.id)}
-                              >
-                                {visible ? "Yashirish" : "Ko'rsatish"}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                disabled={busyId === user.id}
-                                onClick={() => void resetPassword(user.id).then((password) => {
-                                  if (!password) return;
-                                  void copyText(password);
-                                  markCopied(`pw-${user.id}`);
-                                })}
-                              >
-                                Yangi parol
-                              </button>
-                            </div>
+                            <p className="small muted account-note">
+                              Eski parol saqlanmaydi. Ko&apos;z yoki nusxa yangi parol yaratadi.
+                            </p>
                           ) : null}
                         </div>
                       </td>
@@ -436,7 +438,7 @@ export function AdminUsersManager({
             })}
           </tbody>
         </table>
-        {filtered.length === 0 ? <div className="empty">Foydalanuvchi topilmadi.</div> : null}
+        {filtered.length === 0 ? <div className="empty">O&apos;quvchi topilmadi.</div> : null}
       </div>
     </>
   );

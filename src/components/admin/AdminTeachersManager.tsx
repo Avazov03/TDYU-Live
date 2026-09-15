@@ -230,9 +230,10 @@ export function AdminTeachersManager({
     <>
       <div className="staff-head">
         <div>
-          <h2>O&apos;qituvchilar boshqaruvi</h2>
+          <p className="lx-kicker" style={{ marginBottom: 4 }}>O&apos;qituvchilar</p>
+          <h2>O&apos;qituvchi jamoasi</h2>
           <p className="small muted" style={{ marginTop: 4 }}>
-            Jami {teachers.length} o&apos;qituvchi.
+            Jami {teachers.length}. O&apos;quvchilar alohida sahifada.
           {canSeeSecrets
             ? " Parolni tiklasangiz yangi parol bir marta ko'rinadi va nusxalanadi."
             : " Login, email va parol faqat super adminga ko'rinadi."}
