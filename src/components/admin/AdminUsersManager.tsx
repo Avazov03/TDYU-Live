@@ -297,8 +297,7 @@ export function AdminUsersManager({
                       <Icon name={open ? "chevronUp" : "chevronDown"} size={16} />
                     </td>
                   </tr>
-                  {open ? (
-                    <tr className="staff-detail-row">
+                  <tr className={`staff-detail-row${open ? " is-open" : ""}`}>
                       <td colSpan={colSpan}>
                         <SoftExpand open={open}>
                         <div className="account-card" onClick={(e) => e.stopPropagation()}>
@@ -435,7 +434,6 @@ export function AdminUsersManager({
                         </SoftExpand>
                       </td>
                     </tr>
-                  ) : null}
                 </Fragment>
               );
             })}
