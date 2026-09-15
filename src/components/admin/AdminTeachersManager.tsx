@@ -3,8 +3,9 @@
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImpersonateTeacherButton } from "@/components/admin/ImpersonateTeacherButton";
+import { RoleAvatar } from "@/components/admin/RoleAvatar";
+import { SoftExpand } from "@/components/admin/SoftDisclosure";
 import { Icon } from "@/components/ui/Icon";
-import { initials } from "@/lib/utils";
 
 export type TeacherRow = {
   id: string;
@@ -344,7 +345,7 @@ export function AdminTeachersManager({
                   >
                     <td>
                       <div className="staff-name">
-                        <span className="avatar sm">{initials(t.fullName)}</span>
+                        <RoleAvatar name={t.fullName} role="teacher" />
                         <span>{t.fullName}</span>
                       </div>
                     </td>
@@ -396,10 +397,11 @@ export function AdminTeachersManager({
                   {open ? (
                     <tr className="staff-detail-row">
                       <td colSpan={canSeeSecrets ? 8 : 6}>
+                        <SoftExpand open={open}>
                         <div className="account-card" onClick={(e) => e.stopPropagation()}>
                           <div className="account-card-head">
                             <div className="staff-name">
-                              <span className="avatar">{initials(t.fullName)}</span>
+                              <RoleAvatar name={t.fullName} role="teacher" size="md" />
                               <div>
                                 <div style={{ fontWeight: 600 }}>{t.fullName}</div>
                                 <div className="staff-detail-badges">
@@ -497,6 +499,7 @@ export function AdminTeachersManager({
                             </button>
                           </div>
                         </div>
+                        </SoftExpand>
                       </td>
                     </tr>
                   ) : null}

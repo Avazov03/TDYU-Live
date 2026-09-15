@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlanCard } from "@/components/cabinet/PlanCard";
+import { SoftDisclosure } from "@/components/admin/SoftDisclosure";
 import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
 import { LessonActions } from "@/components/teacher/LessonActions";
 import { Timeline } from "@/components/ui/aceternity-timeline";
@@ -72,10 +73,9 @@ export default async function TeacherRejaPage() {
 
   return (
     <AppShell active="teacher-reja">
-      <details className="lx-disclosure" {...(data.length === 0 ? { open: true } : {})}>
-        <summary>Mavzu qo&apos;shish</summary>
+      <SoftDisclosure title="Mavzu qo‘shish" defaultOpen={data.length === 0}>
         <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
-      </details>
+      </SoftDisclosure>
       {data.length === 0 ? (
         <div className="empty">Rejada dars yo&apos;q. Yuqoridan mavzu, vaqt va qisqa matn qo&apos;shing.</div>
       ) : (

@@ -3,7 +3,8 @@
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { initials } from "@/lib/utils";
+import { RoleAvatar } from "@/components/admin/RoleAvatar";
+import { SoftExpand } from "@/components/admin/SoftDisclosure";
 
 type UserRole = "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
@@ -243,7 +244,7 @@ export function AdminUsersManager({
                   >
                     <td>
                       <div className="staff-name">
-                        <span className="avatar sm">{initials(user.fullName)}</span>
+                        <RoleAvatar name={user.fullName} role="student" />
                         <span>{user.fullName}</span>
                       </div>
                     </td>
@@ -299,10 +300,11 @@ export function AdminUsersManager({
                   {open ? (
                     <tr className="staff-detail-row">
                       <td colSpan={colSpan}>
+                        <SoftExpand open={open}>
                         <div className="account-card" onClick={(e) => e.stopPropagation()}>
                           <div className="account-card-head">
                             <div className="staff-name">
-                              <span className="avatar">{initials(user.fullName)}</span>
+                              <RoleAvatar name={user.fullName} role="student" size="md" />
                               <div>
                                 <div style={{ fontWeight: 600 }}>{user.fullName}</div>
                                 <div className="staff-detail-badges">
@@ -430,6 +432,7 @@ export function AdminUsersManager({
                             </p>
                           ) : null}
                         </div>
+                        </SoftExpand>
                       </td>
                     </tr>
                   ) : null}

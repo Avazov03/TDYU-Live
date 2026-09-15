@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { SoftDisclosure } from "@/components/admin/SoftDisclosure";
 import { CreateAssignmentForm } from "@/components/teacher/CreateAssignmentForm";
 import { GradeForm } from "@/components/teacher/GradeForm";
 import { auth } from "@/lib/auth";
@@ -63,10 +64,9 @@ export default async function TeacherAssignmentsPage() {
           Kurs ichida kim topshirdi va kim topshirmadi. 3-tarif birinchi.
         </p>
       </div>
-      <details className="lx-disclosure">
-        <summary>Yangi topshiriq</summary>
+      <SoftDisclosure title="Yangi topshiriq">
         <CreateAssignmentForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
-      </details>
+      </SoftDisclosure>
       {teacher.courses.map((course) => {
         const students = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
         return (
