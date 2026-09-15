@@ -5,6 +5,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
+const expandTransition = (reduced: boolean | null) =>
+  reduced
+    ? { duration: 0 }
+    : { duration: 0.4, ease: EASE };
+
 export function SoftDisclosure({
   title,
   children,
@@ -36,7 +41,7 @@ export function SoftDisclosure({
             initial={reduced ? false : { height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={reduced ? undefined : { height: 0, opacity: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.38, ease: EASE }}
+            transition={expandTransition(reduced)}
           >
             <div className="soft-disclosure-inner">{children}</div>
           </motion.div>
@@ -63,7 +68,7 @@ export function SoftExpand({
           initial={reduced ? false : { height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={reduced ? undefined : { height: 0, opacity: 0 }}
-          transition={reduced ? { duration: 0 } : { duration: 0.36, ease: EASE }}
+          transition={expandTransition(reduced)}
         >
           <div className="soft-expand-inner">{children}</div>
         </motion.div>

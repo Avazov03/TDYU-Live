@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef } from "react";
 import { formatSom } from "@/lib/tariffs";
+import { FloatingTip, useChartPointer } from "@/components/admin/FloatingTip";
 
 type Point = { label: string; value: number };
 type ValueFormat = "number" | "som";
@@ -27,26 +28,20 @@ export function AdminBarChart({
   valueFormat?: ValueFormat;
   unitLabel?: string;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { tip, reduced, atEvent, onMove, clear } = useChartPointer(rootRef);
   const max = Math.max(...data.map((d) => d.value), 1);
   const showEvery = data.length > 14 ? 5 : data.length > 8 ? 2 : 1;
-  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
 
   return (
-    <div className="admin-chart" onMouseLeave={() => setTip(null)}>
+    <div className="admin-chart" ref={rootRef} onMouseMove={onMove} onMouseLeave={clear}>
       <div className="admin-bars" style={{ height }}>
         {data.map((point, index) => (
           <div
             key={`${point.label}-${index}`}
             className="admin-bar-col"
-            onMouseEnter={(e) => {
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              const parent = (e.currentTarget.closest(".admin-chart") as HTMLElement).getBoundingClientRect();
-              setTip({
-                text: tipText(point.label, point.value, valueFormat, unitLabel),
-                x: rect.left - parent.left + rect.width / 2,
-                y: rect.top - parent.top,
-              });
-            }}
+            onMouseEnter={(e) => atEvent(e, tipText(point.label, point.value, valueFormat, unitLabel))}
+            onMouseMove={(e) => atEvent(e, tipText(point.label, point.value, valueFormat, unitLabel))}
           >
             <div
               className={`admin-bar${point.value === 0 ? " is-empty" : ""}`}
@@ -60,11 +55,7 @@ export function AdminBarChart({
           </div>
         ))}
       </div>
-      {tip ? (
-        <div className="admin-tip" style={{ left: tip.x, top: tip.y }} role="tooltip">
-          {tip.text}
-        </div>
-      ) : null}
+      <FloatingTip tip={tip} reduced={reduced} />
     </div>
   );
 }
@@ -83,11 +74,12 @@ export function AdminDonut({
     t3: "var(--success)",
     muted: "var(--border)",
   };
-  const [tip, setTip] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { tip, reduced, atEvent, onMove, clear } = useChartPointer(rootRef);
   const uid = useId();
 
   return (
-    <div className="admin-donut-wrap" onMouseLeave={() => setTip(null)}>
+    <div className="admin-donut-wrap" ref={rootRef} onMouseMove={onMove} onMouseLeave={clear}>
       <div className="admin-donut-stage">
         <svg viewBox="0 0 42 42" className="admin-donut" aria-hidden>
           <circle cx="21" cy="21" r="15.5" fill="transparent" stroke="var(--border)" strokeWidth="5" />
@@ -96,6 +88,7 @@ export function AdminDonut({
             const start = offset;
             offset += len;
             if (seg.value <= 0) return null;
+            const text = `${seg.label}: ${seg.value} (${Math.round((seg.value / total) * 100)}%)`;
             return (
               <circle
                 key={seg.label}
@@ -109,9 +102,8 @@ export function AdminDonut({
                 strokeDashoffset={-start}
                 strokeLinecap="butt"
                 className="admin-donut-seg"
-                onMouseEnter={() =>
-                  setTip(`${seg.label}: ${seg.value} (${Math.round((seg.value / total) * 100)}%)`)
-                }
+                onMouseEnter={(e) => atEvent(e as unknown as React.MouseEvent, text)}
+                onMouseMove={(e) => atEvent(e as unknown as React.MouseEvent, text)}
               />
             );
           })}
@@ -119,30 +111,26 @@ export function AdminDonut({
             {totalValue}
           </text>
         </svg>
-        {tip ? (
-          <div className="admin-tip admin-tip-center" id={uid} role="tooltip">
-            {tip}
-          </div>
-        ) : null}
       </div>
-      <ul className="admin-donut-legend">
-        {segments.map((seg) => (
-          <li
-            key={seg.label}
-            onMouseEnter={() =>
-              setTip(
-                totalValue
-                  ? `${seg.label}: ${seg.value} (${Math.round((seg.value / total) * 100)}%)`
-                  : `${seg.label}: 0`,
-              )
-            }
-          >
-            <span className={`admin-dot tone-${seg.tone}`} />
-            <span>{seg.label}</span>
-            <b>{seg.value}</b>
-          </li>
-        ))}
+      <ul className="admin-donut-legend" aria-describedby={uid}>
+        {segments.map((seg) => {
+          const text = totalValue
+            ? `${seg.label}: ${seg.value} (${Math.round((seg.value / total) * 100)}%)`
+            : `${seg.label}: 0`;
+          return (
+            <li
+              key={seg.label}
+              onMouseEnter={(e) => atEvent(e, text)}
+              onMouseMove={(e) => atEvent(e, text)}
+            >
+              <span className={`admin-dot tone-${seg.tone}`} />
+              <span>{seg.label}</span>
+              <b>{seg.value}</b>
+            </li>
+          );
+        })}
       </ul>
+      <FloatingTip tip={tip} reduced={reduced} />
     </div>
   );
 }
@@ -154,40 +142,33 @@ export function AdminHBar({
   rows: { label: string; sub?: string; value: number }[];
   valueLabel?: string;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { tip, reduced, atEvent, onMove, clear } = useChartPointer(rootRef);
   const max = Math.max(...rows.map((r) => r.value), 1);
-  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
   if (rows.length === 0) return <p className="small muted">Hali ma&apos;lumot yo&apos;q.</p>;
   return (
-    <div className="admin-hbar-list" onMouseLeave={() => setTip(null)}>
-      {rows.map((row) => (
-        <div
-          key={row.label}
-          className="admin-hbar-row"
-          onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const parent = (e.currentTarget.closest(".admin-hbar-list") as HTMLElement).getBoundingClientRect();
-            setTip({
-              text: `${row.label}${row.sub ? ` · ${row.sub}` : ""}: ${row.value} ${valueLabel}`,
-              x: 12,
-              y: rect.top - parent.top,
-            });
-          }}
-        >
-          <div className="admin-hbar-meta">
-            <span>{row.label}</span>
-            {row.sub ? <span className="small muted">{row.sub}</span> : null}
-            <b>{row.value}</b>
+    <div className="admin-hbar-list" ref={rootRef} onMouseMove={onMove} onMouseLeave={clear}>
+      {rows.map((row) => {
+        const text = `${row.label}${row.sub ? ` · ${row.sub}` : ""}: ${row.value} ${valueLabel}`;
+        return (
+          <div
+            key={row.label}
+            className="admin-hbar-row"
+            onMouseEnter={(e) => atEvent(e, text)}
+            onMouseMove={(e) => atEvent(e, text)}
+          >
+            <div className="admin-hbar-meta">
+              <span>{row.label}</span>
+              {row.sub ? <span className="small muted">{row.sub}</span> : null}
+              <b>{row.value}</b>
+            </div>
+            <div className="admin-hbar-track">
+              <div className="admin-hbar-fill" style={{ width: `${(row.value / max) * 100}%` }} />
+            </div>
           </div>
-          <div className="admin-hbar-track">
-            <div className="admin-hbar-fill" style={{ width: `${(row.value / max) * 100}%` }} />
-          </div>
-        </div>
-      ))}
-      {tip ? (
-        <div className="admin-tip" style={{ left: Math.max(tip.x, 40), top: tip.y }} role="tooltip">
-          {tip.text}
-        </div>
-      ) : null}
+        );
+      })}
+      <FloatingTip tip={tip} reduced={reduced} />
     </div>
   );
 }
