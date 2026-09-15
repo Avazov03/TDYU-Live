@@ -137,7 +137,7 @@ export function AdminPaymentsBoard({
             <h3>14 kunlik to&apos;lov</h3>
             <span className="small muted">{formatSom(chart14.reduce((n, d) => n + d.value, 0))}</span>
           </div>
-          <AdminBarChart data={chart14} formatValue={formatSom} />
+          <AdminBarChart data={chart14} valueFormat="som" />
         </section>
         <section className="admin-panel">
           <div className="admin-panel-head">

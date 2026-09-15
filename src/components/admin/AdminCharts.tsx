@@ -1,22 +1,30 @@
 "use client";
 
 import { useId, useState } from "react";
+import { formatSom } from "@/lib/tariffs";
 
 type Point = { label: string; value: number };
+type ValueFormat = "number" | "som";
 
-function tipText(label: string, value: number, formatValue?: (n: number) => string) {
-  return `${label}: ${formatValue ? formatValue(value) : value}`;
+function formatPoint(value: number, format: ValueFormat = "number") {
+  if (format === "som") return formatSom(value);
+  return String(value);
+}
+
+function tipText(label: string, value: number, format: ValueFormat = "number", unitLabel?: string) {
+  const formatted = formatPoint(value, format);
+  return unitLabel && format === "number" ? `${label}: ${formatted} ${unitLabel}` : `${label}: ${formatted}`;
 }
 
 export function AdminBarChart({
   data,
   height = 148,
-  formatValue,
+  valueFormat = "number",
   unitLabel,
 }: {
   data: Point[];
   height?: number;
-  formatValue?: (n: number) => string;
+  valueFormat?: ValueFormat;
   unitLabel?: string;
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -24,10 +32,7 @@ export function AdminBarChart({
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
 
   return (
-    <div
-      className="admin-chart"
-      onMouseLeave={() => setTip(null)}
-    >
+    <div className="admin-chart" onMouseLeave={() => setTip(null)}>
       <div className="admin-bars" style={{ height }}>
         {data.map((point, index) => (
           <div
@@ -37,7 +42,7 @@ export function AdminBarChart({
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
               const parent = (e.currentTarget.closest(".admin-chart") as HTMLElement).getBoundingClientRect();
               setTip({
-                text: tipText(point.label, point.value, formatValue) + (unitLabel && !formatValue ? ` ${unitLabel}` : ""),
+                text: tipText(point.label, point.value, valueFormat, unitLabel),
                 x: rect.left - parent.left + rect.width / 2,
                 y: rect.top - parent.top,
               });
@@ -179,7 +184,7 @@ export function AdminHBar({
         </div>
       ))}
       {tip ? (
-        <div className="admin-tip" style={{ left: tip.x, top: tip.y }} role="tooltip">
+        <div className="admin-tip" style={{ left: Math.max(tip.x, 40), top: tip.y }} role="tooltip">
           {tip.text}
         </div>
       ) : null}

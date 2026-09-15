@@ -138,7 +138,7 @@ export default async function AdminDashboardPage() {
               {formatSom(revenueByDay.reduce((n, d) => n + d.value, 0))}
             </span>
           </div>
-          <AdminBarChart data={revenueByDay} formatValue={formatSom} />
+          <AdminBarChart data={revenueByDay} valueFormat="som" />
         </section>
 
         <section className="admin-panel">
