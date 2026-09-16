@@ -92,11 +92,21 @@ export default async function StudentAppPage() {
           <section className="lx-section">
             <h3>Davom ettirish</h3>
             <Link href={`/learn/${lastSeen.lesson.id}`} className="lx-row">
-              {lessonCover(lastSeen.lesson.coverUrl, lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId) ? (
+              {lessonCover(
+                lastSeen.lesson.coverUrl,
+                lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId,
+                { id: lastSeen.lesson.id, title: lastSeen.lesson.titleUz },
+              ) ? (
                 <img
                   className="lx-cover"
                   alt=""
-                  src={lessonCover(lastSeen.lesson.coverUrl, lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId) ?? ""}
+                  src={
+                    lessonCover(
+                      lastSeen.lesson.coverUrl,
+                      lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId,
+                      { id: lastSeen.lesson.id, title: lastSeen.lesson.titleUz },
+                    ) ?? ""
+                  }
                 />
               ) : null}
               <div>

@@ -1,3 +1,5 @@
+import { coverUrl as generatedCover } from "@/lib/thumbs";
+
 const TZ = "Asia/Tashkent";
 
 export function localDayKey(date: Date) {
@@ -22,9 +24,17 @@ export function clockLabel(date: Date) {
   return new Intl.DateTimeFormat("uz-UZ", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-export function lessonCover(coverUrl: string | null | undefined, playbackId: string | null | undefined) {
+/** Banner yoki Mux thumbnail; demo playback uchun SVG placeholder. */
+export function lessonCover(
+  coverUrl: string | null | undefined,
+  playbackId: string | null | undefined,
+  meta?: { id: string; title: string },
+) {
   if (coverUrl) return coverUrl;
-  if (playbackId) return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&height=360&fit_mode=smartcrop`;
+  if (meta) return generatedCover(meta.id, meta.title, playbackId);
+  if (playbackId && !playbackId.startsWith("demo_")) {
+    return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&height=360&fit_mode=smartcrop`;
+  }
   return null;
 }
 
