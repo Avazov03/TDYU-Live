@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlanCard } from "@/components/cabinet/PlanCard";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { SoftDisclosure } from "@/components/admin/SoftDisclosure";
 import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
 import { LessonActions } from "@/components/teacher/LessonActions";
@@ -63,6 +64,10 @@ export default async function TeacherRejaPage() {
                 lessonId={lesson.id}
                 status={lesson.status}
                 streamKey={lesson.streamKey}
+                titleUz={lesson.titleUz}
+                summaryUz={lesson.summaryUz}
+                coverUrl={lesson.coverUrl}
+                scheduledAt={lesson.scheduledAt.toISOString()}
               />
             }
           />
@@ -73,15 +78,27 @@ export default async function TeacherRejaPage() {
 
   return (
     <AppShell active="teacher-reja">
+      <div className="lx-board" style={{ marginBottom: 12 }}>
+        <p className="lx-kicker">Reja</p>
+        <h2>Dars rejangiz</h2>
+        <p className="muted small lx-lead">
+          Mavzu qo‘shing, tahrirlang yoki o‘chiring. O‘quvchi ham shu jadvalni ko‘radi.
+        </p>
+      </div>
       <SoftDisclosure title="Mavzu qo‘shish" defaultOpen={data.length === 0}>
         <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
       </SoftDisclosure>
       {data.length === 0 ? (
-        <div className="empty">Rejada dars yo&apos;q. Yuqoridan mavzu, vaqt va qisqa matn qo&apos;shing.</div>
+        <EmptyGuide
+          title="Hali reja yo‘q"
+          text="Yuqoridan mavzu, vaqt va qisqa matn qo‘shing."
+          href="/teacher"
+          cta="Studio"
+        />
       ) : (
         <Timeline
           title="Dars reja"
-          description="Vaqt, kurs va qisqa mazmun. O'quvchi ham shuni ko'radi."
+          description="Vaqt, kurs va qisqa mazmun. Tahrirlash tugmasi har darsda."
           data={data}
         />
       )}
