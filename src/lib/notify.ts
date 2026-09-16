@@ -1,5 +1,6 @@
 import type { NotificationType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
 
 type NotifyInput = {
   userId: string;
@@ -18,20 +19,6 @@ async function sendTelegram(chatId: string, text: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text }),
-  }).catch(() => undefined);
-}
-
-async function sendEmail(to: string, subject: string, text: string) {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || "Lexify <noreply@localhost>";
-  if (!key) return;
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from, to: [to], subject, text }),
   }).catch(() => undefined);
 }
 

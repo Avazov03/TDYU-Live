@@ -97,11 +97,25 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
           placeholder="Create a password"
           required
           autoComplete="current-password"
+          labelAction={
+            <Link
+              href="/forgot-password"
+              className="shrink-0 text-xs font-medium text-neutral-400 transition-colors hover:text-orange-500 hover:underline"
+            >
+              Parolni unutdingizmi?
+            </Link>
+          }
         />
 
         {displayError && (
           <div className="text-sm text-red-500" role="alert">
             {displayError}
+          </div>
+        )}
+
+        {searchParams.get("reset") === "1" && !displayError && (
+          <div className="text-sm text-emerald-500" role="status">
+            Parol yangilandi. Endi yangi parol bilan kiring.
           </div>
         )}
 

@@ -234,6 +234,7 @@ export function AuthField({
   required,
   autoComplete,
   minLength,
+  labelAction,
 }: {
   id: string;
   label: string;
@@ -244,12 +245,16 @@ export function AuthField({
   required?: boolean;
   autoComplete?: string;
   minLength?: number;
+  labelAction?: ReactNode;
 }) {
   return (
     <div className="h-full w-full rounded-2xl">
-      <label data-slot="label" htmlFor={id} className={LABEL_CLASS}>
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-3">
+        <label data-slot="label" htmlFor={id} className={LABEL_CLASS}>
+          {label}
+        </label>
+        {labelAction}
+      </div>
       <input
         data-slot="input"
         id={id}
