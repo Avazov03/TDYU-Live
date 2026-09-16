@@ -7,6 +7,7 @@ import { PLATFORM_PRICES, addDays } from "@/lib/tariffs";
 const schema = z.object({
   courseId: z.string().trim().min(1).optional(),
   tier: z.enum(["t1", "t2", "t3"]),
+  provider: z.enum(["demo", "payme", "click"]).default("demo"),
 });
 
 export async function POST(req: Request) {
@@ -42,14 +43,14 @@ export async function POST(req: Request) {
     const userId = session.user.id;
     const tier = parsed.data.tier;
 
-    await prisma.payment.create({
+    const payment = await prisma.payment.create({
       data: {
         userId,
         courseId,
         tier,
         amount,
         status: "demo_paid",
-        provider: "demo",
+        provider: parsed.data.provider,
       },
     });
 
@@ -67,7 +68,17 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, next: courseId ? "app" : "onboard" });
+    return NextResponse.json({
+      ok: true,
+      next: courseId ? "app" : "onboard",
+      payment: {
+        id: payment.id,
+        amount: payment.amount,
+        tier: payment.tier,
+        provider: payment.provider,
+        endsAt: endsAt.toISOString(),
+      },
+    });
   } catch (error) {
     console.error("demo_payment_failed", error);
     return NextResponse.json({ error: "To'lov saqlanmadi. Qayta urinib ko'ring." }, { status: 500 });

@@ -143,7 +143,7 @@ export default async function LandingPage() {
           ) : (
             <PricingWithHeaderAndIcons
               title="O'zingizga mos tarifni tanlang"
-              subtitle="Demo to'lov 30 kun. Keyin yo'nalish va o'qituvchini tanlaysiz."
+              subtitle="30 kunlik obuna. To‘lov sahifasida usulni tanlab, chek olasiz."
               plans={
                 prices.map(({ tier, price }): PricingPlan => {
                   const featured = tier === "t2";
@@ -161,11 +161,11 @@ export default async function LandingPage() {
                         label={
                           featured
                             ? session?.user
-                              ? "Boshlash"
-                              : "Kirib boshlash"
+                              ? "Tanlash"
+                              : "Kirib tanlash"
                             : session?.user
-                              ? "Demo to'lash"
-                              : "Kirib to'lash"
+                              ? "Tanlash"
+                              : "Kirib tanlash"
                         }
                         className={
                           featured
