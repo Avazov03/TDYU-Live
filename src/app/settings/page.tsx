@@ -17,17 +17,20 @@ export default async function SettingsPage() {
   if (!user) redirect("/login");
 
   return (
-    <AppShellNarrow active="catalog">
-      <h2 style={{ marginBottom: 16 }}>Sozlamalar</h2>
-      <SettingsForm
-        initial={{
-          fullName: user.fullName,
-          email: user.email,
-          language: user.language,
-          theme: user.theme,
-          role: user.role,
-        }}
-      />
+    <AppShellNarrow>
+      <div className="lx-board">
+        <p className="lx-kicker">Kabinet</p>
+        <h2 style={{ marginBottom: 16 }}>Sozlamalar</h2>
+        <SettingsForm
+          initial={{
+            fullName: user.fullName,
+            email: user.email,
+            language: user.language,
+            theme: user.theme,
+            role: user.role,
+          }}
+        />
+      </div>
     </AppShellNarrow>
   );
 }

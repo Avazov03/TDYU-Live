@@ -10,7 +10,7 @@ type AppShellProps = {
   mainClassName?: string;
 };
 
-export async function AppShell({ children, active = "home", mainClassName }: AppShellProps) {
+export async function AppShell({ children, active, mainClassName }: AppShellProps) {
   const session = await auth();
   const shell = await getShellData(session?.user?.id);
   const sub = session?.user?.id ? await getAnyActiveSubscription(session.user.id) : null;
@@ -40,7 +40,7 @@ export async function AppShell({ children, active = "home", mainClassName }: App
   );
 }
 
-export async function AppShellNarrow({ children, active = "catalog" }: AppShellProps) {
+export async function AppShellNarrow({ children, active }: AppShellProps) {
   return (
     <AppShell active={active} mainClassName="narrow">
       {children}

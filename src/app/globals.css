@@ -1380,6 +1380,18 @@ tr:last-child td { border-bottom: none; }
 }
 .lx-board h2 { font-size: 22px; margin: 0 0 6px; }
 .lx-lead { margin: 0 0 18px; max-width: 640px; }
+.lx-empty {
+  margin-top: 18px;
+  padding: 28px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  max-width: 420px;
+}
+.lx-empty h3 { margin: 0 0 8px; font-size: 16px; }
+.lx-empty p { margin: 0 0 14px; }
+.lx-empty .btn { display: inline-flex; }
 .lx-section { margin-top: 28px; }
 .lx-section h3 { font-size: 15px; margin: 0 0 10px; }
 .lx-kicker {

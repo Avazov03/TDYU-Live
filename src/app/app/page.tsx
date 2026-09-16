@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { requireStudentCabinet, getActiveSubscriptions } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { canWatchLive } from "@/lib/tariffs";
@@ -58,7 +59,12 @@ export default async function StudentAppPage() {
         </p>
 
         {live.length === 0 && upcoming.length === 0 && due.length === 0 && !lastSeen ? (
-          <div className="empty">Hali reja yo&apos;q. Kurslarimdan o&apos;qituvchingizni oching.</div>
+          <EmptyGuide
+            title="Hali reja yo‘q"
+            text="O‘qituvchingizni Kurslarimdan oching — keyin shu yerda bugungi ishlar chiqadi."
+            href="/my-courses"
+            cta="Kurslarim"
+          />
         ) : null}
 
         {live.length > 0 ? (

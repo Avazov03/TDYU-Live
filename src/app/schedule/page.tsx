@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { PlanCard } from "@/components/cabinet/PlanCard";
 import { Timeline } from "@/components/ui/aceternity-timeline";
 import { getActiveSubscriptions, requireStudentCabinet } from "@/lib/access";
@@ -57,7 +58,15 @@ export default async function SchedulePage() {
         <div className="lx-board">
           <p className="lx-kicker">Dars reja</p>
           <h2>Hali reja yo&apos;q</h2>
-          <p className="muted small">O&apos;qituvchi mavzu qo&apos;shgach shu yerda vaqt, kurs va qisqa matn chiqadi.</p>
+          <p className="muted small lx-lead">
+            O&apos;qituvchi mavzu qo&apos;shgach shu yerda vaqt, kurs va qisqa matn chiqadi.
+          </p>
+          <EmptyGuide
+            title="Kurslaringizni tekshiring"
+            text="To‘g‘ri o‘qituvchi va kurs tanlanganini ko‘ring."
+            href="/my-courses"
+            cta="Kurslarim"
+          />
         </div>
       ) : (
         <Timeline

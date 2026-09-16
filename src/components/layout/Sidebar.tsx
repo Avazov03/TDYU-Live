@@ -80,8 +80,8 @@ function nav(
 }
 
 function linksFor(props: SidebarProps): Array<SidebarLinks & { title?: string; locked?: boolean; key: string }> {
-  const { active = "home", userRole, tariffTier } = props;
-  const isHome = active === "home" || active === "catalog";
+  const { active, userRole, tariffTier } = props;
+  const isHome = active === "home";
   const isSubs = active === "playlists" || active === "my-courses";
   const shortsLocked = tariffTier === "t1";
 
@@ -104,14 +104,15 @@ function linksFor(props: SidebarProps): Array<SidebarLinks & { title?: string; l
 
   return [
     { ...nav("Bugun", "/app", LayoutDashboard), key: "app", current: isHome },
-    {
-      ...nav("Shorts", "/shorts", Clapperboard, {
-        locked: shortsLocked,
-        title: shortsLocked ? "Jonli efir 2 va 3-tarifda" : undefined,
-      }),
-      key: "shorts",
-      current: active === "shorts",
-    },
+    ...(shortsLocked
+      ? []
+      : [
+          {
+            ...nav("Shorts", "/shorts", Clapperboard),
+            key: "shorts",
+            current: active === "shorts",
+          },
+        ]),
     { ...nav("Kurslarim", "/my-courses", Library), key: "subs", current: isSubs },
     { ...nav("Ko'rilganlar", "/history", History), key: "history", current: active === "history" },
     { ...nav("Dars reja", "/schedule", Calendar), key: "schedule", current: active === "schedule" },

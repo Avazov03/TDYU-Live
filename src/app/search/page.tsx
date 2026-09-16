@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { CourseCard } from "@/components/course/CourseCard";
-import { requireAppUser } from "@/lib/access";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
+import { getActiveSubscriptions, requireAppUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
+import { formatSom } from "@/lib/tariffs";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -38,37 +40,52 @@ export default async function SearchPage({
       : [];
 
   return (
-    <AppShell active="catalog">
-      <h2 style={{ marginBottom: 8 }}>Qidiruv</h2>
-      {!query ? (
-        <p className="muted">Kurs, fan yoki o&apos;qituvchi nomini yozing.</p>
-      ) : courses.length === 0 ? (
-        <div className="empty">&quot;{query}&quot; bo&apos;yicha hech narsa topilmadi.</div>
-      ) : (
-        <>
-          <p className="muted small" style={{ marginBottom: 16 }}>
-            {courses.length} ta natija
-          </p>
-          <div className="search-list">
-            {courses.map((c) => (
-              <CourseCard
-                key={c.id}
-                variant="search"
-                course={{
-                  id: c.id,
-                  titleUz: c.titleUz,
-                  descriptionUz: c.descriptionUz,
-                  priceT1: c.priceT1,
-                  teacherName: c.teacher.fullName,
-                  facultyName: c.faculty.nameUz,
-                  subjectName: c.subject.nameUz,
-                  lessonCount: c._count.lessons,
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
+    <AppShell>
+      <div className="lx-board">
+        <p className="lx-kicker">Qidiruv</p>
+        <h2>{query ? `"${query}" natijalari` : "Kurs yoki o‘qituvchi"}</h2>
+        <p className="muted small lx-lead">
+          Yuqoridagi qidiruvdan kurs, fan yoki o‘qituvchi nomini yozing.
+        </p>
+
+        {!query ? (
+          <EmptyGuide
+            title="Qidiruvni boshlang"
+            text="Kamida 2 ta belgi yozing. Yoki o‘z kurslaringizga qayting."
+            href="/my-courses"
+            cta="Kurslarim"
+          />
+        ) : courses.length === 0 ? (
+          <EmptyGuide
+            title="Hech narsa topilmadi"
+            text={`"${query}" bo‘yicha nashr qilingan kurs yo‘q.`}
+            href="/my-courses"
+            cta="Kurslarim"
+          />
+        ) : (
+          <>
+            <p className="muted small" style={{ marginTop: -8 }}>
+              {courses.length} ta kurs
+            </p>
+            <div className="lx-stack">
+              {courses.map((c) => (
+                <Link key={c.id} href={`/courses/${c.id}`} className="lx-row">
+                  <div>
+                    <p className="lx-kicker">
+                      {c.teacher.fullName} · {c.subject.nameUz}
+                    </p>
+                    <h3>{c.titleUz}</h3>
+                    <p className="small muted" style={{ margin: 0 }}>
+                      {c.faculty.nameUz} · {c._count.lessons} dars · {formatSom(c.priceT1)} dan
+                    </p>
+                  </div>
+                  <span className="lx-go">Ochish</span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

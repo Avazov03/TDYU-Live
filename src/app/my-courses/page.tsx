@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { TARIFF_LABELS, isSubscriptionActive } from "@/lib/tariffs";
@@ -40,7 +41,14 @@ export default async function MyCoursesPage() {
         <p className="muted small lx-lead">
           Har bir o&apos;qituvchining kurslari alohida.
         </p>
-        {subs.length === 0 ? <div className="empty">Hali kurs yo&apos;q.</div> : null}
+        {subs.length === 0 ? (
+          <EmptyGuide
+            title="Hali kurs yo‘q"
+            text="Tarif to‘lab, onboardingda o‘qituvchi va kursni tanlang."
+            href="/#tariflar"
+            cta="Tarif tanlash"
+          />
+        ) : null}
         {[...groups.entries()].map(([id, group]) => (
           <section key={id} className="lx-group">
             <h3>{group.name}</h3>

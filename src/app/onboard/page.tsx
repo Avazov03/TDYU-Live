@@ -6,6 +6,7 @@ import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
 import { TARIFF_LABELS, isSubscriptionActive } from "@/lib/tariffs";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
 import { TeacherPicker } from "@/components/student/TeacherPicker";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,12 @@ export default async function OnboardPage() {
           Fakultetni tanlang, keyin o&apos;qituvchini. Siz shu o&apos;qituvchining dars rejasiga va jonli efiriga yozilasiz.
         </p>
         {cards.length === 0 ? (
-          <div className="empty">Hozircha kabineti ochilgan o&apos;qituvchi yo&apos;q. Admin taklif yuborsin.</div>
+          <EmptyGuide
+            title="O‘qituvchi hali yo‘q"
+            text="Admin o‘qituvchini taklif qilgach shu yerda chiqadi."
+            href="/#tariflar"
+            cta="Bosh sahifa"
+          />
         ) : (
           <TeacherPicker
             faculties={faculties.map((f) => ({ id: f.id, nameUz: f.nameUz }))}

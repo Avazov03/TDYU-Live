@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
@@ -29,7 +30,14 @@ export default async function CertificatesPage() {
         <p className="lx-kicker">Sertifikatlar</p>
         <h2>Qaysi o&apos;qituvchi, qaysi kurs</h2>
         <p className="muted small lx-lead">Chop etish yoki saqlash uchun oching.</p>
-        {items.length === 0 ? <div className="empty">Hali sertifikat yo&apos;q.</div> : null}
+        {items.length === 0 ? (
+          <EmptyGuide
+            title="Hali sertifikat yo‘q"
+            text="Kursni tugatib, o‘qituvchi bersa shu yerda chiqadi. Hozir darslarga qayting."
+            href="/app"
+            cta="Bugunga"
+          />
+        ) : null}
         {[...groups.entries()].map(([id, group]) => (
           <section key={id} className="lx-group">
             <h3>{group.name}</h3>

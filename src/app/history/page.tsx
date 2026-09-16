@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { requireAppUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
@@ -37,7 +38,14 @@ export default async function HistoryPage() {
         <p className="lx-kicker">Ko&apos;rilganlar</p>
         <h2>Ochgan darslaringiz</h2>
         <p className="muted small lx-lead">Siz kirgan mavzular, kun bo&apos;yicha.</p>
-        {items.length === 0 ? <div className="empty">Hali dars ochilmagan.</div> : null}
+        {items.length === 0 ? (
+          <EmptyGuide
+            title="Hali dars ochilmagan"
+            text="Darsga kirganingizdan keyin shu yerda tarix saqlanadi."
+            href="/schedule"
+            cta="Dars rejaga"
+          />
+        ) : null}
         {[...byDay.entries()].map(([key, rows]) => (
           <section key={key} className="lx-group">
             <h3>{dayTitle(rows[0]?.joinedAt ?? new Date(key))}</h3>

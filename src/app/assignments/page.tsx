@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { SubmitForm } from "@/components/assignment/SubmitForm";
 import { getActiveSubscriptions, requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +46,14 @@ export default async function AssignmentsPage() {
         {priority ? (
           <p className="small muted" style={{ marginTop: -8 }}>3-tarifdagi ishingiz o&apos;qituvchida birinchi navbatda.</p>
         ) : null}
-        {items.length === 0 ? <div className="empty">Faol kurslaringizda topshiriq yo&apos;q.</div> : null}
+        {items.length === 0 ? (
+          <EmptyGuide
+            title="Topshiriq yo‘q"
+            text="Faol kurslaringizda hozircha vazifa qo‘yilmagan."
+            href="/my-courses"
+            cta="Kurslarim"
+          />
+        ) : null}
         {[...byTeacher.entries()].map(([id, teacher]) => (
           <section key={id} className="lx-group">
             <h3>{teacher.name}</h3>
