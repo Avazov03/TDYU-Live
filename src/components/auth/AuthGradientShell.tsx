@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { WebGLGradientCanvas } from "@/components/ui/webgl-gradient-canvas";
 
 /** Aceternity mark from Login Form With Gradient live preview. */
@@ -247,6 +250,10 @@ export function AuthField({
   minLength?: number;
   labelAction?: ReactNode;
 }) {
+  const isPassword = type === "password";
+  const [visible, setVisible] = useState(false);
+  const inputType = isPassword ? (visible ? "text" : "password") : type;
+
   return (
     <div className="h-full w-full rounded-2xl">
       <div className="flex items-center justify-between gap-3">
@@ -255,18 +262,35 @@ export function AuthField({
         </label>
         {labelAction}
       </div>
-      <input
-        data-slot="input"
-        id={id}
-        className={INPUT_CLASS}
-        placeholder={placeholder}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        autoComplete={autoComplete}
-        minLength={minLength}
-      />
+      <div className="relative mt-4">
+        <input
+          data-slot="input"
+          id={id}
+          className={`${INPUT_CLASS} !mt-0${isPassword ? " pr-11" : ""}`}
+          placeholder={placeholder}
+          type={inputType}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          autoComplete={autoComplete}
+          minLength={minLength}
+        />
+        {isPassword ? (
+          <button
+            type="button"
+            className="absolute top-1/2 right-2.5 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border-none bg-transparent text-neutral-400 transition-colors hover:text-white"
+            onClick={() => setVisible((v) => !v)}
+            aria-label={visible ? "Parolni berkitish" : "Parolni ko'rsatish"}
+            tabIndex={-1}
+          >
+            {visible ? (
+              <EyeOff className="h-4 w-4" aria-hidden />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden />
+            )}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
