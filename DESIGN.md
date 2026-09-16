@@ -14,6 +14,8 @@ Mahalliy: `http://localhost:3000` · Production: `https://lexify.zonic.fit`
 | Qisqa | **Lx** | Logo mark |
 | Tagline | Jonli dars va kurslar | Metadata / footer |
 | Yo‘nalish | Dark, cinematic, toza | AWSA uslubidagi katta nom + markaziy stack |
+| Display | **Syne** | Kabinet/landing sarlavhalar |
+| Sans | **Plus Jakarta Sans** | Matn, UI |
 
 ### Hozirgi CSS tokenlar (`globals.css`)
 
