@@ -6,9 +6,12 @@ export type CourseHealth = "empty" | "idle" | "on_track" | "live" | "stale";
 export type AdminCourseInsight = {
   id: string;
   titleUz: string;
+  descriptionUz: string;
   teacherId: string;
   teacherName: string;
+  facultyId: string;
   facultyName: string;
+  subjectId: string;
   subjectName: string;
   priceT1: number;
   priceT2: number;
@@ -136,9 +139,12 @@ export async function getAdminCourseBoard() {
     return {
       id: course.id,
       titleUz: course.titleUz,
+      descriptionUz: course.descriptionUz,
       teacherId: course.teacher.id,
       teacherName: course.teacher.fullName,
+      facultyId: course.facultyId,
       facultyName: course.faculty.nameUz,
+      subjectId: course.subjectId,
       subjectName: course.subject.nameUz,
       priceT1: course.priceT1,
       priceT2: course.priceT2,

@@ -10,6 +10,7 @@ type UserRole = "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
 
 export type AdminUserCourse = {
+  subscriptionId: string;
   title: string;
   lessons: number;
   students: number;
@@ -28,6 +29,7 @@ export type AdminUserRow = {
   createdAt: string;
   lastLoginAt: string | null;
   hasSubscription: boolean;
+  hasEntitlement: boolean;
   tariff: string | null;
   tariffUntil: string | null;
   courseCount: number;
@@ -170,6 +172,40 @@ export function AdminUsersManager({
     setBusyId("");
     if (!res.ok) {
       setError(data.error || "Holat o'zgarmadi");
+      return;
+    }
+    router.refresh();
+  };
+
+  const subAction = async (subscriptionId: string, action: "extend" | "cancel") => {
+    setBusyId(subscriptionId);
+    setError("");
+    const res = await fetch(`/api/admin/subscriptions/${subscriptionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, days: 30 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || "Obuna o'zgarmadi");
+      return;
+    }
+    router.refresh();
+  };
+
+  const entitlementAction = async (userId: string, action: "extend" | "cancel") => {
+    setBusyId(`ent-${userId}`);
+    setError("");
+    const res = await fetch(`/api/admin/entitlements/${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, days: 30 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || "Tarif o'zgarmadi");
       return;
     }
     router.refresh();
@@ -366,13 +402,44 @@ export function AdminUsersManager({
                               <div>{user.paymentCount}</div>
                             </div>
                           </div>
+                          {user.hasEntitlement ? (
+                            <div style={{ marginBottom: 14 }}>
+                              <div className="small muted" style={{ marginBottom: 6 }}>Platforma tarifi</div>
+                              <div className="lx-row" style={{ padding: 10 }}>
+                                <div style={{ flex: 1 }}>
+                                  <h3 style={{ fontSize: 14 }}>{user.tariff ?? "Tarif"}</h3>
+                                  <p className="small muted" style={{ margin: 0 }}>
+                                    {user.tariffUntil ? `gacha ${formatWhen(user.tariffUntil)}` : "Muddat yo'q"}
+                                  </p>
+                                </div>
+                                <div className="staff-detail-actions" style={{ margin: 0 }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm"
+                                    disabled={busyId === `ent-${user.id}`}
+                                    onClick={() => void entitlementAction(user.id, "extend")}
+                                  >
+                                    +30 kun
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    disabled={busyId === `ent-${user.id}`}
+                                    onClick={() => void entitlementAction(user.id, "cancel")}
+                                  >
+                                    Bekor
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
                           {user.courses.length > 0 ? (
                             <div style={{ marginBottom: 14 }}>
-                              <div className="small muted" style={{ marginBottom: 6 }}>Obunalari</div>
+                              <div className="small muted" style={{ marginBottom: 6 }}>Kurs obunalari</div>
                               <div className="lx-stack">
-                                {user.courses.map((course, index) => (
-                                  <div key={`${course.title}-${index}`} className="lx-row" style={{ padding: 10 }}>
-                                    <div>
+                                {user.courses.map((course) => (
+                                  <div key={course.subscriptionId} className="lx-row" style={{ padding: 10 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                       <p className="lx-kicker" style={{ marginBottom: 2 }}>
                                         {course.teacher ?? "O'qituvchi"} · {course.tier}
                                         {course.active ? "" : " · tugagan"}
@@ -384,12 +451,30 @@ export function AdminUsersManager({
                                         </p>
                                       ) : null}
                                     </div>
+                                    <div className="staff-detail-actions" style={{ margin: 0, flexShrink: 0 }}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm"
+                                        disabled={busyId === course.subscriptionId}
+                                        onClick={() => void subAction(course.subscriptionId, "extend")}
+                                      >
+                                        +30 kun
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-danger"
+                                        disabled={busyId === course.subscriptionId}
+                                        onClick={() => void subAction(course.subscriptionId, "cancel")}
+                                      >
+                                        Bekor
+                                      </button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <p className="small muted" style={{ marginBottom: 14 }}>Obuna yo&apos;q.</p>
+                            <p className="small muted" style={{ marginBottom: 14 }}>Kurs obunasi yo&apos;q.</p>
                           )}
                           <div className="staff-detail-actions">
                             <button

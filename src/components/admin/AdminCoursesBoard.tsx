@@ -66,6 +66,18 @@ export function AdminCoursesBoard({
   const [health, setHealth] = useState<HealthFilter>("all");
   const [teacherId, setTeacherId] = useState("all");
   const [openCourse, setOpenCourse] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    titleUz: "",
+    descriptionUz: "",
+    teacherId: "",
+    facultyId: "",
+    subjectId: "",
+    priceT1: "",
+    priceT2: "",
+    priceT3: "",
+  });
+  const [busyId, setBusyId] = useState("");
   const [form, setForm] = useState({
     titleUz: "",
     descriptionUz: "",
@@ -79,6 +91,66 @@ export function AdminCoursesBoard({
   const [error, setError] = useState("");
 
   const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const setEdit = (key: string, value: string) => setEditForm((f) => ({ ...f, [key]: value }));
+
+  const startEdit = (course: AdminCourseInsight) => {
+    setEditId(course.id);
+    setEditForm({
+      titleUz: course.titleUz,
+      descriptionUz: course.descriptionUz,
+      teacherId: course.teacherId,
+      facultyId: course.facultyId,
+      subjectId: course.subjectId,
+      priceT1: String(course.priceT1),
+      priceT2: String(course.priceT2),
+      priceT3: String(course.priceT3),
+    });
+    setError("");
+  };
+
+  const saveEdit = async (courseId: string) => {
+    setBusyId(courseId);
+    setError("");
+    const res = await fetch(`/api/admin/courses/${courseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        titleUz: editForm.titleUz,
+        descriptionUz: editForm.descriptionUz,
+        teacherId: editForm.teacherId,
+        facultyId: editForm.facultyId,
+        subjectId: editForm.subjectId,
+        priceT1: Number(editForm.priceT1),
+        priceT2: Number(editForm.priceT2),
+        priceT3: Number(editForm.priceT3),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || "Saqlanmadi");
+      return;
+    }
+    setEditId(null);
+    router.refresh();
+  };
+
+  const togglePublish = async (course: AdminCourseInsight) => {
+    setBusyId(course.id);
+    setError("");
+    const res = await fetch(`/api/admin/courses/${course.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublished: !course.isPublished }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || "Holat o'zgarmadi");
+      return;
+    }
+    router.refresh();
+  };
 
   const visibleGroups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -289,7 +361,12 @@ export function AdminCoursesBoard({
                       aria-expanded={open}
                     >
                       <div className="admin-course-title">
-                        <h4>{course.titleUz}</h4>
+                        <h4>
+                          {course.titleUz}{" "}
+                          {!course.isPublished ? (
+                            <span className="badge pending" style={{ marginLeft: 6 }}>Yashirin</span>
+                          ) : null}
+                        </h4>
                         <p className="small muted" style={{ margin: 0 }}>
                           {course.subjectName} · {course.lessonCount} dars · {course.activeStudents} faol / {course.totalSubs} obuna
                         </p>
@@ -345,20 +422,115 @@ export function AdminCoursesBoard({
                           </div>
                           <div>
                             <div className="small muted">Holat</div>
-                            <div>{course.isPublished ? "Nashrda" : "Yashirin"}</div>
+                            <div>
+                              <span className={`badge ${course.isPublished ? "success" : "pending"}`}>
+                                {course.isPublished ? "Nashrda" : "Yashirin"}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <p className="small muted" style={{ margin: 0 }}>
-                          {course.health === "empty"
-                            ? "O'qituvchi hali dars rejasiga mavzu qo'ymagan."
-                            : course.health === "on_track"
-                              ? "Reja bor — o'quvchi jadvalda ko'radi."
-                              : course.health === "live"
-                                ? "Hozir efir ketmoqda."
-                                : course.health === "stale"
-                                  ? "14+ kun yangi reja yo'q."
-                                  : "Darslar bor, lekin yaqin reja yo'q."}
-                        </p>
+
+                        {editId === course.id ? (
+                          <form
+                            className="soft-form"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              void saveEdit(course.id);
+                            }}
+                          >
+                            <div className="field">
+                              <label>Nomi</label>
+                              <input value={editForm.titleUz} onChange={(e) => setEdit("titleUz", e.target.value)} required />
+                            </div>
+                            <div className="field">
+                              <label>Tavsif</label>
+                              <textarea value={editForm.descriptionUz} onChange={(e) => setEdit("descriptionUz", e.target.value)} required />
+                            </div>
+                            <div className="field">
+                              <label>O&apos;qituvchi</label>
+                              <select value={editForm.teacherId} onChange={(e) => setEdit("teacherId", e.target.value)}>
+                                {teachers.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.fullName}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="field">
+                              <label>Fakultet</label>
+                              <select value={editForm.facultyId} onChange={(e) => setEdit("facultyId", e.target.value)}>
+                                {faculties.map((f) => (
+                                  <option key={f.id} value={f.id}>{f.nameUz}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="field">
+                              <label>Fan</label>
+                              <select value={editForm.subjectId} onChange={(e) => setEdit("subjectId", e.target.value)}>
+                                {subjects
+                                  .filter((s) => s.facultyId === editForm.facultyId)
+                                  .map((s) => (
+                                    <option key={s.id} value={s.id}>{s.nameUz}</option>
+                                  ))}
+                              </select>
+                            </div>
+                            <div className="row gap-12">
+                              <div className="field" style={{ flex: 1 }}>
+                                <label>1-tarif</label>
+                                <input value={editForm.priceT1} onChange={(e) => setEdit("priceT1", e.target.value)} />
+                              </div>
+                              <div className="field" style={{ flex: 1 }}>
+                                <label>2-tarif</label>
+                                <input value={editForm.priceT2} onChange={(e) => setEdit("priceT2", e.target.value)} />
+                              </div>
+                              <div className="field" style={{ flex: 1 }}>
+                                <label>3-tarif</label>
+                                <input value={editForm.priceT3} onChange={(e) => setEdit("priceT3", e.target.value)} />
+                              </div>
+                            </div>
+                            {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
+                            <div className="staff-detail-actions">
+                              <button className="btn btn-sm btn-primary" type="submit" disabled={busyId === course.id}>
+                                Saqlash
+                              </button>
+                              <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
+                                Bekor
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <p className="small muted" style={{ margin: "0 0 12px" }}>
+                              {course.health === "empty"
+                                ? "O'qituvchi hali dars rejasiga mavzu qo'ymagan."
+                                : course.health === "on_track"
+                                  ? "Reja bor — o'quvchi jadvalda ko'radi."
+                                  : course.health === "live"
+                                    ? "Hozir efir ketmoqda."
+                                    : course.health === "stale"
+                                      ? "14+ kun yangi reja yo'q."
+                                      : "Darslar bor, lekin yaqin reja yo'q."}
+                            </p>
+                            <div className="staff-detail-actions">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                onClick={() => startEdit(course)}
+                              >
+                                Tahrirlash
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                disabled={busyId === course.id}
+                                onClick={() => void togglePublish(course)}
+                              >
+                                {course.isPublished ? "Yashirish" : "Nashr qilish"}
+                              </button>
+                            </div>
+                            {error && openCourse === course.id ? (
+                              <p className="small" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     </SoftExpand>
                   </article>

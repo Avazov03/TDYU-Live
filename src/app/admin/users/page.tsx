@@ -55,6 +55,7 @@ export default async function AdminStudentsPage() {
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       hasSubscription: Boolean(tariffSource),
+      hasEntitlement: Boolean(activeEntitlement),
       tariff: tariffSource ? tariffLabel(tariffSource.tier) : null,
       tariffUntil: tariffSource ? tariffSource.endsAt.toISOString() : null,
       courseCount: activeSubs.length || user.subscriptions.length,
@@ -66,6 +67,7 @@ export default async function AdminStudentsPage() {
       facultyName: null,
       subjectName: null,
       courses: user.subscriptions.map((sub) => ({
+        subscriptionId: sub.id,
         title: sub.course.titleUz,
         lessons: 0,
         students: 0,

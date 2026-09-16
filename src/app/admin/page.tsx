@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminBarChart, AdminDonut, AdminHBar } from "@/components/admin/AdminCharts";
+import { AdminCapabilities } from "@/components/admin/AdminCapabilities";
 import { getAdminDashboard } from "@/lib/admin-stats";
 import { formatSom } from "@/lib/tariffs";
 import { formatDateTime, fmt } from "@/lib/utils";
@@ -18,9 +19,17 @@ export default async function AdminDashboardPage() {
         <p className="lx-kicker">Boshqaruv</p>
         <h2>Bugun platformada</h2>
         <p className="muted small lx-lead">
-          O&apos;quvchi, o&apos;qituvchi va to&apos;lovlar ajratilgan. Raqamlar baza bilan bir xil.
+          Avval imkoniyatlaringizni ko‘ring, keyin raqam va diqqat bloklariga o‘ting.
         </p>
       </div>
+
+      <AdminCapabilities
+        students={kpis.students}
+        teachers={kpis.teachers}
+        courses={kpis.courses}
+        activeSubs={kpis.activeSubs}
+        pendingInvites={kpis.teachersPending}
+      />
 
       <div className="kpi-grid">
         <Link href="/admin/users" className="stat-card stat-link">
