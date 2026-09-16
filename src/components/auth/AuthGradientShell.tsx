@@ -151,6 +151,10 @@ const LABEL_CLASS =
 const SOCIAL_BTN_CLASS =
   "cursor-pointer rounded-xl border-none px-6 text-center text-sm font-medium transition duration-150 active:scale-[0.98] sm:text-base bg-neutral-800 text-white flex w-full justify-center py-4";
 
+/** Lexify brand accent primary — hover + spacing above fields */
+const AUTH_PRIMARY_BTN_CLASS =
+  "mt-4 block w-full cursor-pointer rounded-xl border-none bg-[var(--accent)] px-6 py-2.5 text-center text-sm font-medium text-white transition duration-150 hover:bg-[var(--accent-700)] active:scale-[0.98] sm:text-base disabled:opacity-60 disabled:hover:bg-[var(--accent)]";
+
 type AuthGradientShellProps = {
   children: ReactNode;
   panelTags?: [string, string];
@@ -262,4 +266,4 @@ export function AuthField({
   );
 }
 
-export { INPUT_CLASS, LABEL_CLASS, SOCIAL_BTN_CLASS };
+export { INPUT_CLASS, LABEL_CLASS, SOCIAL_BTN_CLASS, AUTH_PRIMARY_BTN_CLASS };

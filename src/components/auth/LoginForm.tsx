@@ -7,10 +7,9 @@ import { signIn } from "next-auth/react";
 import { BRAND } from "@/lib/brand";
 import {
   AceternityAuthLogo,
-  AppleSocialIcon,
   AuthField,
   AuthGradientShell,
-  FacebookSocialIcon,
+  AUTH_PRIMARY_BTN_CLASS,
   GoogleSocialIcon,
   SOCIAL_BTN_CLASS,
 } from "./AuthGradientShell";
@@ -109,48 +108,32 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
         <button
           type="submit"
           disabled={loading || googleLoading}
-          className="block cursor-pointer rounded-xl border-none bg-neutral-800 px-6 py-2 text-center text-sm font-medium text-white transition duration-150 active:scale-[0.98] sm:text-base disabled:opacity-60"
+          className={AUTH_PRIMARY_BTN_CLASS}
         >
           {loading ? "Kirilmoqda..." : "Kirish"}
         </button>
 
-        <div className="mt-2 flex items-center">
-          <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
-          <span className="px-4 text-sm text-gray-500 dark:text-neutral-400">
-            yoki
-          </span>
-          <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
-        </div>
+        {googleEnabled && (
+          <>
+            <div className="mt-2 flex items-center">
+              <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
+              <span className="px-4 text-sm text-gray-500 dark:text-neutral-400">
+                yoki
+              </span>
+              <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
+            </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <button
-            type="button"
-            className={SOCIAL_BTN_CLASS}
-            onClick={handleGoogleSignIn}
-            disabled={!googleEnabled || loading || googleLoading}
-            aria-label="Google orqali kirish"
-          >
-            <GoogleSocialIcon />
-          </button>
-          <button
-            type="button"
-            className={SOCIAL_BTN_CLASS}
-            aria-label="Facebook"
-            title="Tez orada"
-            onClick={(e) => e.preventDefault()}
-          >
-            <FacebookSocialIcon />
-          </button>
-          <button
-            type="button"
-            className={SOCIAL_BTN_CLASS}
-            aria-label="Apple"
-            title="Tez orada"
-            onClick={(e) => e.preventDefault()}
-          >
-            <AppleSocialIcon />
-          </button>
-        </div>
+            <button
+              type="button"
+              className={SOCIAL_BTN_CLASS}
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+              aria-label="Google orqali kirish"
+            >
+              <GoogleSocialIcon />
+            </button>
+          </>
+        )}
       </form>
 
       <div className="mt-6 text-center">
