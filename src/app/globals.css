@@ -111,12 +111,15 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; }
-ul { margin: 0; padding: 0; list-style: none; }
-h1,h2,h3,h4 { margin: 0; font-weight: 600; }
-img { max-width: 100%; display: block; }
-svg { display: block; }
+/* @layer base: Tailwind utilities (text-*, font-*) must win over these resets */
+@layer base {
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  h1,h2,h3,h4 { margin: 0; font-weight: 600; }
+  img { max-width: 100%; display: block; }
+  svg { display: block; }
+}
 ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 ::-webkit-scrollbar-thumb { background: transparent; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -380,7 +383,10 @@ html {
 }
 .chip.active { background: var(--text); color: var(--bg); }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+/* @layer components: so Tailwind grid-cols-* utilities override on Aceternity ports */
+@layer components {
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+}
 .vcard { cursor: pointer; }
 .thumb {
   width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: var(--surface-2); position: relative;
@@ -1198,7 +1204,9 @@ tr:last-child td { border-bottom: none; }
   .shorts-rail-btn span { display: none; }
   .shorts-rail-btn[aria-label="To'liq video"] span,
   .shorts-rail-btn[aria-label="Ulashish"] span { display: none; }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 12px; }
+  @layer components {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 12px; }
+  }
 }
 
 @media (min-width: 861px) {

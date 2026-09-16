@@ -4,21 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { AuthLayout } from "./AuthLayout";
-import { GlassField } from "./GlassField";
-import styles from "./auth.module.css";
 import { BRAND } from "@/lib/brand";
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8.1 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z" />
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c3.1 0 5.9 1.1 8.1 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.6 0-14.1 4.3-17.7 10.7z" />
-      <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.1-5l-6.5-5.5C29.5 35.4 26.9 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.5 5C9.8 39.6 16.3 44 24 44z" />
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.5C41.4 35.7 44 30.3 44 24c0-1.2-.1-2.4-.4-3.5z" />
-    </svg>
-  );
-}
+import {
+  AceternityAuthLogo,
+  AppleSocialIcon,
+  AuthField,
+  AuthGradientShell,
+  FacebookSocialIcon,
+  GoogleSocialIcon,
+  SOCIAL_BTN_CLASS,
+} from "./AuthGradientShell";
 
 type RegisterFormProps = {
   googleEnabled?: boolean;
@@ -30,7 +25,6 @@ export function RegisterForm({ googleEnabled = false }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -62,9 +56,15 @@ export function RegisterForm({ googleEnabled = false }: RegisterFormProps) {
         return;
       }
 
-      const signinRes = await signIn("credentials", { email, password, redirect: false });
+      const signinRes = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
       if (signinRes?.error) {
-        setError("Hisob yaratildi, lekin avtomatik kirish amalga oshmadi. Kirish sahifasidan kiring.");
+        setError(
+          "Hisob yaratildi, lekin avtomatik kirish amalga oshmadi. Kirish sahifasidan kiring.",
+        );
         return;
       }
       router.push("/go");
@@ -77,91 +77,129 @@ export function RegisterForm({ googleEnabled = false }: RegisterFormProps) {
   }
 
   async function handleGoogleSignIn() {
+    if (!googleEnabled) return;
     setError(null);
     setGoogleLoading(true);
     await signIn("google", { callbackUrl: "/go" });
   }
 
   return (
-    <AuthLayout>
-      <h2 className={styles.title}>Ro&apos;yxatdan o&apos;tish</h2>
-      <p className={styles.subtitle}>{BRAND.name}&apos;dan foydalanish uchun hisob yarating</p>
+    <AuthGradientShell>
+      <AceternityAuthLogo />
+      <h1 className="mt-4 text-left text-3xl font-medium tracking-tight text-black md:text-4xl lg:text-4xl dark:text-white">
+        Hisob yarating
+      </h1>
+      <h2 className="mt-4 max-w-xl text-left text-sm font-medium tracking-tight text-gray-600 md:text-sm lg:text-base dark:text-gray-300">
+        {BRAND.name}&apos;dan foydalanish uchun email va parol bilan
+        ro&apos;yxatdan o&apos;ting.
+      </h2>
 
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <GlassField
+      <form className="mt-6 flex flex-col gap-8" onSubmit={handleSubmit}>
+        <AuthField
           id="register-name"
-          label="To'liq ismingiz"
+          label="To'liq ism"
           value={fullName}
           onChange={setFullName}
+          placeholder="Ismingiz"
           required
           autoComplete="name"
         />
-
-        <GlassField
+        <AuthField
           id="register-email"
-          label="Email manzilingiz"
+          label="Email"
           type="email"
           value={email}
           onChange={setEmail}
+          placeholder="youremail@yourdomain.com"
           required
           autoComplete="email"
         />
-
-        <GlassField
+        <AuthField
           id="register-password"
-          label="Parol (kamida 8 belgi)"
-          type={showPw ? "text" : "password"}
+          label="Parol"
+          type="password"
           value={password}
           onChange={setPassword}
+          placeholder="Create a password"
           required
           minLength={8}
           autoComplete="new-password"
-          showToggle
-          showPassword={showPw}
-          onTogglePassword={() => setShowPw((s) => !s)}
         />
-
-        <GlassField
+        <AuthField
           id="register-confirm"
           label="Parolni tasdiqlang"
-          type={showPw ? "text" : "password"}
+          type="password"
           value={confirm}
           onChange={setConfirm}
+          placeholder="Create a password"
           required
           autoComplete="new-password"
         />
 
-        {error && <div className={styles.errorText}>{error}</div>}
+        {error && (
+          <div className="text-sm text-red-500" role="alert">
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"
-          className={styles.submitBtn}
           disabled={loading || googleLoading}
-          style={{ marginTop: 8 }}
+          className="block cursor-pointer rounded-xl border-none bg-neutral-800 px-6 py-2 text-center text-sm font-medium text-white transition duration-150 active:scale-[0.98] sm:text-base disabled:opacity-60"
         >
           {loading ? "Yaratilmoqda..." : "Ro'yxatdan o'tish"}
         </button>
-      </form>
 
-      {googleEnabled && (
-        <>
-          <div className={styles.divider}>yoki</div>
+        <div className="mt-2 flex items-center">
+          <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
+          <span className="px-4 text-sm text-gray-500 dark:text-neutral-400">
+            yoki
+          </span>
+          <div className="h-px flex-1 bg-gray-200 dark:bg-neutral-700" />
+        </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <button
             type="button"
-            className={styles.altBtn}
+            className={SOCIAL_BTN_CLASS}
             onClick={handleGoogleSignIn}
-            disabled={loading || googleLoading}
+            disabled={!googleEnabled || loading || googleLoading}
+            aria-label="Google orqali ro'yxatdan o'tish"
           >
-            <GoogleIcon />
-            {googleLoading ? "Google ochilmoqda..." : "Google orqali ro'yxatdan o'tish"}
+            <GoogleSocialIcon />
           </button>
-        </>
-      )}
+          <button
+            type="button"
+            className={SOCIAL_BTN_CLASS}
+            aria-label="Facebook"
+            title="Tez orada"
+            onClick={(e) => e.preventDefault()}
+          >
+            <FacebookSocialIcon />
+          </button>
+          <button
+            type="button"
+            className={SOCIAL_BTN_CLASS}
+            aria-label="Apple"
+            title="Tez orada"
+            onClick={(e) => e.preventDefault()}
+          >
+            <AppleSocialIcon />
+          </button>
+        </div>
+      </form>
 
-      <p className={styles.bottomText}>
-        Allaqachon hisobingiz bormi? <Link href="/login">Kirish</Link>
-      </p>
-    </AuthLayout>
+      <div className="mt-6 text-center">
+        <span className="text-sm text-gray-600">
+          Allaqachon hisobingiz bormi?{" "}
+        </span>
+        <Link
+          href="/login"
+          className="text-sm font-medium text-orange-500 hover:underline"
+        >
+          Kirish
+        </Link>
+      </div>
+    </AuthGradientShell>
   );
 }
