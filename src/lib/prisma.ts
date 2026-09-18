@@ -8,10 +8,15 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString || typeof connectionString !== "string") {
+    throw new Error("DATABASE_URL string bo‘lishi shart");
+  }
+
   const pool =
     globalForPrisma.pool ??
     new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       connectionTimeoutMillis: 8_000,
       idleTimeoutMillis: 20_000,
     });
@@ -27,11 +32,21 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrisma() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
 }
+
+/** Lazy proxy — env (PM2/dotenv) to‘liq yuklangach ulanadi. */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 export function createSeedClient() {
   return createPrismaClient();
