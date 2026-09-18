@@ -459,11 +459,14 @@ html {
 /* Watch page */
 .watch-layout { display: flex; gap: 24px; max-width: var(--content-max); align-items: flex-start; }
 .watch-layout:has(.meet-frame) { max-width: var(--content-wide); }
-.watch-layout:has(.meet-frame) .watch-sidebar { display: none; }
 .watch-main { flex: 1; min-width: 0; }
 .watch-sidebar {
   width: 360px;
   flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow: auto;
 }
 .watch-rec-card {
   text-decoration: none;
@@ -473,7 +476,15 @@ html {
 .watch-rec-card:hover .vinfo h3 { color: var(--accent); }
 @media (max-width: 960px) {
   .watch-layout { flex-direction: column; max-width: 1100px; }
-  .watch-sidebar { width: 100%; }
+  .watch-sidebar {
+    width: 100%;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .watch-main .meet-frame {
+    max-height: min(56vh, 420px);
+  }
 }
 .player-wrap {
   width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;
@@ -2198,12 +2209,19 @@ html[data-theme="dark"] .acet-pane {
   overflow: hidden;
   color: #eee;
   overflow-anchor: none;
+  z-index: 1;
 }
-.live-meet .meet-frame,
+/* Learn: video oyna oddiy oqimda — sticky emas, 16:9 player balandligi */
 .watch-main .meet-frame {
-  position: sticky;
-  top: 8px;
-  z-index: 3;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  min-height: 260px;
+  max-height: min(70vh, 560px);
+  z-index: auto;
+}
+.live-meet .meet-frame {
+  position: relative;
+  z-index: 1;
 }
 .meet-zoom {
   flex: 1;
