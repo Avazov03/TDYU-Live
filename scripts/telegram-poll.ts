@@ -1,19 +1,24 @@
 /**
  * Long-polling Telegram worker (PM2).
- * Webhook .fit domenida ishlamasa shu jarayon botni jonli qiladi.
+ * dotenv avval yuklanadi — Prisma importidan oldin.
  */
 import { config } from "dotenv";
 config({ path: ".env" });
 config({ path: ".env.local", override: true });
-
-import { deleteWebhook, getUpdates, type TgUpdate } from "../src/lib/telegram/api";
-import { handleTelegramUpdate } from "../src/lib/telegram/bot";
 
 async function main() {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("TELEGRAM_BOT_TOKEN yo‘q");
     process.exit(1);
   }
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL yo‘q");
+    process.exit(1);
+  }
+
+  const { deleteWebhook, getUpdates } = await import("../src/lib/telegram/api");
+  const { handleTelegramUpdate } = await import("../src/lib/telegram/bot");
+  type TgUpdate = import("../src/lib/telegram/api").TgUpdate;
 
   await deleteWebhook();
   console.log("[telegram-poll] webhook o‘chirildi, polling boshlandi");

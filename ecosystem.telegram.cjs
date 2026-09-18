@@ -3,8 +3,8 @@ module.exports = {
     {
       name: "lexify-telegram",
       cwd: "/var/www/tdyu-live",
-      script: "npx",
-      args: "tsx scripts/telegram-poll.ts",
+      script: "npm",
+      args: "run bot:telegram",
       interpreter: "none",
       env: {
         NODE_ENV: "production",
