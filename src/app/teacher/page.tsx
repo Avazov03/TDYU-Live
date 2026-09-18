@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import Link from "next/link";
 import { LiveStudio } from "@/components/teacher/LiveStudio";
-import { TeacherHub } from "@/components/teacher/TeacherHub";
+import { TeacherStudioFocus } from "@/components/teacher/TeacherStudioFocus";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
@@ -10,6 +10,19 @@ import { formatDateTime } from "@/lib/utils";
 import { isSubscriptionActive } from "@/lib/tariffs";
 
 export const dynamic = "force-dynamic";
+
+function daysLeft(endsAt: Date) {
+  return Math.ceil((endsAt.getTime() - Date.now()) / 86_400_000);
+}
+
+function attentionReason(attended: number, lessonCount: number, pct: number, endsAt: Date) {
+  const reasons: string[] = [];
+  if (attended === 0) reasons.push("Hali dars ochmagan");
+  else if (lessonCount > 0 && pct < 50) reasons.push("Davomat past");
+  const left = daysLeft(endsAt);
+  if (left <= 7 && left >= 0) reasons.push(`${left} kun qoldi`);
+  return reasons.join(" · ") || "Diqqat";
+}
 
 export default async function TeacherHomePage() {
   const session = await auth();
@@ -21,8 +34,15 @@ export default async function TeacherHomePage() {
     include: {
       courses: {
         include: {
-          lessons: { orderBy: { scheduledAt: "desc" } },
-          subscriptions: { select: { endsAt: true, userId: true } },
+          lessons: {
+            orderBy: { scheduledAt: "desc" },
+            include: { attendance: { select: { userId: true } } },
+          },
+          subscriptions: {
+            include: {
+              user: { select: { id: true, fullName: true } },
+            },
+          },
         },
       },
     },
@@ -31,11 +51,12 @@ export default async function TeacherHomePage() {
   if (!teacher) {
     return (
       <AppShell active="teacher">
-        <div className="studio-head">
+        <div className="lx-board">
+          <p className="lx-kicker">Studio</p>
           <h2>O&apos;qituvchi studiosi</h2>
-          <p className="muted" style={{ marginTop: 8, maxWidth: 520 }}>
-            Hisob ochildi. Admin sizni fan bilan bog&apos;lagach shu yerda uch ish joyi chiqadi:
-            jonli dars, dars rejalash va o&apos;quvchilar.
+          <p className="muted small lx-lead">
+            Hisob ochildi. Admin sizni fan bilan bog&apos;lagach shu yerda jonli dars, reja va
+            o&apos;quvchilar chiqadi.
           </p>
         </div>
       </AppShell>
@@ -48,8 +69,15 @@ export default async function TeacherHomePage() {
     include: {
       courses: {
         include: {
-          lessons: { orderBy: { scheduledAt: "desc" } },
-          subscriptions: { select: { endsAt: true, userId: true } },
+          lessons: {
+            orderBy: { scheduledAt: "desc" },
+            include: { attendance: { select: { userId: true } } },
+          },
+          subscriptions: {
+            include: {
+              user: { select: { id: true, fullName: true } },
+            },
+          },
         },
       },
     },
@@ -70,19 +98,69 @@ export default async function TeacherHomePage() {
       if (isSubscriptionActive(row.endsAt)) studentIds.add(row.userId);
     }
   }
-  const studentCount = studentIds.size;
+
+  const attentionPool: {
+    userId: string;
+    fullName: string;
+    reason: string;
+    courseTitle: string;
+    score: number;
+  }[] = [];
+
+  for (const course of teacher.courses) {
+    const active = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
+    for (const sub of active) {
+      const attended = course.lessons.filter((l) =>
+        l.attendance.some((a) => a.userId === sub.userId),
+      ).length;
+      const lessonCount = course.lessons.length;
+      const pct = lessonCount ? Math.round((attended / lessonCount) * 100) : 0;
+      const left = daysLeft(sub.endsAt);
+      const needs =
+        attended === 0 || (lessonCount > 0 && pct < 50) || (left <= 7 && left >= 0);
+      if (!needs) continue;
+      let score = 0;
+      if (attended === 0) score += 3;
+      if (lessonCount > 0 && pct < 50) score += 2;
+      if (left <= 7 && left >= 0) score += 2;
+      attentionPool.push({
+        userId: sub.userId,
+        fullName: sub.user.fullName,
+        reason: attentionReason(attended, lessonCount, pct, sub.endsAt),
+        courseTitle: course.titleUz,
+        score,
+      });
+    }
+  }
+
+  attentionPool.sort((a, b) => b.score - a.score);
+  const attention = attentionPool.slice(0, 3).map(({ score: _s, ...rest }) => rest);
+
   const pending = await prisma.submission.count({
     where: { grade: null, assignment: { course: { teacherId: teacher.id } } },
   });
 
   return (
     <AppShell active="teacher">
-      <TeacherHub
+      <TeacherStudioFocus
         teacherName={teacher.fullName}
         courseCount={teacher.courses.length}
         upcomingCount={lessons.filter((l) => l.status === "scheduled").length}
-        studentCount={studentCount}
+        studentCount={studentIds.size}
         isLive={Boolean(live)}
+        nextLesson={
+          studio
+            ? {
+                id: studio.id,
+                titleUz: studio.titleUz,
+                courseTitle: studio.courseTitle,
+                whenLabel: formatDateTime(studio.scheduledAt),
+                status: studio.status,
+              }
+            : null
+        }
+        attention={attention}
+        pendingGrades={pending}
       />
 
       {studio ? (
@@ -102,19 +180,11 @@ export default async function TeacherHomePage() {
           <p className="muted small" style={{ marginBottom: 12 }}>
             «Hozir efir» bosing yoki Rejada mavzu qo&apos;shing — keyin shu yerda kamera ochiladi.
           </p>
-          <Link href="/teacher/reja" className="btn btn-sm btn-primary">Rejaga o&apos;tish</Link>
+          <Link href="/teacher/reja" className="btn btn-sm btn-primary">
+            Rejaga o&apos;tish
+          </Link>
         </section>
       )}
-
-      {pending > 0 ? (
-        <Link href="/teacher/assignments" className="lx-row" style={{ marginTop: 16 }}>
-          <div>
-            <p className="lx-kicker">Tekshiruv</p>
-            <h3>{pending} ta ish baholanmagan</h3>
-          </div>
-          <span className="lx-go">Ochish</span>
-        </Link>
-      ) : null}
     </AppShell>
   );
 }

@@ -17,7 +17,7 @@ type AdminShellProps = {
 const NAV = [
   {
     href: "/admin",
-    label: "Boshqaruv",
+    label: "Bugun",
     hint: "Imkoniyatlar + KPI",
     icon: "home" as const,
     exact: true,
@@ -53,12 +53,12 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="admin-shell">
-      <div className="topbar admin-topbar">
+    <div className="admin-shell lx-admin-shell">
+      <div className="topbar admin-topbar lx-admin-topbar">
         <div className="topbar-left">
-          <Link href="/admin" className="logo">
+          <Link href="/admin" className="logo lx-admin-logo">
             <span className="mark">{BRAND.short}</span>
-            <span>{BRAND.name} Studio</span>
+            <span className="lx-admin-brand">{BRAND.name}</span>
           </Link>
         </div>
         <div className="topbar-right">
@@ -66,15 +66,19 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
             Bosh sahifa
           </Link>
           <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className="iconbtn" />
-          <span className="avatar sm">{initials(userName)}</span>
+          <Link href="/settings" className="avatar sm" title="Profil" style={{ textDecoration: "none" }}>
+            {initials(userName)}
+          </Link>
           <button type="button" className="btn btn-sm" onClick={() => signOut({ callbackUrl: "/" })}>
             Chiqish
           </button>
         </div>
       </div>
       <div className="shell">
-        <aside className="sidebar admin-sidebar">
-          <p className="admin-nav-kicker">Tez amallar</p>
+        <aside className="sidebar admin-sidebar lx-admin-sidebar">
+          <p className="admin-nav-kicker lx-kicker" style={{ marginLeft: 12 }}>
+            Kabinet
+          </p>
           {NAV.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -96,7 +100,7 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
           })}
         </aside>
         <main className="main admin-main">
-          <div className="main-inner">{children}</div>
+          <div className="main-inner lx-admin-main-inner">{children}</div>
         </main>
       </div>
     </div>

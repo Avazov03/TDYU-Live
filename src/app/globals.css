@@ -544,6 +544,64 @@ a.stat-link:hover { border-color: var(--accent); background: var(--surface-2); }
   font-weight: 500;
 }
 .admin-navitem.active .navlabel small { color: var(--text-2); }
+.lx-admin-shell .lx-admin-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.lx-admin-shell .lx-admin-sidebar {
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent) 8%);
+  border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.lx-admin-shell .lx-admin-topbar {
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+.lx-admin-shell .lx-admin-main-inner {
+  animation: lx-board-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lx-admin-shell .admin-navitem.active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.teacher-focus-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 4px;
+}
+.teacher-focus-card {
+  padding: 16px 16px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.teacher-focus-primary {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface));
+}
+.teacher-focus-card > h3 {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.teacher-focus-student {
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.teacher-focus-student:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+@media (max-width: 900px) {
+  .teacher-focus-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .admin-caps {
   padding: 18px;
   border-radius: 16px;

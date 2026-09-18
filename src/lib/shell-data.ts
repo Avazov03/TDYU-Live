@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { maybeSendLessonReminders } from "@/lib/lesson-reminders";
+import { isStudentRole } from "@/lib/roles";
 
 export async function getShellData(userId?: string) {
   if (!userId) {
@@ -11,13 +13,22 @@ export async function getShellData(userId?: string) {
     };
   }
 
-  const [user, unreadCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { fullName: true, email: true, role: true },
-    }),
-    prisma.notification.count({ where: { userId, isRead: false } }),
-  ]);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { fullName: true, email: true, role: true },
+  });
+
+  if (user && isStudentRole(user.role)) {
+    try {
+      await maybeSendLessonReminders(userId);
+    } catch {
+      // reminder xatosi kabinetni to‘xtatmasin
+    }
+  }
+
+  const unreadCount = await prisma.notification.count({
+    where: { userId, isRead: false },
+  });
 
   return {
     loggedIn: true as const,
