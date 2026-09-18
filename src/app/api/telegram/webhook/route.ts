@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendTelegram } from "@/lib/notify";
-
-type TgUpdate = {
-  message?: {
-    text?: string;
-    chat?: { id: number; type: string };
-    from?: { id: number; username?: string };
-  };
-};
+import { handleTelegramUpdate } from "@/lib/telegram/bot";
+import type { TgUpdate } from "@/lib/telegram/api";
 
 /**
- * Telegram bot webhook.
- * /start → chat ID ko‘rsatadi
- * /start link_<userId> → avtomatik bog‘laydi
+ * Webhook (agar domen Telegram DNS da ochilsa).
+ * Hozir asosiy kanal — PM2 polling (`npm run bot:telegram`).
  */
 export async function POST(req: Request) {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -25,36 +16,12 @@ export async function POST(req: Request) {
   }
 
   const update = (await req.json().catch(() => null)) as TgUpdate | null;
-  const msg = update?.message;
-  const chatId = msg?.chat?.id;
-  const text = (msg?.text ?? "").trim();
-  if (!chatId || !text) return NextResponse.json({ ok: true });
+  if (!update) return NextResponse.json({ ok: true });
 
-  if (text === "/start" || text.startsWith("/start ")) {
-    const payload = text === "/start" ? "" : text.slice(7).trim();
-    if (payload.startsWith("link_")) {
-      const userId = payload.slice(5);
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, fullName: true } });
-      if (user) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { telegramChatId: String(chatId) },
-        });
-        await sendTelegram(
-          String(chatId),
-          `✅ Lexify ulandi, ${user.fullName}.\nDars eslatmalari shu yerga keladi.`,
-        );
-        return NextResponse.json({ ok: true });
-      }
-      await sendTelegram(String(chatId), "❌ Havola eskirgan. Sozlamalardan qayta urinib ko‘ring.");
-      return NextResponse.json({ ok: true });
-    }
-
-    await sendTelegram(
-      String(chatId),
-      `Lexify bot.\nSizning Chat ID: <code>${chatId}</code>\n\nYoki Sozlamalardagi «Telegramni ulash» tugmasidan foydalaning.`,
-    );
+  try {
+    await handleTelegramUpdate(update);
+  } catch (err) {
+    console.error("[telegram webhook]", err);
   }
-
   return NextResponse.json({ ok: true });
 }

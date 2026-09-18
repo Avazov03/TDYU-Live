@@ -62,12 +62,12 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 12 }}>Telegram bildirishnomalar</h3>
         <p className="small muted" style={{ marginBottom: 12 }}>
-          Dars eslatmasi, kutish xonasi va jonli efir shu yerga ham keladi (bot token sozlanganda).
+          Professional bot: /start menyu, bugungi dars, kurslar, tarif. Eslatmalarda «Darsga kirish» tugmasi.
         </p>
         {deepLink ? (
           <p style={{ marginBottom: 12 }}>
             <a className="btn btn-primary btn-sm" href={deepLink} target="_blank" rel="noreferrer">
-              Botni ulash
+              Botni ulash (@{bot})
             </a>
           </p>
         ) : (
