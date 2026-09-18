@@ -57,7 +57,7 @@ export function TeacherHub({
           </p>
           <div className="studio-card-actions">
             <QuickLiveButton />
-            <a href="#live" className="btn btn-sm">Studioga</a>
+            <Link href="/teacher" className="btn btn-sm">Kurslar</Link>
           </div>
         </article>
         <article className="studio-card">

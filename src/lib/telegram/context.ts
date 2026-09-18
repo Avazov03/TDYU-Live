@@ -259,7 +259,7 @@ export async function formatToday(ctx: BotUserContext) {
       lines.push(
         `• <b>${esc(l.titleUz)}</b>\n  ${esc(l.course.titleUz)} · ${statusLabel(l.status as PlanStatus)} · ${formatDateTime(l.scheduledAt)}`,
       );
-      keys.push([{ text: `▶ ${l.titleUz.slice(0, 28)}`, url: `${base}/teacher#live` }]);
+      keys.push([{ text: `▶ ${l.titleUz.slice(0, 28)}`, url: `${base}/teacher/live/${l.id}` }]);
     }
     keys.push([{ text: "🏠 Menyu", callback_data: "m:home" }]);
     return { text: lines.join("\n"), keyboard: keys };

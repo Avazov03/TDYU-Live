@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export function QuickLiveButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -18,8 +16,12 @@ export function QuickLiveButton() {
       setError(data.error || "Efir ochilmadi");
       return;
     }
-    router.refresh();
-    window.location.hash = "live";
+    const id = data.lesson?.id as string | undefined;
+    if (!id) {
+      setError("Dars ID topilmadi");
+      return;
+    }
+    window.location.href = `/teacher/live/${id}`;
   };
 
   return (

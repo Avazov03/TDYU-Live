@@ -602,6 +602,71 @@ a.stat-link:hover { border-color: var(--accent); background: var(--surface-2); }
     grid-template-columns: 1fr;
   }
 }
+.teacher-course-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.teacher-course-next {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+}
+.teacher-course-lessons {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.teacher-course-lessons summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+.teacher-course-lessons ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.teacher-course-lessons a {
+  color: inherit;
+  text-decoration: none;
+}
+.teacher-course-lessons a:hover {
+  color: var(--accent);
+}
+.studio-crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.studio-crumb a {
+  color: var(--text-2);
+  text-decoration: none;
+}
+.studio-crumb a:hover {
+  color: var(--accent);
+}
+.live-steps-fold {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.live-steps-fold summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.live-steps-fold .live-steps {
+  margin: 10px 0 0;
+}
+.studio-alert-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .teacher-course-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

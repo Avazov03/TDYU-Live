@@ -53,9 +53,9 @@ export function TeacherStudioFocus({
                 {nextLesson.courseTitle} · {nextLesson.whenLabel}
               </p>
               <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-                <a href="#live" className="btn btn-primary btn-sm">
-                  {isLive ? "Efirga qaytish" : "Studioga"}
-                </a>
+                <Link href={`/teacher/live/${nextLesson.id}`} className="btn btn-primary btn-sm">
+                  {isLive ? "Efirga qaytish" : "Studioga — shu dars"}
+                </Link>
                 {!isLive ? <QuickLiveButton /> : null}
                 <Link href="/teacher/reja" className="btn btn-sm">
                   Reja

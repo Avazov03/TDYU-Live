@@ -64,6 +64,10 @@ export function LiveStudio({
     }
     const nextKey = data.lesson?.streamKey as string | undefined;
     if (nextKey && !nextKey.startsWith("demo_")) setKey(nextKey);
+    if (action === "end") {
+      window.location.href = "/teacher";
+      return;
+    }
     router.refresh();
   };
 
@@ -79,12 +83,13 @@ export function LiveStudio({
           ) : isLobby ? (
             <span className="badge accent">Kutish xonasi</span>
           ) : (
-            <span className="badge pending">Reja</span>
+            <span className="badge pending">Tanlangan dars</span>
           )}
-          <h2>{titleUz}</h2>
-          <p className="muted small">
-            {courseTitle} · {whenLabel}
+          <p className="lx-kicker" style={{ marginTop: 8 }}>
+            {courseTitle}
           </p>
+          <h2>{titleUz}</h2>
+          <p className="muted small">{whenLabel}</p>
         </div>
         <div className="live-studio-actions">
           {canOpenLobby ? (
@@ -116,12 +121,14 @@ export function LiveStudio({
       </div>
 
       {canOpenLobby ? (
-        <ol className="live-steps">
-          <li>Avval kutish xonasini oching — talabalar kirib chatda kutadi.</li>
-          <li>Bu vaqtda yozuv yo‘q (zerikarli kutish videotape bo‘lmasin).</li>
-          <li>Tayyor bo‘lgach «Jonli efirni boshlash» — shundan REC ketadi.</li>
-          <li>Tugatganda yozuv saqlanadi va talabalarga ochiladi.</li>
-        </ol>
+        <details className="live-steps-fold">
+          <summary>Qanday ishlaydi?</summary>
+          <ol className="live-steps">
+            <li>Kutish xonasini oching — talabalar kirib chatda kutadi (yozuv yo‘q).</li>
+            <li>«Jonli efirni boshlash» — shu paytdan REC ketadi.</li>
+            <li>Tugatganda yozuv saqlanadi.</li>
+          </ol>
+        </details>
       ) : null}
 
       {isLobby ? (

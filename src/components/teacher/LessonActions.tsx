@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { EditLessonPanel } from "@/components/teacher/EditLessonPanel";
 
 export function LessonActions({
@@ -20,53 +19,28 @@ export function LessonActions({
   coverUrl?: string | null;
   scheduledAt: string;
 }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const act = async (action: "lobby" | "start" | "end") => {
-    setLoading(true);
-    setError("");
-    const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, { method: "POST" });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "Xatolik");
-      return;
-    }
-    router.refresh();
-    if (action === "lobby" || action === "start") {
-      window.location.href = "/teacher#live";
-    }
-  };
-
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
         {status === "scheduled" ? (
-          <button className="btn btn-primary btn-sm" type="button" disabled={loading} onClick={() => void act("lobby")}>
-            Kutishni ochish
-          </button>
+          <Link href={`/teacher/live/${lessonId}`} className="btn btn-primary btn-sm">
+            Studioga — shu dars
+          </Link>
         ) : null}
         {status === "lobby" ? (
-          <>
-            <a href="/teacher#live" className="btn btn-sm">
-              Kutishda
-            </a>
-            <button className="btn btn-primary btn-sm" type="button" disabled={loading} onClick={() => void act("start")}>
-              Efirni boshlash
-            </button>
-          </>
+          <Link href={`/teacher/live/${lessonId}`} className="btn btn-primary btn-sm">
+            Kutish xonasiga
+          </Link>
         ) : null}
         {status === "live" ? (
-          <a href="/teacher#live" className="btn btn-danger btn-sm">
-            Studioda tugating
-          </a>
+          <Link href={`/teacher/live/${lessonId}`} className="btn btn-danger btn-sm">
+            Efirni boshqarish
+          </Link>
         ) : null}
       </div>
-      {status === "live" ? (
+      {status === "live" || status === "lobby" ? (
         <p className="small muted" style={{ margin: 0 }}>
-          Yozuv saqlanishi uchun efirni studio sahifasidan yoping.
+          Efir/kutish faqat shu dars sahifasida ochiladi.
         </p>
       ) : null}
       <EditLessonPanel
@@ -77,7 +51,6 @@ export function LessonActions({
         coverUrl={coverUrl}
         scheduledAt={scheduledAt}
       />
-      {error ? <p className="small" style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
     </div>
   );
 }
