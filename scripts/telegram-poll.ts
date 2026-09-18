@@ -3,7 +3,7 @@
  * dotenv avval yuklanadi — Prisma importidan oldin.
  */
 import { config } from "dotenv";
-config({ path: ".env" });
+config({ path: ".env", override: true });
 config({ path: ".env.local", override: true });
 
 async function main() {
