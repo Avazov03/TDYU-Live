@@ -36,9 +36,11 @@ export function LiveStudio({
   );
 
   const isLive = status === "live";
-  const canStart = status === "scheduled";
+  const isLobby = status === "lobby";
+  const canOpenLobby = status === "scheduled";
+  const inRoom = isLive || isLobby;
 
-  const act = async (action: "start" | "end") => {
+  const act = async (action: "lobby" | "start" | "end") => {
     setLoading(true);
     setError("");
     let recordingUrl: string | undefined;
@@ -66,7 +68,7 @@ export function LiveStudio({
   };
 
   return (
-    <section id="live" className={`live-studio${isLive ? " is-live" : ""}`}>
+    <section id="live" className={`live-studio${isLive ? " is-live" : ""}${isLobby ? " is-lobby" : ""}`}>
       <div className="live-studio-head">
         <div>
           {isLive ? (
@@ -74,6 +76,8 @@ export function LiveStudio({
               <span className="live-dot" />
               Jonli efir
             </span>
+          ) : isLobby ? (
+            <span className="badge accent">Kutish xonasi</span>
           ) : (
             <span className="badge pending">Reja</span>
           )}
@@ -83,41 +87,62 @@ export function LiveStudio({
           </p>
         </div>
         <div className="live-studio-actions">
-          {canStart ? (
-            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("start")}>
-              {loading ? "Ochilmoqda..." : "Efirni boshlash"}
+          {canOpenLobby ? (
+            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("lobby")}>
+              {loading ? "Ochilmoqda..." : "Kutish xonasini ochish"}
             </button>
           ) : null}
+          {isLobby ? (
+            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("start")}>
+              {loading ? "Boshlanmoqda..." : "Jonli efirni boshlash"}
+            </button>
+          ) : null}
+          {inRoom ? (
+            <Link href={`/learn/${lessonId}`} className="btn">
+              Talaba ko‘rinishi
+            </Link>
+          ) : null}
           {isLive ? (
-            <>
-              <Link href={`/learn/${lessonId}`} className="btn">
-                Talaba ko‘rinishi
-              </Link>
-              <button className="btn btn-danger" type="button" disabled={loading} onClick={() => void act("end")}>
-                {loading ? "Yozuv saqlanmoqda..." : "Efirni tugatish"}
-              </button>
-            </>
+            <button className="btn btn-danger" type="button" disabled={loading} onClick={() => void act("end")}>
+              {loading ? "Yozuv saqlanmoqda..." : "Efirni tugatish"}
+            </button>
+          ) : null}
+          {isLobby ? (
+            <button className="btn btn-danger" type="button" disabled={loading} onClick={() => void act("end")}>
+              {loading ? "Yopilmoqda..." : "Kutishni yopish"}
+            </button>
           ) : null}
         </div>
       </div>
 
-      {canStart ? (
+      {canOpenLobby ? (
         <ol className="live-steps">
-          <li>Kerakli slayd yoki faylni pastdagi inventarga yuklang.</li>
-          <li>Efirni boshlang — kamera shu sahifada ochiladi. Talabalar yon qatorda ko‘rinadi.</li>
-          <li>Qo‘l ko‘targan o‘quvchiga mikrofon yoki kameraga ruxsat bering.</li>
-          <li>Tugatganda dars avtomatik yozib olinadi va talabalar keyin ko‘ra oladi.</li>
+          <li>Avval kutish xonasini oching — talabalar kirib chatda kutadi.</li>
+          <li>Bu vaqtda yozuv yo‘q (zerikarli kutish videotape bo‘lmasin).</li>
+          <li>Tayyor bo‘lgach «Jonli efirni boshlash» — shundan REC ketadi.</li>
+          <li>Tugatganda yozuv saqlanadi va talabalarga ochiladi.</li>
         </ol>
       ) : null}
 
-      {isLive ? (
+      {isLobby ? (
+        <div className="live-lobby-banner">
+          <strong>Kutish rejimi</strong>
+          <span className="small muted">
+            Chat va kirish ochiq. Kamerani sinab ko‘ring. Yozuv faqat «Jonli efirni boshlash»dan keyin.
+          </span>
+        </div>
+      ) : null}
+
+      {inRoom ? (
         <div className="live-meet">
           <MeetRoom
+            key={`${lessonId}-${status}`}
             ref={meetRef}
             lessonId={lessonId}
             displayName={displayName}
             subject={titleUz}
             moderator
+            phase={isLive ? "live" : "lobby"}
           />
         </div>
       ) : null}
@@ -134,7 +159,7 @@ export function LiveStudio({
       ) : (
         <LessonInventory
           lessonId={lessonId}
-          canPresent={isLive}
+          canPresent={false}
           onPresent={(file) => meetRef.current?.presentFile(file)}
         />
       )}

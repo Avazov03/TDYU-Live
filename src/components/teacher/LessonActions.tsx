@@ -24,7 +24,7 @@ export function LessonActions({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const act = async (action: "start" | "end") => {
+  const act = async (action: "lobby" | "start" | "end") => {
     setLoading(true);
     setError("");
     const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, { method: "POST" });
@@ -35,15 +35,28 @@ export function LessonActions({
       return;
     }
     router.refresh();
+    if (action === "lobby" || action === "start") {
+      window.location.href = "/teacher#live";
+    }
   };
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
         {status === "scheduled" ? (
-          <button className="btn btn-primary btn-sm" type="button" disabled={loading} onClick={() => void act("start")}>
-            Efirni boshlash
+          <button className="btn btn-primary btn-sm" type="button" disabled={loading} onClick={() => void act("lobby")}>
+            Kutishni ochish
           </button>
+        ) : null}
+        {status === "lobby" ? (
+          <>
+            <a href="/teacher#live" className="btn btn-sm">
+              Kutishda
+            </a>
+            <button className="btn btn-primary btn-sm" type="button" disabled={loading} onClick={() => void act("start")}>
+              Efirni boshlash
+            </button>
+          </>
         ) : null}
         {status === "live" ? (
           <a href="/teacher#live" className="btn btn-danger btn-sm">

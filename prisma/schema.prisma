@@ -32,6 +32,7 @@ enum TariffTier {
 
 enum LessonStatus {
   scheduled
+  lobby
   live
   ended
 }

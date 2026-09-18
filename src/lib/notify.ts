@@ -12,17 +12,23 @@ type NotifyInput = {
   telegramChatId?: string | null;
 };
 
-async function sendTelegram(chatId: string, text: string) {
+export async function sendTelegram(chatId: string, text: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  if (!token) return false;
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  }).catch(() => undefined);
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+  }).catch(() => null);
+  return Boolean(res?.ok);
 }
 
 export async function notifyUser(input: NotifyInput) {
+  const user = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { email: true, telegramChatId: true },
+  });
+
   await prisma.notification.create({
     data: {
       userId: input.userId,
@@ -33,9 +39,12 @@ export async function notifyUser(input: NotifyInput) {
     },
   });
 
-  const text = `${input.titleUz}\n${input.messageUz}`;
-  if (input.telegramChatId) await sendTelegram(input.telegramChatId, text);
-  if (input.email) await sendEmail(input.email, input.titleUz, input.messageUz);
+  const email = input.email ?? user?.email ?? null;
+  const telegramChatId = input.telegramChatId ?? user?.telegramChatId ?? null;
+  const text = `<b>${input.titleUz}</b>\n${input.messageUz}`;
+
+  if (telegramChatId) await sendTelegram(telegramChatId, text);
+  if (email) await sendEmail(email, input.titleUz, input.messageUz);
 }
 
 export async function notifyCourseStudents(
@@ -62,4 +71,26 @@ export async function notifyCourseStudents(
       telegramChatId: sub.user.telegramChatId,
     });
   }
+}
+
+export async function notifyTeacherOfCourse(
+  courseId: string,
+  payload: Omit<NotifyInput, "userId" | "email" | "telegramChatId">,
+) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    include: {
+      teacher: {
+        include: { user: { select: { id: true, email: true, telegramChatId: true } } },
+      },
+    },
+  });
+  const user = course?.teacher.user;
+  if (!user) return;
+  await notifyUser({
+    ...payload,
+    userId: user.id,
+    email: user.email,
+    telegramChatId: user.telegramChatId,
+  });
 }

@@ -111,7 +111,7 @@ export async function getLessonAccess(
   if (!isSubscriptionActive(sub.endsAt)) return { ok: false, reason: "expired" };
 
   if (status === "scheduled") return { ok: false, reason: "not_started" };
-  if (status === "live" && !canWatchLive(sub.tier)) {
+  if ((status === "live" || status === "lobby") && !canWatchLive(sub.tier)) {
     return { ok: false, reason: "live_locked" };
   }
 

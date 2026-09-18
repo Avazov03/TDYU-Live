@@ -138,7 +138,7 @@ export async function getAdminDashboard() {
   const registrationsByDay = buildDaySeries(29, recentStudents.map((u) => u.createdAt));
   const revenueByDay = buildDaySeriesSum(29, recentPayments.map((p) => ({ at: p.createdAt, amount: p.amount })));
 
-  const lessonStatus = { live: 0, scheduled: 0, ended: 0 };
+  const lessonStatus = { live: 0, lobby: 0, scheduled: 0, ended: 0 };
   for (const lesson of weekLessons) lessonStatus[lesson.status] += 1;
 
   const topCourses = topCoursesRaw

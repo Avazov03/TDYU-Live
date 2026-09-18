@@ -17,6 +17,8 @@ type MeetRoomProps = {
   displayName: string;
   subject?: string;
   moderator?: boolean;
+  /** lobby = kutish (yozuv yo‘q); live = efir + REC */
+  phase?: "lobby" | "live";
 };
 
 export type MeetRoomHandle = {
@@ -299,7 +301,7 @@ function useSpeaking(stream: MediaStream | null, enabled: boolean) {
 }
 
 export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetRoom(
-  { lessonId, displayName, moderator },
+  { lessonId, displayName, moderator, phase = "live" },
   ref,
 ) {
   const peerIdRef = useRef(`p_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`);
@@ -568,7 +570,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         }
         await api({ lessonId, peerId, name: displayName, action: "join" });
         sendEvent({ kind: "state", micOn: Boolean(moderator), camOn: Boolean(moderator) });
-        if (moderator) startRecorder(stream);
+        if (moderator && phase === "live") startRecorder(stream);
         const list = await navigator.mediaDevices.enumerateDevices();
         setDevices({
           audio: list.filter((d) => d.kind === "audioinput"),
@@ -687,6 +689,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     lessonId,
     moderator,
     outgoingStream,
+    phase,
     sendEvent,
     sendSignal,
     startRecorder,
@@ -931,9 +934,9 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
   return (
     <div
-      className="meet-frame"
+      className={`meet-frame${phase === "lobby" ? " is-lobby" : ""}`}
       role="region"
-      aria-label="Jonli dars xonasi"
+      aria-label={phase === "lobby" ? "Kutish xonasi" : "Jonli dars xonasi"}
       onClick={(e) => {
         const node = e.currentTarget;
         node.querySelectorAll("video").forEach((vid) => {
@@ -1225,6 +1228,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
       <div className="meet-bar">
         <span className="meet-bar-meta">
+          {phase === "lobby" ? <span className="meet-lobby-pill">KUTISH · yozuv yo‘q</span> : null}
           {recording ? <span className="meet-rec">REC</span> : null}
           {moderator ? "Ustoz" : "Talaba"} · {remotes.length + 1} kishi
           {raisedCount ? ` · ${raisedCount} qo‘l` : ""}

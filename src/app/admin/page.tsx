@@ -157,6 +157,7 @@ export default async function AdminDashboardPage() {
           <AdminDonut
             segments={[
               { label: "Jonli", value: lessonStatus.live, tone: "t3" },
+              { label: "Kutish", value: lessonStatus.lobby, tone: "t2" },
               { label: "Reja", value: lessonStatus.scheduled, tone: "t2" },
               { label: "Yozuv", value: lessonStatus.ended, tone: "t1" },
             ]}

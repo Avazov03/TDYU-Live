@@ -33,7 +33,7 @@ export function EditLessonPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  if (status === "live") return null;
+  if (status === "live" || status === "lobby") return null;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();

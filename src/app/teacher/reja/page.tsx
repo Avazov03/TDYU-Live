@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { PlanCard } from "@/components/cabinet/PlanCard";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { SoftDisclosure } from "@/components/admin/SoftDisclosure";
 import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
-import { LessonActions } from "@/components/teacher/LessonActions";
-import { Timeline } from "@/components/ui/aceternity-timeline";
+import { CreateCoursePlanForm } from "@/components/teacher/CreateCoursePlanForm";
+import { TeacherRejaBoard } from "@/components/teacher/TeacherRejaBoard";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
-import { dayTitle, localDayKey } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
@@ -34,73 +32,45 @@ export default async function TeacherRejaPage() {
     orderBy: { scheduledAt: "asc" },
   });
 
-  const byDay = new Map<string, typeof lessons>();
-  for (const lesson of lessons) {
-    const key = localDayKey(lesson.scheduledAt);
-    const list = byDay.get(key) ?? [];
-    list.push(lesson);
-    byDay.set(key, list);
-  }
-
-  const data = [...byDay.entries()].map(([key, items]) => ({
-    key,
-    title: dayTitle(items[0]?.scheduledAt ?? new Date(key)),
-    content: (
-      <div className="lx-stack">
-        {items.map((lesson) => (
-          <PlanCard
-            key={lesson.id}
-            id={lesson.id}
-            title={lesson.titleUz}
-            when={lesson.scheduledAt}
-            teacher={teacher.fullName}
-            course={lesson.course.titleUz}
-            summary={lesson.summaryUz}
-            coverUrl={lesson.coverUrl}
-            playbackId={lesson.muxVodPlaybackId || lesson.muxLivePlaybackId}
-            recordingUrl={lesson.recordingUrl}
-            status={lesson.status}
-            actions={
-              <LessonActions
-                lessonId={lesson.id}
-                status={lesson.status}
-                streamKey={lesson.streamKey}
-                titleUz={lesson.titleUz}
-                summaryUz={lesson.summaryUz}
-                coverUrl={lesson.coverUrl}
-                scheduledAt={lesson.scheduledAt.toISOString()}
-              />
-            }
-          />
-        ))}
-      </div>
-    ),
-  }));
-
   return (
     <AppShell active="teacher-reja">
       <div className="lx-board" style={{ marginBottom: 12 }}>
         <p className="lx-kicker">Reja</p>
-        <h2>Dars rejangiz</h2>
+        <h2>Dars rejasi</h2>
         <p className="muted small lx-lead">
-          Mavzu qo‘shing, tahrirlang yoki o‘chiring. O‘quvchi ham shu jadvalni ko‘radi.
+          Kurs yarating yoki mavjud kursga dars qo‘shing. Jadval — sana, vaqt, holat, amallar.
         </p>
       </div>
-      <SoftDisclosure title="Mavzu qo‘shish" defaultOpen={data.length === 0}>
+
+      <SoftDisclosure title="Yangi kurs (umumiy mavzu)" defaultOpen={teacher.courses.length === 0}>
+        <CreateCoursePlanForm />
+      </SoftDisclosure>
+
+      <SoftDisclosure title="Mavjud kursga dars qo‘shish" defaultOpen={lessons.length === 0 && teacher.courses.length > 0}>
         <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
       </SoftDisclosure>
-      {data.length === 0 ? (
+
+      {lessons.length === 0 ? (
         <EmptyGuide
           title="Hali reja yo‘q"
-          text="Yuqoridan mavzu, vaqt va qisqa matn qo‘shing."
+          text="Yuqoridan kurs yoki dars qo‘shing — Studio’da kartalar chiqadi."
           href="/teacher"
           cta="Studio"
         />
       ) : (
-        <Timeline
-          title="Dars reja"
-          description="Vaqt, kurs va qisqa mazmun. Tahrirlash tugmasi har darsda."
-          data={data}
+        <TeacherRejaBoard
+          lessons={lessons.map((lesson) => ({
+            id: lesson.id,
+            titleUz: lesson.titleUz,
+            summaryUz: lesson.summaryUz,
+            coverUrl: lesson.coverUrl,
+            scheduledAt: lesson.scheduledAt.toISOString(),
+            status: lesson.status,
+            courseTitle: lesson.course.titleUz,
+            recordingUrl: lesson.recordingUrl,
+            playbackId: lesson.muxVodPlaybackId || lesson.muxLivePlaybackId,
+            streamKey: lesson.streamKey,
+          }))}
         />
       )}
     </AppShell>

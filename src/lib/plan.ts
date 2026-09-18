@@ -2,6 +2,8 @@ import { coverUrl as generatedCover } from "@/lib/thumbs";
 
 const TZ = "Asia/Tashkent";
 
+export type PlanStatus = "scheduled" | "lobby" | "live" | "ended";
+
 export function localDayKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
@@ -49,10 +51,11 @@ export function hasPlayableRecording(
 }
 
 export function statusLabel(
-  status: "live" | "scheduled" | "ended",
+  status: PlanStatus,
   opts?: { hasRecording?: boolean },
 ) {
   if (status === "live") return "Jonli";
+  if (status === "lobby") return "Kutish";
   if (status === "scheduled") return "Reja";
   if (opts?.hasRecording === false) return "Yozuv kutilmoqda";
   if (opts?.hasRecording === true) return "Ko‘rish";
@@ -60,11 +63,16 @@ export function statusLabel(
 }
 
 export function statusTone(
-  status: "live" | "scheduled" | "ended",
+  status: PlanStatus,
   opts?: { hasRecording?: boolean },
 ) {
   if (status === "live") return "danger";
+  if (status === "lobby") return "accent";
   if (status === "scheduled") return "pending";
   if (opts?.hasRecording === false) return "pending";
   return "success";
+}
+
+export function isJoinableLiveStatus(status: PlanStatus | string) {
+  return status === "live" || status === "lobby";
 }

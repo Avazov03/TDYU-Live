@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createLiveStreamOrDemo } from "@/lib/mux";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 
-/** Haqiqiy jonli efir — yozuv shu paytdan. Kutishdan yoki to‘g‘ridan. */
+/** Kutish xonasini ochadi — yozuv/Mux hali yo‘q. */
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -24,44 +23,28 @@ export async function POST(
   });
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
 
-  if (lesson.status === "live") {
-    const demo = Boolean(lesson.streamKey?.startsWith("demo_"));
-    return NextResponse.json({
-      lesson,
-      demo,
-      rtmpUrl: demo ? null : "rtmps://global-live.mux.com:443/app",
-    });
+  if (lesson.status === "lobby" || lesson.status === "live") {
+    return NextResponse.json({ lesson });
+  }
+  if (lesson.status !== "scheduled") {
+    return NextResponse.json({ error: "Bu dars kutishga ochilmaydi" }, { status: 400 });
   }
 
-  if (lesson.status !== "lobby" && lesson.status !== "scheduled") {
-    return NextResponse.json({ error: "Efirni shu holatdan boshlab bo‘lmaydi" }, { status: 400 });
-  }
-
-  const stream = await createLiveStreamOrDemo(lesson.titleUz);
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
-    data: {
-      status: "live",
-      muxLiveStreamId: stream.liveStreamId,
-      muxLivePlaybackId: stream.livePlaybackId,
-      streamKey: stream.streamKey,
-    },
+    data: { status: "lobby" },
   });
 
   await notifyCourseStudents(
     lesson.courseId,
     {
-      type: "lesson_live",
-      titleUz: "Jonli efir boshlandi!",
-      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
+      type: "lesson_starting",
+      titleUz: "Kutish xonasi ochildi",
+      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}. Kirib kutishingiz mumkin — efir hali boshlanmagan.`,
       relatedId: lesson.id,
     },
     "t2",
   );
 
-  return NextResponse.json({
-    lesson: updated,
-    demo: stream.demo,
-    rtmpUrl: stream.demo ? null : "rtmps://global-live.mux.com:443/app",
-  });
+  return NextResponse.json({ lesson: updated });
 }

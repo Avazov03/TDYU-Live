@@ -18,6 +18,7 @@ function itemHref(item: Item) {
   if (item.type === "lesson_live" || item.type === "lesson_starting") return `/learn/${item.relatedId}`;
   if (item.type === "assignment") return "/assignments";
   if (item.type === "certificate") return `/certificates/${item.relatedId}`;
+  if (item.type === "system" && item.relatedId) return `/learn/${item.relatedId}`;
   return null;
 }
 

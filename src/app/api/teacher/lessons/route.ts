@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
+import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
 
 const schema = z.object({
   courseId: z.string().trim().min(1),
@@ -28,14 +29,30 @@ export async function POST(req: Request) {
   });
   if (!course) return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
 
+  const when = new Date(parsed.data.scheduledAt);
   const lesson = await prisma.lesson.create({
     data: {
       courseId: course.id,
       titleUz: parsed.data.titleUz,
       summaryUz: parsed.data.summaryUz || null,
       coverUrl: parsed.data.coverUrl || null,
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt: when,
     },
   });
+
+  await notifyCourseStudents(course.id, {
+    type: "system",
+    titleUz: "Yangi dars rejasiga qo‘shildi",
+    messageUz: `${course.titleUz}: ${lesson.titleUz}`,
+    relatedId: lesson.id,
+  }).catch(() => undefined);
+
+  await notifyTeacherOfCourse(course.id, {
+    type: "system",
+    titleUz: "Dars saqlandi",
+    messageUz: `${lesson.titleUz} — ${when.toLocaleString("uz-UZ")}`,
+    relatedId: lesson.id,
+  }).catch(() => undefined);
+
   return NextResponse.json({ lesson }, { status: 201 });
 }

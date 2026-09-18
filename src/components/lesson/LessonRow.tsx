@@ -6,7 +6,7 @@ type LessonRowProps = {
   id: string;
   titleUz: string;
   subtitle: string;
-  status: "scheduled" | "live" | "ended";
+  status: "scheduled" | "lobby" | "live" | "ended";
   compact?: boolean;
   active?: boolean;
   actions?: ReactNode;
@@ -33,13 +33,15 @@ export function LessonRow({
   const ready = hasPlayableRecording(recordingUrl, playbackId);
   const label = statusLabel(status, { hasRecording: ready });
   const tone = statusTone(status, { hasRecording: ready });
-  const showPlay = status === "live" || (status === "ended" && ready);
+  const showPlay = status === "live" || status === "lobby" || (status === "ended" && ready);
 
   const body = (
     <>
       <div className={`rec-thumb course-thumb ${thumbTone(id)}`}>
         {status === "live" ? (
           <span className="dur live-dur">JONLI</span>
+        ) : status === "lobby" ? (
+          <span className="dur">KUTISH</span>
         ) : showPlay ? (
           <span className="thumb-play sm" aria-hidden>
             ▶

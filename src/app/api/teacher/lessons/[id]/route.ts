@@ -31,8 +31,8 @@ export async function PATCH(
   const { id } = await params;
   const lesson = await ownedLesson(session.user.id, id);
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
-  if (lesson.status === "live") {
-    return NextResponse.json({ error: "Jonli efirda tahrirlab bo'lmaydi" }, { status: 400 });
+  if (lesson.status === "live" || lesson.status === "lobby") {
+    return NextResponse.json({ error: "Kutish/jonli efirda tahrirlab bo'lmaydi" }, { status: 400 });
   }
 
   const parsed = patchSchema.safeParse(await req.json());

@@ -45,7 +45,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
 
   const access = await getLessonAccess(session?.user?.id, lesson.courseId, lesson.status);
 
-  if (access.ok && session?.user?.id && (lesson.status === "live" || lesson.status === "ended")) {
+  if (access.ok && session?.user?.id && (lesson.status === "live" || lesson.status === "lobby" || lesson.status === "ended")) {
     await prisma.attendance.upsert({
       where: { userId_lessonId: { userId: session.user.id, lessonId: lesson.id } },
       update: {},
@@ -58,7 +58,8 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
       (isAdminRole(session.user.role) ||
         (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id)),
   );
-  const canJoinLive = lesson.status === "live" && (access.ok || staffJoin);
+  const canJoinLive =
+    (lesson.status === "live" || lesson.status === "lobby") && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 
@@ -89,6 +90,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               displayName={displayName}
               subject={lesson.titleUz}
               moderator={staffJoin}
+              phase={lesson.status === "live" ? "live" : "lobby"}
             />
           ) : canWatchVod && lesson.recordingUrl ? (
             <div className="player-wrap">

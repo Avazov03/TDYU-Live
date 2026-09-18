@@ -16,14 +16,15 @@ export type ScheduleLesson = {
   coverUrl?: string | null;
   playbackId?: string | null;
   recordingUrl?: string | null;
-  status: "live" | "scheduled" | "ended";
+  status: "live" | "lobby" | "scheduled" | "ended";
 };
 
-type StatusFilter = "all" | "live" | "scheduled" | "ready" | "waiting";
+type StatusFilter = "all" | "live" | "lobby" | "scheduled" | "ready" | "waiting";
 
 function matches(lesson: ScheduleLesson, filter: StatusFilter) {
   if (filter === "all") return true;
   if (filter === "live") return lesson.status === "live";
+  if (filter === "lobby") return lesson.status === "lobby";
   if (filter === "scheduled") return lesson.status === "scheduled";
   const ready = hasPlayableRecording(lesson.recordingUrl, lesson.playbackId);
   if (filter === "ready") return lesson.status === "ended" && ready;
@@ -34,9 +35,10 @@ export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   const counts = useMemo(() => {
-    const base = { all: lessons.length, live: 0, scheduled: 0, ready: 0, waiting: 0 };
+    const base = { all: lessons.length, live: 0, lobby: 0, scheduled: 0, ready: 0, waiting: 0 };
     for (const lesson of lessons) {
       if (lesson.status === "live") base.live += 1;
+      else if (lesson.status === "lobby") base.lobby += 1;
       else if (lesson.status === "scheduled") base.scheduled += 1;
       else if (hasPlayableRecording(lesson.recordingUrl, lesson.playbackId)) base.ready += 1;
       else base.waiting += 1;
@@ -92,6 +94,7 @@ export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
         options={[
           { value: "all", label: "Hammasi", count: counts.all },
           { value: "live", label: "Jonli", count: counts.live },
+          { value: "lobby", label: "Kutish", count: counts.lobby },
           { value: "scheduled", label: "Reja", count: counts.scheduled },
           { value: "ready", label: "Ko‘rish", count: counts.ready },
           { value: "waiting", label: "Kutilmoqda", count: counts.waiting },
