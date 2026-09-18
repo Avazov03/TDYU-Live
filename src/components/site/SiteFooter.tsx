@@ -119,6 +119,12 @@ export function SiteFooter() {
               <li>
                 <Link href="/#tariflar">Tariflar</Link>
               </li>
+              <li>
+                <Link href="/privacy">Maxfiylik</Link>
+              </li>
+              <li>
+                <Link href="/terms">Shartlar</Link>
+              </li>
             </ul>
           </nav>
 

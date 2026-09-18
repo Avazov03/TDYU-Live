@@ -58,6 +58,7 @@ export default async function TeacherRejaPage() {
             summary={lesson.summaryUz}
             coverUrl={lesson.coverUrl}
             playbackId={lesson.muxVodPlaybackId || lesson.muxLivePlaybackId}
+            recordingUrl={lesson.recordingUrl}
             status={lesson.status}
             actions={
               <LessonActions

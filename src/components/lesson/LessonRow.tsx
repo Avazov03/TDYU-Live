@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { hasPlayableRecording, statusLabel, statusTone } from "@/lib/plan";
 
 type LessonRowProps = {
   id: string;
@@ -9,12 +10,8 @@ type LessonRowProps = {
   compact?: boolean;
   active?: boolean;
   actions?: ReactNode;
-};
-
-const STATUS = {
-  live: { label: "JONLI", className: "danger" },
-  ended: { label: "Yozuv", className: "success" },
-  scheduled: { label: "Reja", className: "pending" },
+  recordingUrl?: string | null;
+  playbackId?: string | null;
 };
 
 function thumbTone(id: string) {
@@ -30,23 +27,33 @@ export function LessonRow({
   compact,
   active,
   actions,
+  recordingUrl,
+  playbackId,
 }: LessonRowProps) {
-  const s = STATUS[status];
+  const ready = hasPlayableRecording(recordingUrl, playbackId);
+  const label = statusLabel(status, { hasRecording: ready });
+  const tone = statusTone(status, { hasRecording: ready });
+  const showPlay = status === "live" || (status === "ended" && ready);
+
   const body = (
     <>
       <div className={`rec-thumb course-thumb ${thumbTone(id)}`}>
         {status === "live" ? (
           <span className="dur live-dur">JONLI</span>
-        ) : (
+        ) : showPlay ? (
           <span className="thumb-play sm" aria-hidden>
             ▶
+          </span>
+        ) : (
+          <span className="dur" aria-hidden>
+            …
           </span>
         )}
       </div>
       <div className="vinfo" style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ fontSize: compact ? 13 : 14 }}>{titleUz}</h3>
         <p>{subtitle}</p>
-        <span className={`badge ${s.className}`}>{s.label}</span>
+        <span className={`badge ${tone}`}>{label}</span>
       </div>
     </>
   );

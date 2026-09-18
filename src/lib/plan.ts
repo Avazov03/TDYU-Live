@@ -38,8 +38,33 @@ export function lessonCover(
   return null;
 }
 
-export function statusLabel(status: "live" | "scheduled" | "ended") {
+/** Haqiqiy ko‘riladigan yozuv bormi (demo Mux emas). */
+export function hasPlayableRecording(
+  recordingUrl?: string | null,
+  playbackId?: string | null,
+) {
+  if (recordingUrl) return true;
+  if (playbackId && !playbackId.startsWith("demo_")) return true;
+  return false;
+}
+
+export function statusLabel(
+  status: "live" | "scheduled" | "ended",
+  opts?: { hasRecording?: boolean },
+) {
   if (status === "live") return "Jonli";
-  if (status === "ended") return "Yozuv";
-  return "Reja";
+  if (status === "scheduled") return "Reja";
+  if (opts?.hasRecording === false) return "Yozuv kutilmoqda";
+  if (opts?.hasRecording === true) return "Ko‘rish";
+  return "Yozuv";
+}
+
+export function statusTone(
+  status: "live" | "scheduled" | "ended",
+  opts?: { hasRecording?: boolean },
+) {
+  if (status === "live") return "danger";
+  if (status === "scheduled") return "pending";
+  if (opts?.hasRecording === false) return "pending";
+  return "success";
 }

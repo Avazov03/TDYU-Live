@@ -12,6 +12,7 @@ import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import { hasPlayableRecording, statusLabel } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,18 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
       course: {
         include: {
           teacher: true,
-          lessons: { orderBy: { scheduledAt: "asc" }, select: { id: true, titleUz: true, status: true, scheduledAt: true } },
+          lessons: {
+            orderBy: { scheduledAt: "asc" },
+            select: {
+              id: true,
+              titleUz: true,
+              status: true,
+              scheduledAt: true,
+              recordingUrl: true,
+              muxVodPlaybackId: true,
+              muxLivePlaybackId: true,
+            },
+          },
         },
       },
     },
@@ -54,6 +66,18 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     lesson.status === "live"
       ? lesson.muxLivePlaybackId
       : lesson.muxVodPlaybackId || lesson.muxLivePlaybackId;
+
+  const readyNow = hasPlayableRecording(lesson.recordingUrl, playbackId);
+  const playlist = lesson.course.lessons;
+  const index = playlist.findIndex((item) => item.id === lesson.id);
+  const prev = index > 0 ? playlist[index - 1] : null;
+  const next = index >= 0 && index < playlist.length - 1 ? playlist[index + 1] : null;
+  const doneCount = playlist.filter(
+    (item) =>
+      item.status === "ended" &&
+      hasPlayableRecording(item.recordingUrl, item.muxVodPlaybackId || item.muxLivePlaybackId),
+  ).length;
+  const progressPct = playlist.length ? Math.round((doneCount / playlist.length) * 100) : 0;
 
   return (
     <AppShell active="my-courses">
@@ -89,14 +113,14 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             <div className="player-wrap">
               <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
                 <div>
-                  <div className="badge danger" style={{ marginBottom: 8 }}>
-                    {lesson.status === "live" ? "JONLI EFIR" : "YOZUV"}
+                  <div className="badge pending" style={{ marginBottom: 8 }}>
+                    {lesson.status === "live" ? "JONLI EFIR" : "YOZUV KUTILMOQDA"}
                   </div>
                   <h3>{lesson.titleUz}</h3>
                   <p className="muted small">
                     {lesson.status === "live"
                       ? "Jonli darsga kirish uchun ruxsat kerak."
-                      : "Video hali yozilmagan."}
+                      : "Video hali yozilmagan — yozuv chiqgach shu yerda ochiladi."}
                   </p>
                 </div>
               </div>
@@ -123,14 +147,48 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
           )}
 
           <h2 style={{ margin: "16px 0 8px", fontSize: 18 }}>{lesson.titleUz}</h2>
-          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
             <div className="muted small">
               {formatDateTime(lesson.scheduledAt)}
-              {lesson.status === "live" ? " · Jonli" : lesson.status === "ended" ? " · Yozuv" : " · Reja"}
+              {" · "}
+              {statusLabel(lesson.status, { hasRecording: readyNow })}
             </div>
             <div className="row gap-8">
               <WatchShareButton path={`/learn/${lesson.id}`} />
             </div>
+          </div>
+
+          <div className="lx-learn-progress" aria-label="Kurs progressi">
+            <div className="lx-learn-progress-meta">
+              <span>
+                {index >= 0 ? index + 1 : "—"}/{playlist.length} dars
+              </span>
+              <span>{progressPct}% yozuv tayyor</span>
+            </div>
+            <div className="lx-learn-progress-track">
+              <div className="lx-learn-progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+          </div>
+
+          <div className="lx-learn-nav">
+            {prev ? (
+              <Link href={`/learn/${prev.id}`} className="btn btn-sm">
+                ← {prev.titleUz}
+              </Link>
+            ) : (
+              <span className="btn btn-sm" style={{ opacity: 0.4, pointerEvents: "none" }}>
+                ← Oldingi
+              </span>
+            )}
+            {next ? (
+              <Link href={`/learn/${next.id}`} className="btn btn-primary btn-sm">
+                {next.titleUz} →
+              </Link>
+            ) : (
+              <Link href={`/courses/${lesson.course.id}`} className="btn btn-sm">
+                Kursga qaytish
+              </Link>
+            )}
           </div>
 
           <div className="teacher-bar">
@@ -162,7 +220,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
 
         <aside className="watch-sidebar">
           <h3 style={{ fontSize: 15, marginBottom: 12 }}>Keyingi darslar</h3>
-          {lesson.course.lessons.map((item) => (
+          {playlist.map((item) => (
             <LessonRow
               key={item.id}
               id={item.id}
@@ -171,6 +229,8 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               status={item.status}
               compact
               active={item.id === lesson.id}
+              recordingUrl={item.recordingUrl}
+              playbackId={item.muxVodPlaybackId || item.muxLivePlaybackId}
             />
           ))}
         </aside>

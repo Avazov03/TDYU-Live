@@ -33,7 +33,7 @@ export default async function CertificatesPage() {
         {items.length === 0 ? (
           <EmptyGuide
             title="Hali sertifikat yo‘q"
-            text="Kursni tugatib, o‘qituvchi bersa shu yerda chiqadi. Hozir darslarga qayting."
+            text="Kursni tugatib (darslar + topshiriqlar), o‘qituvchi bersa shu yerda chiqadi. Hozir Bugun yoki Kurslarimdan davom eting."
             href="/app"
             cta="Bugunga"
           />

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { lessonCover, clockLabel, statusLabel } from "@/lib/plan";
+import { lessonCover, clockLabel, statusLabel, statusTone, hasPlayableRecording } from "@/lib/plan";
 import { coverUrl as generatedCover } from "@/lib/thumbs";
 
 export function PlanCard({
@@ -14,23 +14,28 @@ export function PlanCard({
   summary,
   coverUrl,
   playbackId,
+  recordingUrl,
   status,
   actions,
 }: {
   id: string;
   title: string;
-  when: Date;
+  when: Date | string;
   teacher: string;
   course: string;
   summary?: string | null;
   coverUrl?: string | null;
   playbackId?: string | null;
+  recordingUrl?: string | null;
   status: "live" | "scheduled" | "ended";
   actions?: React.ReactNode;
 }) {
+  const whenDate = typeof when === "string" ? new Date(when) : when;
+  const ready = hasPlayableRecording(recordingUrl, playbackId);
   const initial = lessonCover(coverUrl, playbackId, { id, title });
   const [src, setSrc] = useState(initial);
-  const tone = status === "live" ? "danger" : status === "ended" ? "success" : "pending";
+  const tone = statusTone(status, { hasRecording: ready });
+  const label = statusLabel(status, { hasRecording: ready });
 
   return (
     <article className="lx-row">
@@ -45,7 +50,7 @@ export function PlanCard({
       ) : null}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p className="lx-kicker">
-          {clockLabel(when)} · {teacher}
+          {clockLabel(whenDate)} · {teacher}
         </p>
         <h3>
           <Link href={`/learn/${id}`}>{title}</Link>
@@ -55,7 +60,7 @@ export function PlanCard({
         </p>
         {summary ? <p style={{ margin: "8px 0 0" }}>{summary}</p> : null}
         <div className="row gap-8" style={{ marginTop: 10 }}>
-          <span className={`badge ${tone}`}>{statusLabel(status)}</span>
+          <span className={`badge ${tone}`}>{label}</span>
           {actions}
         </div>
       </div>

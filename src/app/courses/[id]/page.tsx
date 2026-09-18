@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveSubscription } from "@/lib/access";
 import { TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
-import { clockLabel, dayTitle, statusLabel } from "@/lib/plan";
+import { clockLabel, dayTitle, hasPlayableRecording, statusLabel } from "@/lib/plan";
 import type { TariffTier } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -124,7 +124,12 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                       </p>
                       <h3>{lesson.titleUz}</h3>
                       <p className="small muted" style={{ margin: 0 }}>
-                        {statusLabel(lesson.status)}
+                        {statusLabel(lesson.status, {
+                          hasRecording: hasPlayableRecording(
+                            lesson.recordingUrl,
+                            lesson.muxVodPlaybackId || lesson.muxLivePlaybackId,
+                          ),
+                        })}
                       </p>
                     </div>
                     {sub ? <span className="lx-go">Ochish</span> : null}
