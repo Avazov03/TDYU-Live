@@ -27,7 +27,7 @@ export function PlanCard({
   coverUrl?: string | null;
   playbackId?: string | null;
   recordingUrl?: string | null;
-  status: "live" | "lobby" | "scheduled" | "ended";
+  status: import("@/lib/plan").PlanStatus;
   actions?: React.ReactNode;
 }) {
   const whenDate = typeof when === "string" ? new Date(when) : when;

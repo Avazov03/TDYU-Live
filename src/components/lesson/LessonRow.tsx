@@ -6,7 +6,7 @@ type LessonRowProps = {
   id: string;
   titleUz: string;
   subtitle: string;
-  status: "scheduled" | "lobby" | "live" | "ended";
+  status: import("@/lib/plan").PlanStatus;
   compact?: boolean;
   active?: boolean;
   actions?: ReactNode;

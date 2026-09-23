@@ -29,6 +29,17 @@ async function main() {
     process.exit(1);
   }
 
+  // Phase 1 target children first (safe if empty).
+  await prisma.refund.deleteMany();
+  await prisma.enrollment.deleteMany();
+  await prisma.purchase.deleteMany();
+  await prisma.attendanceInterval.deleteMany();
+  await prisma.liveSession.deleteMany();
+  await prisma.recording.deleteMany();
+  await prisma.courseReviewEvent.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.incident.deleteMany();
+  await prisma.securityEvent.deleteMany();
   await prisma.chatMessage.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.submission.deleteMany();
@@ -37,6 +48,7 @@ async function main() {
   await prisma.certificate.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.subscription.deleteMany();
+  await prisma.entitlement.deleteMany();
   await prisma.lesson.deleteMany();
   await prisma.teacherInvite.deleteMany();
   await prisma.course.deleteMany();

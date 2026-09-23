@@ -33,8 +33,16 @@ enum TariffTier {
 enum LessonStatus {
   scheduled
   lobby
+  /// Target synonym for lobby; dual-accept during cutover.
+  waiting_room
   live
+  paused
   ended
+  recording_processing
+  recording_ready
+  teacher_review
+  published
+  cancelled
 }
 
 enum PaymentStatus {
@@ -42,6 +50,11 @@ enum PaymentStatus {
   pending
   paid
   failed
+  cancelled
+  refund_requested
+  refund_processing
+  refunded
+  refund_failed
 }
 
 enum PaymentProvider {
@@ -57,6 +70,108 @@ enum NotificationType {
   grade
   certificate
   system
+  // Target event types (additive; unused until notify matrix ships)
+  course_published
+  purchase_success
+  course_starts_tomorrow
+  schedule_changed
+  lesson_cancelled
+  course_cancelled
+  refund_completed
+  recording_published
+  teacher_changed
+}
+
+/// Target course lifecycle. Null on Course = legacy isPublished still authoritative.
+enum CourseLifecycleStatus {
+  draft
+  submitted
+  in_review
+  changes_requested
+  rejected
+  approved
+  published
+  upcoming
+  active
+  completed
+  archived
+  cancelled
+  unpublished
+}
+
+enum AccountStatus {
+  active
+  restricted
+  suspended
+}
+
+enum PurchaseStatus {
+  pending
+  completed
+  failed
+  refunded
+  partially_refunded
+}
+
+enum EnrollmentStatus {
+  active
+  completed
+  cancelled
+  refunded
+}
+
+enum RefundStatus {
+  requested
+  approved
+  processing
+  refunded
+  failed
+  rejected
+}
+
+enum RefundType {
+  full_100
+  half_50
+  course_cancel_100
+}
+
+enum LiveSessionStatus {
+  created
+  waiting
+  live
+  paused
+  ended
+  abandoned
+}
+
+enum RecordingStatus {
+  not_started
+  processing
+  ready
+  teacher_review
+  published
+  failed
+  hidden
+}
+
+enum CourseReviewDecision {
+  submitted
+  changes_requested
+  rejected
+  approve_publish
+}
+
+enum IncidentLevel {
+  info
+  warning
+  high
+  critical
+}
+
+enum IncidentStatus {
+  open
+  acknowledged
+  resolved
 }
 
 model User {
@@ -69,7 +184,11 @@ model User {
   avatarUrl      String?   @map("avatar_url")
   language       Language  @default(uz)
   theme          Theme     @default(dark)
+  /// Legacy single flag — keep until security cutover. Prefer purchaseAllowed + accountStatus.
   isBlocked      Boolean   @default(false) @map("is_blocked")
+  /// Target: blocks new purchases only; does not wipe enrollments.
+  purchaseAllowed Boolean  @default(true) @map("purchase_allowed")
+  accountStatus  AccountStatus @default(active) @map("account_status")
   lastLoginAt    DateTime? @map("last_login_at")
   telegramChatId String?   @map("telegram_chat_id")
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -78,12 +197,24 @@ model User {
   entitlement         Entitlement?
   subscriptions       Subscription[]
   payments            Payment[]
+  purchases           Purchase[]
+  enrollments         Enrollment[]
+  refundsRequested    Refund[]              @relation("RefundRequestedBy")
+  refundsDecided      Refund[]              @relation("RefundDecidedBy")
   attendance          Attendance[]
+  attendanceIntervals AttendanceInterval[]
   submissions         Submission[]
   certificates        Certificate[]
   notifications       Notification[]
   chatMessages        ChatMessage[]
   passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  securityEvents      SecurityEvent[]
+  coursesCreated      Course[]             @relation("CourseCreatedBy")
+  coursesApproved     Course[]             @relation("CourseApprovedBy")
+  coursesPublished    Course[]             @relation("CoursePublishedBy")
+  courseReviewEvents  CourseReviewEvent[]  @relation("CourseReviewActor")
+  incidentsAcked      Incident[]           @relation("IncidentAcknowledgedBy")
 
   @@map("users")
 }
@@ -168,21 +299,44 @@ model Course {
   subjectId      String   @map("subject_id")
   titleUz        String   @map("title_uz")
   descriptionUz  String   @map("description_uz") @db.Text
+  /// Legacy triad — authoritative until listPrice cutover.
   priceT1        Int      @map("price_t1")
   priceT2        Int      @map("price_t2")
   priceT3        Int      @map("price_t3")
+  /// Legacy publish flag — authoritative while lifecycleStatus is null.
   isPublished    Boolean  @default(true) @map("is_published")
+  /// Target lifecycle; null = use isPublished (legacy).
+  lifecycleStatus CourseLifecycleStatus? @map("lifecycle_status")
+  /// Target single list price (so'm); null = use legacy triad until Admin sets.
+  listPrice      Int?     @map("list_price")
+  /// null = unlimited capacity
+  capacity       Int?
+  topicUz        String?  @map("topic_uz")
+  shortDescriptionUz String? @map("short_description_uz") @db.Text
+  startsAtApprox DateTime? @map("starts_at_approx")
+  timezone       String   @default("Asia/Tashkent")
+  createdByUserId String? @map("created_by_user_id")
+  approvedByUserId String? @map("approved_by_user_id")
+  publishedByUserId String? @map("published_by_user_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   teacher       Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   faculty       Faculty        @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdByUser User?          @relation("CourseCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUser User?         @relation("CourseApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  publishedByUser User?        @relation("CoursePublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
   lessons       Lesson[]
   subscriptions Subscription[]
   payments      Payment[]
+  purchases     Purchase[]
+  enrollments   Enrollment[]
   assignments   Assignment[]
   certificates  Certificate[]
+  reviewEvents  CourseReviewEvent[]
 
+  @@index([lifecycleStatus])
+  @@index([teacherId])
   @@map("courses")
 }
 
@@ -221,23 +375,33 @@ model Lesson {
   courseId           String       @map("course_id")
   titleUz            String       @map("title_uz")
   summaryUz          String?      @map("summary_uz") @db.Text
+  topicUz            String?      @map("topic_uz")
   coverUrl           String?      @map("cover_url")
   scheduledAt        DateTime     @map("scheduled_at")
+  scheduledEndAt     DateTime?    @map("scheduled_end_at")
+  durationMinutes    Int?         @map("duration_minutes")
+  isAdditional       Boolean      @default(false) @map("is_additional")
   status             LessonStatus @default(scheduled)
+  cancelledAt        DateTime?    @map("cancelled_at")
   muxLiveStreamId    String?      @map("mux_live_stream_id")
   muxLivePlaybackId  String?      @map("mux_live_playback_id")
   muxVodPlaybackId   String?      @map("mux_vod_playback_id")
   streamKey          String?      @map("stream_key")
+  /// Legacy local/Mux URL — keep until Recording entity cutover.
   recordingUrl       String?      @map("recording_url")
   createdAt          DateTime     @default(now()) @map("created_at")
 
-  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  attendance  Attendance[]
-  assignments Assignment[]
-  chatMessages ChatMessage[]
-  assets      LessonAsset[]
+  course               Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendance           Attendance[]
+  attendanceIntervals  AttendanceInterval[]
+  assignments          Assignment[]
+  chatMessages         ChatMessage[]
+  assets               LessonAsset[]
+  liveSessions         LiveSession[]
+  recordings           Recording[]
 
   @@index([courseId])
+  @@index([status, scheduledAt])
   @@map("lessons")
 }
 
@@ -318,18 +482,27 @@ model Certificate {
 }
 
 model Payment {
-  id        String          @id @default(uuid())
-  userId    String          @map("user_id")
-  courseId  String?         @map("course_id")
-  tier      TariffTier
-  amount    Int
-  status    PaymentStatus   @default(demo_paid)
-  provider  PaymentProvider @default(demo)
-  createdAt DateTime        @default(now()) @map("created_at")
+  id             String          @id @default(uuid())
+  userId         String          @map("user_id")
+  courseId       String?         @map("course_id")
+  purchaseId     String?         @map("purchase_id")
+  tier           TariffTier
+  amount         Int
+  status         PaymentStatus   @default(demo_paid)
+  provider       PaymentProvider @default(demo)
+  /// Target: exclude from real revenue when true.
+  isDemo         Boolean         @default(true) @map("is_demo")
+  idempotencyKey String?         @unique @map("idempotency_key")
+  externalTxnId  String?         @unique @map("external_txn_id")
+  paidAt         DateTime?       @map("paid_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
+  @@index([userId, createdAt])
+  @@index([courseId])
   @@map("payments")
 }
 
@@ -362,6 +535,223 @@ model ChatMessage {
 
   @@index([lessonId, createdAt])
   @@map("chat_messages")
+}
+
+/// Target commerce order. Empty until Phase 3 / optional backfill.
+model Purchase {
+  id             String         @id @default(uuid())
+  userId         String         @map("user_id")
+  courseId       String         @map("course_id")
+  amountPaid     Int            @map("amount_paid")
+  currency       String         @default("UZS")
+  status         PurchaseStatus @default(pending)
+  idempotencyKey String?        @unique @map("idempotency_key")
+  legacyBackfill Boolean        @default(false) @map("legacy_backfill")
+  legacyTier     TariffTier?    @map("legacy_tier")
+  completedAt    DateTime?      @map("completed_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  enrollments Enrollment[]
+  refunds     Refund[]
+
+  @@index([userId, createdAt])
+  @@index([courseId])
+  @@index([status])
+  @@map("purchases")
+}
+
+/// Target access seat. Not wired into getLessonAccess until Phase 2 flag.
+model Enrollment {
+  id           String           @id @default(uuid())
+  userId       String           @map("user_id")
+  courseId     String           @map("course_id")
+  purchaseId   String?          @map("purchase_id")
+  status       EnrollmentStatus @default(active)
+  /// Access open for live/recording/materials when true (completed courses stay open).
+  accessOpen   Boolean          @default(true) @map("access_open")
+  activatedAt  DateTime         @default(now()) @map("activated_at")
+  completedAt  DateTime?        @map("completed_at")
+  closedAt     DateTime?        @map("closed_at")
+  legacySubscriptionId String?  @unique @map("legacy_subscription_id")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  purchase Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@index([userId, courseId])
+  @@map("enrollments")
+}
+
+model Refund {
+  id              String       @id @default(uuid())
+  purchaseId      String       @map("purchase_id")
+  requestedById   String       @map("requested_by_id")
+  decidedById     String?      @map("decided_by_id")
+  type            RefundType
+  status          RefundStatus @default(requested)
+  amount          Int
+  reason          String       @db.Text
+  progressPercent Int?         @map("progress_percent")
+  decidedAt       DateTime?    @map("decided_at")
+  completedAt     DateTime?    @map("completed_at")
+  idempotencyKey  String?      @unique @map("idempotency_key")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  requestedBy User     @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  decidedBy   User?    @relation("RefundDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([purchaseId])
+  @@index([status])
+  @@map("refunds")
+}
+
+model LiveSession {
+  id                     String            @id @default(uuid())
+  lessonId               String            @map("lesson_id")
+  status                 LiveSessionStatus @default(created)
+  activeTeachingSeconds  Int               @default(0) @map("active_teaching_seconds")
+  pauseSeconds           Int               @default(0) @map("pause_seconds")
+  sessionStartedAt       DateTime?         @map("session_started_at")
+  endedAt                DateTime?         @map("ended_at")
+  warn55Sent             Boolean           @default(false) @map("warn_55_sent")
+  warn58Sent             Boolean           @default(false) @map("warn_58_sent")
+  warn59Sent             Boolean           @default(false) @map("warn_59_sent")
+  roomKey                String?           @map("room_key")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  lesson              Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  attendanceIntervals AttendanceInterval[]
+  recordings          Recording[]
+
+  @@index([lessonId, status])
+  @@map("live_sessions")
+}
+
+model Recording {
+  id              String          @id @default(uuid())
+  lessonId        String          @map("lesson_id")
+  liveSessionId   String?         @map("live_session_id")
+  status          RecordingStatus @default(not_started)
+  storageKey      String?         @map("storage_key")
+  muxPlaybackId   String?         @map("mux_playback_id")
+  durationSeconds Int?            @map("duration_seconds")
+  readyAt         DateTime?       @map("ready_at")
+  reviewDeadlineAt DateTime?      @map("review_deadline_at")
+  publishedAt     DateTime?       @map("published_at")
+  autoPublished   Boolean         @default(false) @map("auto_published")
+  failureReason   String?         @map("failure_reason") @db.Text
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  liveSession LiveSession? @relation(fields: [liveSessionId], references: [id], onDelete: SetNull)
+
+  @@index([lessonId, status])
+  @@index([status, reviewDeadlineAt])
+  @@map("recordings")
+}
+
+/// Live teaching attendance intervals (analytics). Legacy Attendance table untouched.
+model AttendanceInterval {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  lessonId      String    @map("lesson_id")
+  liveSessionId String?   @map("live_session_id")
+  joinedAt      DateTime  @map("joined_at")
+  leftAt        DateTime? @map("left_at")
+  /// waiting_room | live | legacy_page_open
+  source        String    @default("live")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  liveSession LiveSession? @relation(fields: [liveSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, lessonId])
+  @@index([lessonId, joinedAt])
+  @@map("attendance_intervals")
+}
+
+model CourseReviewEvent {
+  id         String               @id @default(uuid())
+  courseId   String               @map("course_id")
+  actorId    String               @map("actor_id")
+  decision   CourseReviewDecision
+  reason     String?              @db.Text
+  priceSet   Int?                 @map("price_set")
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  actor  User   @relation("CourseReviewActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, createdAt])
+  @@map("course_review_events")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  metadata   String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Incident {
+  id               String         @id @default(uuid())
+  level            IncidentLevel  @default(warning)
+  status           IncidentStatus @default(open)
+  title            String
+  detail           String?        @db.Text
+  source           String?
+  relatedType      String?        @map("related_type")
+  relatedId        String?        @map("related_id")
+  acknowledgedById String?        @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?      @map("acknowledged_at")
+  resolvedAt       DateTime?      @map("resolved_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  acknowledgedBy User? @relation("IncidentAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([status, level])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  kind      String
+  detail    String?  @db.Text
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+  @@map("security_events")
 }
 
 model SiteSetting {

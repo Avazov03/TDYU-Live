@@ -26,10 +26,10 @@ git push -u manba main
 ## Server
 
 - Domen: **https://lexify.zonic.fit**
-- Public IPv4: `3.79.57.253`
+- Public IPv4: `3.65.92.39` (Lightsail static `StaticIP-1`)
 - Private IPv4: `172.26.11.220`
 - Public IPv6: `2a05:d014:1091:2d00:768b:8b11:2d63:34ae`
-- SSH: `ubuntu@3.79.57.253`
+- SSH: `ubuntu@3.65.92.39`
 - Kalit (gitga kiritilmasin): `.secrets/tdyu-live-server.pem`
 - App: `/var/www/tdyu-live` (PM2 `tdyu-live`, port 3100)
 

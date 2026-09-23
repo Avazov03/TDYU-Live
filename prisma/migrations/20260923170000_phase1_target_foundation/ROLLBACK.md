@@ -1,0 +1,40 @@
+-- ROLLBACK sketch for 20260923170000_phase1_target_foundation
+-- ONLY after confirming no production dependency on new tables.
+-- Prefer restore from backup over partial DROP in production.
+
+-- DROP TABLE IF EXISTS "security_events";
+-- DROP TABLE IF EXISTS "incidents";
+-- DROP TABLE IF EXISTS "audit_logs";
+-- DROP TABLE IF EXISTS "course_review_events";
+-- DROP TABLE IF EXISTS "attendance_intervals";
+-- DROP TABLE IF EXISTS "recordings";
+-- DROP TABLE IF EXISTS "live_sessions";
+-- DROP TABLE IF EXISTS "refunds";
+-- DROP TABLE IF EXISTS "enrollments";
+-- ALTER TABLE "payments" DROP CONSTRAINT IF EXISTS "payments_purchase_id_fkey";
+-- ALTER TABLE "payments" DROP COLUMN IF EXISTS "purchase_id";
+-- ALTER TABLE "payments" DROP COLUMN IF EXISTS "is_demo";
+-- ALTER TABLE "payments" DROP COLUMN IF EXISTS "idempotency_key";
+-- ALTER TABLE "payments" DROP COLUMN IF EXISTS "external_txn_id";
+-- ALTER TABLE "payments" DROP COLUMN IF EXISTS "paid_at";
+-- DROP TABLE IF EXISTS "purchases";
+-- ALTER TABLE "lessons" DROP COLUMN IF EXISTS "topic_uz";
+-- ALTER TABLE "lessons" DROP COLUMN IF EXISTS "scheduled_end_at";
+-- ALTER TABLE "lessons" DROP COLUMN IF EXISTS "duration_minutes";
+-- ALTER TABLE "lessons" DROP COLUMN IF EXISTS "is_additional";
+-- ALTER TABLE "lessons" DROP COLUMN IF EXISTS "cancelled_at";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "lifecycle_status";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "list_price";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "capacity";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "topic_uz";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "short_description_uz";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "starts_at_approx";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "timezone";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "created_by_user_id";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "approved_by_user_id";
+-- ALTER TABLE "courses" DROP COLUMN IF EXISTS "published_by_user_id";
+-- ALTER TABLE "users" DROP COLUMN IF EXISTS "purchase_allowed";
+-- ALTER TABLE "users" DROP COLUMN IF EXISTS "account_status";
+-- Enum value removal in PostgreSQL is non-trivial — restore DB backup instead.
+
+SELECT 'Use backup restore for full rollback of enum values' AS note;

@@ -16,7 +16,7 @@ export type ScheduleLesson = {
   coverUrl?: string | null;
   playbackId?: string | null;
   recordingUrl?: string | null;
-  status: "live" | "lobby" | "scheduled" | "ended";
+  status: import("@/lib/plan").PlanStatus;
 };
 
 type StatusFilter = "all" | "live" | "lobby" | "scheduled" | "ready" | "waiting";

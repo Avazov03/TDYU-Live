@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import type { LessonStatus, TariffTier } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import {
+  compareAccessOutcomes,
+  getEnrollmentLessonAccess,
+  logAccessShadowCompare,
+  type EnrollmentAccessResult,
+} from "@/lib/enrollment-access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
 import { canWatchLive, isSubscriptionActive } from "@/lib/tariffs";
@@ -97,7 +104,8 @@ export async function getActiveSubscription(userId: string, courseId: string) {
   return sub;
 }
 
-export async function getLessonAccess(
+/** Legacy Subscription + endsAt + tier (CURRENT SoT). */
+export async function getLegacyLessonAccess(
   userId: string | undefined,
   courseId: string,
   status: LessonStatus,
@@ -116,6 +124,94 @@ export async function getLessonAccess(
   }
 
   return { ok: true, tier: sub.tier };
+}
+
+function enrollmentToLegacyShape(
+  neu: EnrollmentAccessResult,
+  fallbackTier: TariffTier,
+): AccessResult {
+  if (neu.ok) return { ok: true, tier: fallbackTier };
+  switch (neu.reason) {
+    case "unauthenticated":
+      return { ok: false, reason: "unauthenticated" };
+    case "no_enrollment":
+      return { ok: false, reason: "no_subscription" };
+    case "access_closed":
+    case "inactive":
+      return { ok: false, reason: "expired" };
+    case "not_started":
+      return { ok: false, reason: "not_started" };
+    case "live_locked":
+      return { ok: false, reason: "live_locked" };
+    default:
+      return { ok: false, reason: "no_subscription" };
+  }
+}
+
+/**
+ * Lesson access authority entry.
+ *
+ * Modes (FF_ENROLLMENT_ACCESS_MODE):
+ * - off (default): legacy only
+ * - shadow: serve legacy; compare enrollment path; log MATCH/MISMATCH
+ * - dual: Enrollment when present+open, else legacy fallback
+ *
+ * Never expires other courses. Never trusts client-supplied userId as auth.
+ * Callers must pass session-derived userId.
+ */
+export async function getLessonAccess(
+  userId: string | undefined,
+  courseId: string,
+  status: LessonStatus,
+): Promise<AccessResult> {
+  const mode = getEnrollmentAccessMode();
+  const legacy = await getLegacyLessonAccess(userId, courseId, status);
+
+  if (mode === "off") {
+    return legacy;
+  }
+
+  // Shadow / dual: load legacy tier for optional live parity during comparison.
+  let legacyTier: TariffTier | null = legacy.ok ? legacy.tier : null;
+  if (!legacyTier && userId) {
+    const sub = await prisma.subscription.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+      select: { tier: true },
+    });
+    legacyTier = sub?.tier ?? null;
+  }
+
+  const neu = await getEnrollmentLessonAccess(userId, courseId, status, {
+    // During shadow/dual prep, mirror OLD live tier so mapped active seats can MATCH.
+    // Target cutover (tariff removal) will set applyLegacyLiveTier=false.
+    applyLegacyLiveTier: true,
+    legacyTier,
+  });
+
+  if (mode === "shadow" && userId) {
+    const verdict = compareAccessOutcomes(legacy.ok, neu.ok);
+    logAccessShadowCompare({
+      userId,
+      courseId,
+      lessonStatus: status,
+      old: legacy,
+      neu,
+      verdict,
+    });
+    // CRITICAL: always serve CURRENT (legacy) result in shadow.
+    return legacy;
+  }
+
+  // dual: prefer enrollment seat when it yields a decisive enrollment row.
+  // If no enrollment → legacy fallback (do not invent allow).
+  if (mode === "dual") {
+    if (neu.ok || neu.reason !== "no_enrollment") {
+      return enrollmentToLegacyShape(neu, legacyTier ?? "t1");
+    }
+    return legacy;
+  }
+
+  return legacy;
 }
 
 export function accessMessage(

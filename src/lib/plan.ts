@@ -1,8 +1,10 @@
+import type { LessonStatus } from "@/generated/prisma/client";
 import { coverUrl as generatedCover } from "@/lib/thumbs";
 
 const TZ = "Asia/Tashkent";
 
-export type PlanStatus = "scheduled" | "lobby" | "live" | "ended";
+/** Includes legacy + Phase 1 target statuses (additive enum). */
+export type PlanStatus = LessonStatus;
 
 export function localDayKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -55,8 +57,18 @@ export function statusLabel(
   opts?: { hasRecording?: boolean },
 ) {
   if (status === "live") return "Jonli";
-  if (status === "lobby") return "Kutish";
+  if (status === "lobby" || status === "waiting_room") return "Kutish";
+  if (status === "paused") return "Pauza";
   if (status === "scheduled") return "Reja";
+  if (status === "cancelled") return "Bekor";
+  if (status === "recording_processing") return "Yozuv tayyorlanmoqda";
+  if (status === "recording_ready" || status === "teacher_review") return "Yozuv tekshiruvda";
+  if (status === "published") return "Yozuv";
+  if (status === "ended") {
+    if (opts?.hasRecording === false) return "Yozuv kutilmoqda";
+    if (opts?.hasRecording === true) return "Ko‘rish";
+    return "Yozuv";
+  }
   if (opts?.hasRecording === false) return "Yozuv kutilmoqda";
   if (opts?.hasRecording === true) return "Ko‘rish";
   return "Yozuv";
@@ -67,12 +79,20 @@ export function statusTone(
   opts?: { hasRecording?: boolean },
 ) {
   if (status === "live") return "danger";
-  if (status === "lobby") return "accent";
+  if (status === "lobby" || status === "waiting_room" || status === "paused") return "accent";
   if (status === "scheduled") return "pending";
+  if (status === "cancelled") return "pending";
+  if (
+    status === "recording_processing" ||
+    status === "recording_ready" ||
+    status === "teacher_review"
+  ) {
+    return "pending";
+  }
   if (opts?.hasRecording === false) return "pending";
   return "success";
 }
 
 export function isJoinableLiveStatus(status: PlanStatus | string) {
-  return status === "live" || status === "lobby";
+  return status === "live" || status === "lobby" || status === "waiting_room";
 }
