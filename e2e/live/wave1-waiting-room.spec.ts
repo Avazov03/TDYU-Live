@@ -59,26 +59,37 @@ test.describe("Live Wave 1 waiting room", () => {
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
 
-    const openBtn = teacherPage.getByTestId("live-open-waiting");
-    if (await openBtn.count()) {
-      await openBtn.click();
-      await teacherPage.waitForTimeout(800);
+    // Wave 2 may leave the shared fixture LIVE — reuse and end; otherwise full open→start.
+    const alreadyLive = (await teacherPage.getByTestId("live-end").count()) > 0;
+    if (!alreadyLive) {
+      const openBtn = teacherPage.getByTestId("live-open-waiting");
+      if (await openBtn.count()) {
+        await openBtn.click();
+        await teacherPage.waitForTimeout(800);
+        await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
+      }
+      await expect(teacherPage.getByTestId("live-start")).toBeVisible({ timeout: 15_000 });
+
+      monitor.noteAction("Student joins waiting room");
+      await loginAs(studentPage, student!, { monitor });
+      await studentPage.goto(`/learn/${LIVE_LESSON_ID}`);
+      await expect(studentPage.getByTestId("live-waiting-message")).toBeVisible({
+        timeout: 20_000,
+      });
+
+      monitor.noteAction("Teacher starts live");
+      await teacherPage.getByTestId("live-start").click();
+      await teacherPage.waitForTimeout(1200);
       await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     }
-    await expect(teacherPage.getByTestId("live-start")).toBeVisible({ timeout: 15_000 });
 
-    monitor.noteAction("Student joins waiting room");
-    await loginAs(studentPage, student!, { monitor });
-    await studentPage.goto(`/learn/${LIVE_LESSON_ID}`);
-    await expect(studentPage.getByTestId("live-waiting-message")).toBeVisible({
-      timeout: 20_000,
-    });
-
-    monitor.noteAction("Teacher starts live");
-    await teacherPage.getByTestId("live-start").click();
-    await teacherPage.waitForTimeout(1200);
-    await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 20_000 });
+
+    if (alreadyLive) {
+      monitor.noteAction("Student joins already-LIVE room (shared fixture)");
+      await loginAs(studentPage, student!, { monitor });
+      await studentPage.goto(`/learn/${LIVE_LESSON_ID}`);
+    }
 
     monitor.noteAction("Student sees LIVE");
     await studentPage.reload();

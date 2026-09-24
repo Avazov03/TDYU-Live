@@ -187,6 +187,23 @@ No DB migration — peer id remains derived from user identity.
 
 ---
 
+## 15c. Browser E2E Verification (identity fix + Wave 2 CLOSED)
+
+| Field | Value |
+|-------|--------|
+| Date | 2026-09-24 |
+| Staging | `http://127.0.0.1:3101` (SSH tunnel); flags: enrollment + checkout V2 + waiting room V2 + AV policy V2 |
+| Command | `E2E_LIVE_WAVE2=1 npx playwright test e2e/live/a-wave2-av-policy.spec.ts --project=chromium` |
+| Browser | Chromium |
+| Result | **PASS** (same colliding-prefix fixture teacher/student accounts) |
+| Flow | NONE → Raise Hand REQUESTED → Grant GRANTED (devices stay OFF) → Revoke REVOKED; deny-lesson raise DENY |
+| Security | Student self-grant API DENY; unauthorized lesson raise DENY |
+| Regression | Live unit 24/24; Access 77/77; Checkout 45/45; typecheck PASS; smoke/access/catalog/shell + Live Wave 1/2 E2E |
+
+Production: untouched (`PROD_NO_FF`, PID unchanged).
+
+---
+
 ## 16. Production safety
 
 Flag default **false**. No schema migration. Prod process/env not modified by this Wave.
