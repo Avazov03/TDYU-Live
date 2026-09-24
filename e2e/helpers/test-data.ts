@@ -28,10 +28,15 @@ export const STAGING_FIXTURE = {
   enrollmentId: "7a0499ee-d997-4e83-8481-86306db81433",
   lessonId: "a5555555-5555-5555-5555-555555555501",
   lessonTitle: "Fixture ended lesson",
-  /** Checkout V2 browser target — RFC UUID (Zod-strict); staging fixture. */
+  /** Checkout V2 browser target — RFC UUID (Zod-strict); staging disposable fixture. */
   checkoutV2CourseId: "b2500001-0000-4000-8000-000000000025",
-  checkoutV2CourseTitle: "Phase 2.5 Checkout E2E Course",
+  checkoutV2CourseTitle: "Phase 5 Wave 5 Checkout E2E Course",
   checkoutV2ListPrice: 250000,
   checkoutV2LessonId: "b2500001-0000-4000-8000-000000000026",
-  checkoutV2LessonTitle: "Phase 2.5 E2E lesson",
+  checkoutV2LessonTitle: "Phase 5 Wave 5 E2E lesson",
+  /** Never purchased by fixture.active1 — Wave 5+ deny / isolation probe. */
+  denyCourseId: "c2500001-0000-4000-8000-000000000035",
+  denyCourseTitle: "Phase 5 Wave 5 Deny Probe Course",
+  denyLessonId: "c2500001-0000-4000-8000-000000000036",
+  denyLessonTitle: "Phase 5 Wave 5 deny lesson",
 } as const;

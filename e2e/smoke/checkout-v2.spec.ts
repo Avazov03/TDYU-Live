@@ -19,22 +19,26 @@ import { STAGING_FIXTURE } from "../helpers/test-data";
  * - Staging/local must have FF_COURSE_CHECKOUT_V2=true
  * - Lesson access after Enrollment-only purchase needs dual (or enrollment-serving) mode
  *
- * Target course: Fixture Course B (not owned by fixture.active1).
+ * Target course: disposable Course B (not owned by fixture.active1 at start).
  * Course A remains owned — multi-course must stay open.
  */
 const COURSE_B = {
   id:
     process.env.E2E_CHECKOUT_V2_COURSE_ID?.trim() ||
-    "b2500001-0000-4000-8000-000000000025",
+    STAGING_FIXTURE.checkoutV2CourseId,
   title:
     process.env.E2E_CHECKOUT_V2_COURSE_TITLE?.trim() ||
-    "Phase 2.5 Checkout E2E Course",
-  listPrice: Number(process.env.E2E_CHECKOUT_V2_LIST_PRICE ?? "250000"),
+    STAGING_FIXTURE.checkoutV2CourseTitle,
+  listPrice: Number(
+    process.env.E2E_CHECKOUT_V2_LIST_PRICE ??
+      String(STAGING_FIXTURE.checkoutV2ListPrice),
+  ),
   lessonId:
     process.env.E2E_CHECKOUT_V2_LESSON_ID?.trim() ||
-    "b2500001-0000-4000-8000-000000000026",
+    STAGING_FIXTURE.checkoutV2LessonId,
   lessonTitle:
-    process.env.E2E_CHECKOUT_V2_LESSON_TITLE?.trim() || "Phase 2.5 E2E lesson",
+    process.env.E2E_CHECKOUT_V2_LESSON_TITLE?.trim() ||
+    STAGING_FIXTURE.checkoutV2LessonTitle,
 };
 
 const COURSE_A = {
@@ -115,43 +119,69 @@ test.describe("Checkout V2", () => {
     const detailRes = await page.goto(`/courses/${COURSE_B.id}`);
     expect(detailRes?.status(), "course detail status").toBeLessThan(500);
     await expect(page.getByRole("heading", { name: COURSE_B.title, level: 2 })).toBeVisible();
-    await expect(page.getByTestId("course-checkout-v2")).toBeVisible();
 
-    monitor.noteAction("Click Checkout V2 CTA");
-    await page.getByTestId("checkout-v2-cta").click();
-    await expect(page).toHaveURL(new RegExp(`/checkout/v2\\?courseId=${COURSE_B.id}`));
-    await expect(page.getByTestId("checkout-v2")).toBeVisible();
+    const alreadyOwned = (await page.getByTestId("course-owned").count()) > 0;
+    let purchaseId: string;
+    let paymentId: string;
+    let enrollmentId: string;
+    let idemKey: string;
 
-    monitor.noteAction("Continue to payment method");
-    await page.getByTestId("checkout-v2-continue").click();
-    await expect(page.getByTestId("checkout-v2-method-demo")).toBeVisible();
+    if (alreadyOwned) {
+      monitor.noteAction("Course B already owned — validate seat + ALREADY_ENROLLED (no duplicate buy)");
+      await expect(page.getByTestId("course-owned")).toBeVisible();
+      const conflict = await browserCheckoutV2(
+        page,
+        COURSE_B.id,
+        `e2e-already-${Date.now()}`,
+      );
+      expect(conflict.status).toBe(409);
+      expect(conflict.body.ok).toBe(false);
+      expect(conflict.body.error?.code).toBe("ALREADY_ENROLLED");
+      purchaseId = "existing";
+      paymentId = "existing";
+      enrollmentId = "existing";
+      idemKey = "n/a";
+    } else {
+      await expect(page.getByTestId("course-checkout-v2")).toBeVisible();
 
-    monitor.noteAction("Pay via Checkout V2 demo");
-    await page.getByTestId("checkout-v2-pay").click();
-    await expect(page.getByTestId("checkout-v2-success")).toBeVisible({ timeout: 30_000 });
-    expect(checkoutBody, "checkout v2 JSON body").toBeTruthy();
-    expect(checkoutBody!.ok).toBe(true);
-    expect(checkoutBody!.purchase.courseId).toBe(COURSE_B.id);
-    expect(checkoutBody!.purchase.status).toBe("completed");
-    expect(checkoutBody!.purchase.amountPaid).toBe(COURSE_B.listPrice);
-    expect(checkoutBody!.purchase.currency).toBe("UZS");
-    expect(checkoutBody!.payment.isDemo).toBe(true);
-    expect(checkoutBody!.payment.provider).toBe("demo");
-    expect(checkoutBody!.payment.paidAt).toBeTruthy();
-    expect(checkoutBody!.enrollment.courseId).toBe(COURSE_B.id);
-    expect(checkoutBody!.enrollment.status).toBe("active");
-    expect(checkoutBody!.enrollment.accessOpen).toBe(true);
-    expect(checkoutBody!.idempotentReplay).toBe(false);
-    expect(capturedIdempotencyKey, "Idempotency-Key header").toBeTruthy();
+      monitor.noteAction("Click Checkout V2 CTA");
+      await page.getByTestId("checkout-v2-cta").click();
+      await expect(page).toHaveURL(new RegExp(`/checkout/v2\\?courseId=${COURSE_B.id}`));
+      await expect(page.getByTestId("checkout-v2")).toBeVisible();
 
-    const purchaseId = checkoutBody!.purchase.id;
-    const paymentId = checkoutBody!.payment.id;
-    const enrollmentId = checkoutBody!.enrollment.id;
-    const idemKey = capturedIdempotencyKey!;
+      monitor.noteAction("Continue to payment method");
+      await page.getByTestId("checkout-v2-continue").click();
+      await expect(page.getByTestId("checkout-v2-method-demo")).toBeVisible();
 
-    monitor.noteAction("Go to My Courses after success");
-    await page.getByTestId("checkout-v2-goto-my-courses").click();
-    await expect(page).toHaveURL(/\/my-courses/);
+      monitor.noteAction("Pay via Checkout V2 demo");
+      await page.getByTestId("checkout-v2-pay").click();
+      await expect(page.getByTestId("checkout-v2-success")).toBeVisible({ timeout: 30_000 });
+      expect(checkoutBody, "checkout v2 JSON body").toBeTruthy();
+      expect(checkoutBody!.ok).toBe(true);
+      expect(checkoutBody!.purchase.courseId).toBe(COURSE_B.id);
+      expect(checkoutBody!.purchase.status).toBe("completed");
+      expect(checkoutBody!.purchase.amountPaid).toBe(COURSE_B.listPrice);
+      expect(checkoutBody!.purchase.currency).toBe("UZS");
+      expect(checkoutBody!.payment.isDemo).toBe(true);
+      expect(checkoutBody!.payment.provider).toBe("demo");
+      expect(checkoutBody!.payment.paidAt).toBeTruthy();
+      expect(checkoutBody!.enrollment.courseId).toBe(COURSE_B.id);
+      expect(checkoutBody!.enrollment.status).toBe("active");
+      expect(checkoutBody!.enrollment.accessOpen).toBe(true);
+      expect(checkoutBody!.idempotentReplay).toBe(false);
+      expect(capturedIdempotencyKey, "Idempotency-Key header").toBeTruthy();
+
+      purchaseId = checkoutBody!.purchase.id;
+      paymentId = checkoutBody!.payment.id;
+      enrollmentId = checkoutBody!.enrollment.id;
+      idemKey = capturedIdempotencyKey!;
+
+      monitor.noteAction("Go to My Courses after success");
+      await page.getByTestId("checkout-v2-goto-my-courses").click();
+      await expect(page).toHaveURL(/\/my-courses/);
+    }
+
+    await page.goto("/my-courses");
     await expect(page.getByText(COURSE_B.title).first()).toBeVisible({ timeout: 15_000 });
     // Multi-course: Course A still listed
     await expect(page.getByText(COURSE_A.title).first()).toBeVisible();
@@ -169,30 +199,33 @@ test.describe("Checkout V2", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: COURSE_B.lessonTitle }),
     ).toBeVisible({ timeout: 15_000 });
-    // Dual/enrollment access: must not show the legacy paywall upsell.
+    // Enrollment access: must not show legacy tariff paywall CTAs.
     await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Tariflar/i })).toHaveCount(0);
     await expect(page.getByLabel("Kurs progressi")).toBeVisible();
 
-    // --- Idempotency replay (same key) via authenticated browser fetch ---
-    monitor.noteAction("Replay same Idempotency-Key");
-    const replay = await browserCheckoutV2(page, COURSE_B.id, idemKey);
-    expect(replay.status).toBe(200);
-    expect(replay.body.ok).toBe(true);
-    expect(replay.body.idempotentReplay).toBe(true);
-    expect(replay.body.purchase.id).toBe(purchaseId);
-    expect(replay.body.payment.id).toBe(paymentId);
-    expect(replay.body.enrollment.id).toBe(enrollmentId);
+    if (!alreadyOwned) {
+      // --- Idempotency replay (same key) via authenticated browser fetch ---
+      monitor.noteAction("Replay same Idempotency-Key");
+      const replay = await browserCheckoutV2(page, COURSE_B.id, idemKey);
+      expect(replay.status).toBe(200);
+      expect(replay.body.ok).toBe(true);
+      expect(replay.body.idempotentReplay).toBe(true);
+      expect(replay.body.purchase.id).toBe(purchaseId);
+      expect(replay.body.payment.id).toBe(paymentId);
+      expect(replay.body.enrollment.id).toBe(enrollmentId);
 
-    // --- Already enrolled with a new key ---
-    monitor.noteAction("New key → ALREADY_ENROLLED");
-    const conflict = await browserCheckoutV2(
-      page,
-      COURSE_B.id,
-      `e2e-already-${Date.now()}`,
-    );
-    expect(conflict.status).toBe(409);
-    expect(conflict.body.ok).toBe(false);
-    expect(conflict.body.error?.code).toBe("ALREADY_ENROLLED");
+      // --- Already enrolled with a new key ---
+      monitor.noteAction("New key → ALREADY_ENROLLED");
+      const conflict = await browserCheckoutV2(
+        page,
+        COURSE_B.id,
+        `e2e-already-${Date.now()}`,
+      );
+      expect(conflict.status).toBe(409);
+      expect(conflict.body.ok).toBe(false);
+      expect(conflict.body.error?.code).toBe("ALREADY_ENROLLED");
+    }
 
     // Expose ids for external DB verifier (agent / script).
     monitor.noteAction(

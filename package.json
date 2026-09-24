@@ -31,6 +31,7 @@
     "test:e2e:catalog": "playwright test e2e/catalog",
     "test:e2e:shell": "playwright test e2e/shell",
     "test:e2e:wave4": "playwright test e2e/wave4",
+    "test:e2e:checkout-v2": "playwright test e2e/smoke/checkout-v2.spec.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "admin:create": "tsx scripts/create-admin.ts",

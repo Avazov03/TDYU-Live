@@ -25,10 +25,9 @@ function enrollmentAuthoritativeEnabled() {
 const COURSE_A = STAGING_FIXTURE.courseId;
 const LESSON_A = STAGING_FIXTURE.lessonId;
 const LESSON_A_TITLE = STAGING_FIXTURE.lessonTitle;
-/** Course B lesson — active1 may not be enrolled depending on prep. */
-const COURSE_B_LESSON =
-  process.env.E2E_CHECKOUT_V2_LESSON_ID?.trim() ||
-  "b2500001-0000-4000-8000-000000000026";
+/** Unowned deny probe — never purchased by fixture.active1. */
+const DENY_LESSON =
+  process.env.E2E_DENY_LESSON_ID?.trim() || STAGING_FIXTURE.denyLessonId;
 
 test.describe("Enrollment authoritative access", () => {
   test.beforeEach(() => {
@@ -61,14 +60,14 @@ test.describe("Enrollment authoritative access", () => {
     test.skip(!creds, skipReasonMissingCreds("student"));
     await loginAs(page, creds!, { monitor });
 
-    // Course B lesson — must not be owned for this assertion (reset fixture seat before run).
-    monitor.noteAction(`Probe foreign lesson ${COURSE_B_LESSON}`);
-    await page.goto(`/learn/${COURSE_B_LESSON}`);
+    // Deny probe course — must never be owned by fixture.active1.
+    monitor.noteAction(`Probe foreign lesson ${DENY_LESSON}`);
+    await page.goto(`/learn/${DENY_LESSON}`);
     // Paywall CTA; progress chrome may still render around the deny state.
     await expect(page.getByRole("link", { name: /Tarifni oshirish|Kurslarni ko/i })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/Obuna muddati|Kursga yozil|tizimga kiring|to'lov/i).first()).toBeVisible();
+    await expect(page.getByText(/yozilmagansiz|Obuna muddati|tizimga kiring/i).first()).toBeVisible();
   });
 
   test("Course A lesson stays accessible (multi-course)", async ({ page, monitor }) => {
