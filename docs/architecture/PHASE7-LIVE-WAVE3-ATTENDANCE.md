@@ -98,6 +98,16 @@ Attendance does **not** set course completion, history access, or certificates.
 Unit: `src/lib/live-wave3-attendance.test.ts`  
 E2E: `e2e/live/wave3-attendance.spec.ts` (`E2E_LIVE_WAVE3=1`, dedicated lesson `liveLessonIdWave3`)
 
+Before re-running Live E2E after an end, reset fixture lessons to `scheduled` (ended lessons cannot reopen via UI):
+
+```sql
+UPDATE lessons SET status='scheduled'
+WHERE id IN (
+  'd2500001-0000-4000-8000-000000000045',
+  'd2500001-0000-4000-8000-000000000046'
+);
+```
+
 ---
 
 ## 14–15. Staging / Production

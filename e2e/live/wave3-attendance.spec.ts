@@ -59,12 +59,19 @@ test.describe("Live Wave 3 attendance", () => {
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
 
+    // Ended lessons cannot reopen via UI — staging fixture must be reset to scheduled.
     if (await teacherPage.getByTestId("live-end").count()) {
       await teacherPage.getByTestId("live-end").click();
       await teacherPage.waitForTimeout(1000);
       await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     }
     const openBtn = teacherPage.getByTestId("live-open-waiting");
+    const startBtn = teacherPage.getByTestId("live-start");
+    if ((await openBtn.count()) === 0 && (await startBtn.count()) === 0) {
+      throw new Error(
+        `Wave3 fixture lesson ${LIVE_LESSON_ID} is not reopenable (likely status=ended). Reset lessons.status to scheduled on staging before E2E.`,
+      );
+    }
     if (await openBtn.count()) {
       await openBtn.click();
       await teacherPage.waitForTimeout(800);
