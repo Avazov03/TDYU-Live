@@ -87,8 +87,18 @@ export function verifyLiveJoinToken(
   return { ok: true, payload };
 }
 
-/** Deterministic peer id bound to authenticated user (not client-chosen). */
+/**
+ * Deterministic peer id bound to authenticated user (not client-chosen).
+ * Uses the full normalized UUID hex (32 chars) — never truncate.
+ * Truncating to 24 chars collided staging fixtures that share a UUID prefix
+ * (e.g. …6602 teacher vs …6611 student → same u_a6666…66666 peer).
+ */
 export function livePeerIdForUser(userId: string): string {
-  const compact = userId.replace(/-/g, "");
-  return `u_${compact.slice(0, 24)}`;
+  const compact = userId.trim().replace(/-/g, "").toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(compact)) {
+    // Non-UUID ids (tests / legacy): still prefix and keep full string, bounded.
+    const safe = compact.replace(/[^0-9a-z]/gi, "").slice(0, 64) || "unknown";
+    return `u_${safe}`;
+  }
+  return `u_${compact}`;
 }

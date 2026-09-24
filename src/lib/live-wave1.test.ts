@@ -101,7 +101,17 @@ describe("Live Wave 1 join token", () => {
     const c = livePeerIdForUser("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     assert.equal(a, b);
     assert.notEqual(a, c);
-    assert.match(a, /^u_/);
+    assert.match(a, /^u_[0-9a-f]{32}$/);
+    assert.equal(a, "u_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  });
+
+  it("does not collide when users share a UUID prefix (staging fixture shape)", () => {
+    // Exact Wave 2 browser failure: teacher …6602 vs student …6611
+    const teacher = livePeerIdForUser("a6666666-6666-6666-6666-666666666602");
+    const student = livePeerIdForUser("a6666666-6666-6666-6666-666666666611");
+    assert.notEqual(teacher, student);
+    assert.equal(teacher, "u_a6666666666666666666666666666602");
+    assert.equal(student, "u_a6666666666666666666666666666611");
   });
 });
 

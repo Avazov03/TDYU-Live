@@ -24,6 +24,7 @@ import {
   pollLiveRoom,
 } from "./live-rooms";
 import { isLiveAvPolicyV2Enabled } from "./feature-flags";
+import { livePeerIdForUser } from "./live-join-token";
 
 describe("Live Wave 2 A/V policy helpers", () => {
   it("student defaults camera and mic OFF", () => {
@@ -235,5 +236,48 @@ describe("Live Wave 2 feature flag", () => {
     delete process.env.FF_LIVE_AV_POLICY_V2;
     assert.equal(isLiveAvPolicyV2Enabled(), false);
     if (prev !== undefined) process.env.FF_LIVE_AV_POLICY_V2 = prev;
+  });
+});
+
+describe("Live Wave 2 peer identity isolation (fixture collision)", () => {
+  const lessonId = "lesson-wave2-peer-collision";
+  // Exact staging fixture UUIDs that previously collided under 24-char truncation.
+  const teacherUserId = "a6666666-6666-6666-6666-666666666602";
+  const studentUserId = "a6666666-6666-6666-6666-666666666611";
+
+  beforeEach(() => {
+    __resetLiveRoomsForTests();
+  });
+
+  it("teacher and student fixture users get distinct deterministic peer ids", () => {
+    const teacherPeer = livePeerIdForUser(teacherUserId);
+    const studentPeer = livePeerIdForUser(studentUserId);
+    assert.notEqual(teacherPeer, studentPeer);
+    assert.equal(livePeerIdForUser(teacherUserId), teacherPeer);
+    assert.equal(livePeerIdForUser(studentUserId), studentPeer);
+    assert.match(teacherPeer, /^u_[0-9a-f]{32}$/);
+    assert.match(studentPeer, /^u_[0-9a-f]{32}$/);
+  });
+
+  it("student does not inherit teacher GRANTED A/V when both join", () => {
+    const teacherPeer = livePeerIdForUser(teacherUserId);
+    const studentPeer = livePeerIdForUser(studentUserId);
+
+    joinLivePeer(lessonId, teacherPeer, "Fixture Teacher", "moderator");
+    joinLivePeer(lessonId, studentPeer, "Fixture Active One", "student");
+
+    const teacher = pollLiveRoom(lessonId, teacherPeer, 0).self!;
+    const student = pollLiveRoom(lessonId, studentPeer, 0).self!;
+
+    assert.equal(teacher.avPermission, "granted");
+    assert.equal(teacher.canSpeak, true);
+    assert.equal(student.avPermission, "none");
+    assert.equal(student.canSpeak, false);
+    assert.equal(student.allowCam, false);
+    assert.equal(student.micOn, false);
+    assert.equal(student.camOn, false);
+    assert.equal(student.teacherMuted, false);
+    assert.equal(student.teacherCamOff, false);
+    assert.equal(student.handRaised, false);
   });
 });

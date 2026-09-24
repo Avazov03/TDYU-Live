@@ -167,6 +167,26 @@ Port 3101 staging only. Production: leave `FF_LIVE_AV_POLICY_V2` unset/false.
 
 ---
 
+## 15b. Identity Collision Fix
+
+**Defect (Wave 2 browser E2E):** `livePeerIdForUser` truncated UUID hex to 24 characters.
+
+Staging fixture UUIDs share a long common prefix (`a6666666-6666-6666-6666-…`). Differentiating digits sit in the last 8 hex chars, so teacher `…6602` and student `…6611` both mapped to:
+
+`u_a66666666666666666666666`
+
+Teacher joined first with `GRANTED` moderator A/V. Student reused the same in-memory peer slot (`joinLivePeer` preserves flags) and incorrectly showed **「Ruxsat berildi」** before any grant.
+
+**Fix:** peer id is now the full normalized UUID hex:
+
+`u_<32 hex chars>` (deterministic, no truncation)
+
+Verified: colliding-prefix fixture users produce distinct peer ids; student joins with `avPermission=none` and does not inherit teacher grant/mute/cam-off/hand state.
+
+No DB migration — peer id remains derived from user identity.
+
+---
+
 ## 16. Production safety
 
 Flag default **false**. No schema migration. Prod process/env not modified by this Wave.

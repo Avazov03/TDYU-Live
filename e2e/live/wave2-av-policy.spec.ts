@@ -85,10 +85,14 @@ test.describe("Live Wave 2 A/V policy", () => {
     await expect(studentPage.getByTestId("live-live-banner")).toBeVisible({ timeout: 25_000 });
     await expect(studentPage.getByTestId("live-mic-btn")).toHaveClass(/is-off/);
     await expect(studentPage.getByTestId("live-cam-btn")).toHaveClass(/is-off/);
+    // Identity isolation: must NOT inherit teacher GRANTED from peerId collision
+    await expect(studentPage.getByTestId("live-av-status")).toContainText(/Ruxsat yo|yo‘q|yo'q/i, {
+      timeout: 10_000,
+    });
 
     monitor.noteAction("Student raise hand → REQUESTED");
     await studentPage.getByTestId("live-raise-hand").click();
-    await expect(studentPage.getByTestId("live-av-status")).toContainText(/Ruxsat so‘raldi|so‘raldi/i, {
+    await expect(studentPage.getByTestId("live-av-status")).toContainText(/Ruxsat so‘raldi|so‘raldi|so'raldi/i, {
       timeout: 10_000,
     });
 
