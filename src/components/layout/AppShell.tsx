@@ -1,5 +1,9 @@
 import { auth } from "@/lib/auth";
-import { getAnyActiveSubscription } from "@/lib/access";
+import {
+  getAnyActiveSubscription,
+  resolveStudentShellTariffTier,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { getShellData } from "@/lib/shell-data";
 import { Sidebar, type NavKey } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -13,7 +17,15 @@ type AppShellProps = {
 export async function AppShell({ children, active, mainClassName }: AppShellProps) {
   const session = await auth();
   const shell = await getShellData(session?.user?.id);
-  const sub = session?.user?.id ? await getAnyActiveSubscription(session.user.id) : null;
+  const mode = getEnrollmentAccessMode();
+  const sub =
+    session?.user?.id && mode !== "enrollment"
+      ? await getAnyActiveSubscription(session.user.id)
+      : null;
+  const tariffTier = resolveStudentShellTariffTier({
+    mode,
+    subscriptionTier: sub?.tier ?? null,
+  });
 
   return (
     <div className="shell acet-shell">
@@ -21,7 +33,7 @@ export async function AppShell({ children, active, mainClassName }: AppShellProp
         active={active}
         userRole={shell.userRole}
         userName={shell.userName}
-        tariffTier={sub?.tier ?? null}
+        tariffTier={tariffTier}
       />
       <div className="acet-pane">
         <Topbar

@@ -1,5 +1,11 @@
 import { auth } from "@/lib/auth";
-import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
+import {
+  getActiveEntitlement,
+  getAnyActiveSubscription,
+  getAnyOpenEnrollment,
+  resolveStudentHomePath,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { PLATFORM_PRICES, TARIFF_BLURBS, TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
@@ -29,9 +35,23 @@ const ROLES = [
 
 export default async function LandingPage() {
   const session = await auth();
-  const sub = session?.user?.id ? await getAnyActiveSubscription(session.user.id) : null;
-  const entitlement =
-    !sub && session?.user?.id ? await getActiveEntitlement(session.user.id) : null;
+  const mode = getEnrollmentAccessMode();
+  const userId = session?.user?.id;
+  const enr =
+    userId && (mode === "enrollment" || mode === "dual")
+      ? await getAnyOpenEnrollment(userId)
+      : null;
+  const sub =
+    userId && mode !== "enrollment" ? await getAnyActiveSubscription(userId) : null;
+  const entitlement = userId ? await getActiveEntitlement(userId) : null;
+  const home = userId
+    ? resolveStudentHomePath({
+        mode,
+        hasOpenEnrollment: Boolean(enr),
+        hasActiveSubscription: Boolean(sub),
+        hasActiveEntitlement: Boolean(entitlement),
+      })
+    : null;
 
   const prices: { tier: TariffTier; price: number }[] = [
     { tier: "t1", price: PLATFORM_PRICES.t1 },
@@ -51,11 +71,11 @@ export default async function LandingPage() {
             Tarif tanlang, yo&apos;nalish va o&apos;qituvchini belgilang — shu o&apos;qituvchining darsiga yozilasiz.
           </p>
           <div className="site-hero-cta">
-            {sub ? (
+            {home === "/app" ? (
               <Link href="/app" className="btn btn-primary">
                 Kabinetga o&apos;tish
               </Link>
-            ) : entitlement ? (
+            ) : home === "/onboard" ? (
               <Link href="/onboard" className="btn btn-primary">
                 O&apos;qituvchi tanlash
               </Link>

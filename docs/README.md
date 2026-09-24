@@ -9,6 +9,7 @@
 | [architecture/FOUNDATION-CLOSEOUT.md](./architecture/FOUNDATION-CLOSEOUT.md) | Foundation gate — READY FOR PHASE 5 |
 | [architecture/PHASE5-WAVE1-ENROLLMENT-ACCESS.md](./architecture/PHASE5-WAVE1-ENROLLMENT-ACCESS.md) | Wave 1 — Enrollment authoritative access |
 | [architecture/PHASE5-WAVE2-STUDENT-CATALOG.md](./architecture/PHASE5-WAVE2-STUDENT-CATALOG.md) | Wave 2 — Enrollment-first student catalog |
+| [architecture/PHASE5-WAVE3-APP-SHELL.md](./architecture/PHASE5-WAVE3-APP-SHELL.md) | Wave 3 — AppShell / home / navigation |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |

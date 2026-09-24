@@ -1,16 +1,35 @@
 import { auth } from "@/lib/auth";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
-import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
+import {
+  getActiveEntitlement,
+  getAnyActiveSubscription,
+  getAnyOpenEnrollment,
+  resolveStudentHomePath,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 
-/** Login/register dan keyin: admin/o'qituvchi kabinet, talaba — tarif yoki o'qituvchi tanlash. */
+/** Login/register dan keyin: admin/o'qituvchi kabinet, talaba — Enrollment yoki V1 onboard. */
 export async function resolveHomePath() {
   const session = await auth();
   if (!session?.user?.id) return "/";
   if (isAdminRole(session.user.role)) return "/admin";
   if (isTeacherRole(session.user.role)) return "/teacher";
-  const sub = await getAnyActiveSubscription(session.user.id);
-  if (sub) return "/app";
+
+  const mode = getEnrollmentAccessMode();
+  const enr =
+    mode === "enrollment" || mode === "dual"
+      ? await getAnyOpenEnrollment(session.user.id)
+      : null;
+  const sub =
+    mode === "enrollment"
+      ? null
+      : await getAnyActiveSubscription(session.user.id);
   const entitlement = await getActiveEntitlement(session.user.id);
-  if (entitlement) return "/onboard";
-  return "/";
+
+  return resolveStudentHomePath({
+    mode,
+    hasOpenEnrollment: Boolean(enr),
+    hasActiveSubscription: Boolean(sub),
+    hasActiveEntitlement: Boolean(entitlement),
+  });
 }

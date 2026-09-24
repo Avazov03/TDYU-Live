@@ -10,7 +10,6 @@ import {
 } from "@/lib/enrollment-access";
 import {
   getEnrollmentAccessMode,
-  usesEnrollmentAccessPath,
 } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
@@ -32,7 +31,7 @@ export async function getAnyOpenEnrollment(userId: string) {
   });
 }
 
-/** Talaba LMS sahifalari: kirish + faol tarif yoki ochiq Enrollment. */
+/** Talaba LMS sahifalari: kirish + ochiq Enrollment (yoki legacy tarif). */
 export async function requireStudentCabinet(callbackUrl: string) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -41,12 +40,24 @@ export async function requireStudentCabinet(callbackUrl: string) {
   if (isAdminRole(session.user.role)) redirect("/admin");
   if (isTeacherRole(session.user.role)) redirect("/teacher");
 
-  const sub = await getAnyActiveSubscription(session.user.id);
-  if (sub) return { user: session.user, sub };
+  const mode = getEnrollmentAccessMode();
+  const enr =
+    mode === "enrollment" || mode === "dual"
+      ? await getAnyOpenEnrollment(session.user.id)
+      : null;
+  const sub =
+    mode === "enrollment"
+      ? null
+      : await getAnyActiveSubscription(session.user.id);
 
-  if (usesEnrollmentAccessPath()) {
-    const enr = await getAnyOpenEnrollment(session.user.id);
-    if (enr) return { user: session.user, sub: null };
+  if (
+    studentHasCabinetMembership({
+      mode,
+      hasOpenEnrollment: Boolean(enr),
+      hasActiveSubscription: Boolean(sub),
+    })
+  ) {
+    return { user: session.user, sub };
   }
 
   const entitlement = await getActiveEntitlement(session.user.id);
@@ -54,19 +65,33 @@ export async function requireStudentCabinet(callbackUrl: string) {
   redirect("/#tariflar");
 }
 
-/** Dashboard ichidagi umumiy sahifa (qidiruv, tarix): talabaga tarif/enrollment kerak. */
+/** Dashboard ichidagi umumiy sahifa (qidiruv, tarix): talabaga enrollment/tarif kerak. */
 export async function requireAppUser(callbackUrl: string) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
   if (isStudentRole(session.user.role)) {
-    const sub = await getAnyActiveSubscription(session.user.id);
-    if (sub) return { user: session.user, sub };
-    if (usesEnrollmentAccessPath()) {
-      const enr = await getAnyOpenEnrollment(session.user.id);
-      if (enr) return { user: session.user, sub: null };
+    const mode = getEnrollmentAccessMode();
+    const enr =
+      mode === "enrollment" || mode === "dual"
+        ? await getAnyOpenEnrollment(session.user.id)
+        : null;
+    const sub =
+      mode === "enrollment"
+        ? null
+        : await getAnyActiveSubscription(session.user.id);
+
+    if (
+      studentHasCabinetMembership({
+        mode,
+        hasOpenEnrollment: Boolean(enr),
+        hasActiveSubscription: Boolean(sub),
+      })
+    ) {
+      return { user: session.user, sub };
     }
+
     const entitlement = await getActiveEntitlement(session.user.id);
     if (entitlement) redirect("/onboard");
     redirect("/#tariflar");
@@ -272,6 +297,53 @@ export function isStudentCourseOwned(input: {
   if (mode === "enrollment") return hasOpenEnrollment;
   if (mode === "dual") return hasOpenEnrollment || hasActiveSubscription;
   return hasActiveSubscription;
+}
+
+/**
+ * Wave 3 — does the student have cabinet membership (home /app)?
+ * Enrollment mode: open Enrollment only (Subscription alone is not enough).
+ * Entitlement alone is NOT cabinet access (that is V1 onboard).
+ */
+export function studentHasCabinetMembership(input: {
+  mode: ReturnType<typeof getEnrollmentAccessMode>;
+  hasOpenEnrollment: boolean;
+  hasActiveSubscription: boolean;
+}): boolean {
+  return isStudentCourseOwned(input);
+}
+
+export type StudentHomePath = "/app" | "/onboard" | "/";
+
+/**
+ * Wave 3 — post-login / landing CTA path for students (pure, testable).
+ * Preserves V1 Entitlement → /onboard. Never treats Subscription alone as
+ * target ownership when mode=enrollment.
+ */
+export function resolveStudentHomePath(input: {
+  mode: ReturnType<typeof getEnrollmentAccessMode>;
+  hasOpenEnrollment: boolean;
+  hasActiveSubscription: boolean;
+  hasActiveEntitlement: boolean;
+}): StudentHomePath {
+  const { mode, hasOpenEnrollment, hasActiveSubscription, hasActiveEntitlement } =
+    input;
+  if (studentHasCabinetMembership({ mode, hasOpenEnrollment, hasActiveSubscription })) {
+    return "/app";
+  }
+  if (hasActiveEntitlement) return "/onboard";
+  return "/";
+}
+
+/**
+ * Sidebar Shorts lock uses legacy TariffTier when mode is off|shadow|dual.
+ * Enrollment mode: no Tariff lock (Wave 1 live is Enrollment-gated).
+ */
+export function resolveStudentShellTariffTier(input: {
+  mode: ReturnType<typeof getEnrollmentAccessMode>;
+  subscriptionTier: TariffTier | null;
+}): TariffTier | null {
+  if (input.mode === "enrollment") return null;
+  return input.subscriptionTier;
 }
 
 /**

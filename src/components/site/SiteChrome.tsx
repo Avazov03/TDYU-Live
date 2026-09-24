@@ -1,5 +1,10 @@
 import { auth } from "@/lib/auth";
-import { getAnyActiveSubscription } from "@/lib/access";
+import {
+  getAnyActiveSubscription,
+  getAnyOpenEnrollment,
+  studentHasCabinetMembership,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { LexifyNotchNavbar } from "@/components/site/LexifyNotchNavbar";
@@ -9,18 +14,31 @@ export { SiteFooter } from "@/components/site/SiteFooter";
 export async function SiteHeader() {
   const session = await auth();
   const role = session?.user?.role;
-  const sub =
-    session?.user?.id && role === "student"
-      ? await getAnyActiveSubscription(session.user.id)
-      : null;
+  const mode = getEnrollmentAccessMode();
+  const userId = session?.user?.id;
 
-  const cabinetHref = isAdminRole(role)
-    ? "/admin"
-    : isTeacherRole(role)
-      ? "/teacher"
-      : sub
-        ? "/app"
+  let cabinetHref: string | null = null;
+  if (isAdminRole(role)) {
+    cabinetHref = "/admin";
+  } else if (isTeacherRole(role)) {
+    cabinetHref = "/teacher";
+  } else if (userId && role === "student") {
+    const enr =
+      mode === "enrollment" || mode === "dual"
+        ? await getAnyOpenEnrollment(userId)
         : null;
+    const sub =
+      mode === "enrollment" ? null : await getAnyActiveSubscription(userId);
+    if (
+      studentHasCabinetMembership({
+        mode,
+        hasOpenEnrollment: Boolean(enr),
+        hasActiveSubscription: Boolean(sub),
+      })
+    ) {
+      cabinetHref = "/app";
+    }
+  }
 
   const profile =
     session?.user?.id

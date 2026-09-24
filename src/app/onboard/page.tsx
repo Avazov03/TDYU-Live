@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
+import {
+  getActiveEntitlement,
+  getAnyActiveSubscription,
+  getAnyOpenEnrollment,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
 import { TARIFF_LABELS, isSubscriptionActive } from "@/lib/tariffs";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
@@ -17,7 +22,14 @@ export default async function OnboardPage() {
   if (isTeacherRole(session.user.role)) redirect("/teacher");
   if (!isStudentRole(session.user.role)) redirect("/");
 
-  const sub = await getAnyActiveSubscription(session.user.id);
+  const mode = getEnrollmentAccessMode();
+  // Enrollment students must not stay in V1 TeacherPicker flow.
+  if (mode === "enrollment" || mode === "dual") {
+    const enr = await getAnyOpenEnrollment(session.user.id);
+    if (enr) redirect("/app");
+  }
+  const sub =
+    mode === "enrollment" ? null : await getAnyActiveSubscription(session.user.id);
   if (sub) redirect("/app");
   const entitlement = await getActiveEntitlement(session.user.id);
   if (!entitlement) redirect("/#tariflar");
