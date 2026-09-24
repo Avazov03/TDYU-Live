@@ -100,16 +100,32 @@ export async function getEnrollmentLessonAccess(
     return { ok: false, source: "enrollment", reason: "unauthenticated" };
   }
 
-  const enrollment = await prisma.enrollment.findFirst({
-    where: { userId, courseId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      courseId: true,
-      status: true,
+  const select = {
+    id: true,
+    courseId: true,
+    status: true,
+    accessOpen: true,
+  } as const;
+
+  // Prefer an open seat (active/completed + accessOpen) over a newer closed row.
+  const open = await prisma.enrollment.findFirst({
+    where: {
+      userId,
+      courseId,
       accessOpen: true,
+      status: { in: ["active", "completed"] },
     },
+    orderBy: { createdAt: "desc" },
+    select,
   });
+
+  const enrollment =
+    open ??
+    (await prisma.enrollment.findFirst({
+      where: { userId, courseId },
+      orderBy: { createdAt: "desc" },
+      select,
+    }));
 
   return evaluateEnrollmentLessonAccess({
     userId,
@@ -152,6 +168,36 @@ export function logAccessShadowCompare(payload: {
         newOk: payload.neu.ok,
         newReason: payload.neu.ok ? null : payload.neu.reason,
         verdict: payload.verdict,
+      }),
+    );
+  } catch {
+    // never break request path
+  }
+}
+
+/** Authoritative Enrollment decision log (mode=enrollment). No secrets. */
+export function logAccessEnrollmentDecision(payload: {
+  userId: string;
+  courseId: string;
+  lessonStatus: LessonStatus;
+  decision: "allow" | "deny";
+  enrollmentId?: string;
+  enrollmentStatus?: EnrollmentStatus;
+  accessOpen?: boolean;
+  reason?: EnrollmentAccessReason;
+}) {
+  try {
+    console.info(
+      "[access-enrollment]",
+      JSON.stringify({
+        userId: payload.userId,
+        courseId: payload.courseId,
+        lessonStatus: payload.lessonStatus,
+        decision: payload.decision,
+        enrollmentId: payload.enrollmentId ?? null,
+        enrollmentStatus: payload.enrollmentStatus ?? null,
+        accessOpen: payload.accessOpen ?? null,
+        reason: payload.reason ?? null,
       }),
     );
   } catch {

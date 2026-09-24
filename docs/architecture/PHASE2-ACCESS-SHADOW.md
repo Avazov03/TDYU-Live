@@ -9,33 +9,36 @@
 | OFF | `FF_ENROLLMENT_ACCESS_MODE=off` (default) | Legacy Subscription | not run |
 | SHADOW | `…=shadow` | **Legacy always** | computed + `MATCH`/`MISMATCH` log |
 | DUAL | `…=dual` | Enrollment if seat row exists; else legacy fallback | used for decision |
+| ENROLLMENT | `…=enrollment` | **Enrollment sole SoT** (no Subscription allow) | used for decision; no `endsAt` denial |
 
-Compat: `FF_ENROLLMENT_ACCESS=shadow|true|dual` still parsed via `getEnrollmentAccessMode()`.
+Compat: `FF_ENROLLMENT_ACCESS=shadow|true|dual|enrollment` still parsed via `getEnrollmentAccessMode()`.
 
 ## Modules
 
 - `src/lib/enrollment-access.ts` — NEW seat evaluator `(userId, courseId)`; no `endsAt` denial; no expire-other-courses
-- `src/lib/access.ts` — `getLegacyLessonAccess` + `getLessonAccess` mode switch
+- `src/lib/access.ts` — `getLegacyLessonAccess` + `getLessonAccess` mode switch; cabinet accepts open Enrollment in dual/enrollment
 - `src/lib/feature-flags.ts` — mode helper
+- `src/middleware.ts` — blocks direct `/uploads/recordings/*` (use gated API)
 
 ## Access call graph (CURRENT callers)
 
-All lesson-gated paths go through `getLessonAccess` (except cabinet “any active sub” gates):
+All lesson-gated paths go through `getLessonAccess` (except cabinet “any active sub/enrollment” gates):
 
-| Call site | Helper | Phase 2 note |
-|-----------|--------|--------------|
-| `src/app/learn/[id]/page.tsx` | `getLessonAccess` | Shadow-ready |
-| `src/app/api/live/signal/route.ts` | `liveGate` → `getLessonAccess` | Shadow-ready; live security later |
-| `src/app/api/media/recording/[id]/route.ts` | `getLessonAccess` | Shadow-ready; public uploads separate |
-| `src/app/api/lessons/[id]/chat/route.ts` POST | `getLessonAccess` | GET still public (later) |
-| `src/app/api/assignments/submit/route.ts` | `getActiveSubscription` | Still legacy; dual later |
-| `src/app/courses/[id]/page.tsx` | `getActiveSubscription` | Display only |
-| Cabinet: `/app`, `/schedule`, `/assignments`, `/my-courses`, `/certificates` | `requireStudentCabinet` / `getActiveSubscriptions` | Still Subscription list |
-| `/history`, `/search`, `/shorts` | `requireAppUser` | Still any-sub |
-| `home-path.ts`, landing, AppShell, SiteChrome, onboard, enroll | Entitlement/Subscription | Unchanged |
-| Teacher/admin stats | `isSubscriptionActive` counts | Unchanged |
+| Call site | Helper | Phase 2.6 note |
+|-----------|--------|----------------|
+| `src/app/learn/[id]/page.tsx` | `getLessonAccess` | Uses mode |
+| `src/app/api/live/signal/route.ts` | `liveGate` → `getLessonAccess` | Uses mode |
+| `src/app/api/media/recording/[id]/route.ts` | `getLessonAccess` | Uses mode; middleware blocks static bypass |
+| `src/app/api/lessons/[id]/chat/route.ts` GET+POST | `getLessonAccess` | GET gated in 2.6 |
+| `src/app/uploads/lessons/[filename]/route.ts` | `getLessonAccess` | Gated in 2.6 |
+| `src/app/api/assignments/submit/route.ts` | `hasCourseContentAccess` | Migrated off Subscription-only |
+| `src/app/courses/[id]/page.tsx` | `getActiveSubscription` + `getOpenEnrollment` | Display |
+| Cabinet: `/app`, `/schedule`, `/assignments`, `/my-courses`, `/certificates` | `requireStudentCabinet` | Accepts open Enrollment when dual/enrollment |
+| `/history`, `/search`, `/shorts` | `requireAppUser` | Same |
+| Assignment **file** URLs under `/uploads/assignments/` | public static | **Remaining** — teacher download path; not lesson SoT |
+| `home-path.ts`, landing, onboard, enroll | Entitlement/Subscription | Unchanged (legacy commerce) |
 
-**Authority goal:** eventually one Enrollment SoT for course seat; cabinet lists must migrate in a later dual step (not this prep).
+**Authority goal (enrollment mode):** Enrollment `status` + `accessOpen` is lesson/content SoT. Subscription/Entitlement remain for migration compatibility only.
 
 ## Multi-course
 

@@ -2,14 +2,46 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLessonAccess } from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { canUseLiveChat, isPriorityTier } from "@/lib/tariffs";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+
+async function assertChatReadAccess(lessonId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: NextResponse.json({ error: "Kirish kerak" }, { status: 401 }) };
+  }
+
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { course: { include: { teacher: true } } },
+  });
+  if (!lesson) {
+    return { error: NextResponse.json({ error: "Dars topilmadi" }, { status: 404 }) };
+  }
+
+  const staff =
+    isAdminRole(session.user.role) ||
+    (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id);
+
+  if (!staff) {
+    const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
+    if (!access.ok) {
+      return { error: NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 }) };
+    }
+  }
+
+  return { session, lesson, staff };
+}
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const gate = await assertChatReadAccess(id);
+  if ("error" in gate && gate.error) return gate.error;
+
   const items = await prisma.chatMessage.findMany({
     where: { lessonId: id },
     include: { user: { select: { fullName: true } } },
@@ -40,10 +72,18 @@ export async function POST(
   let priority = Boolean(staff);
   if (!staff) {
     const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
-    if (!access.ok || !canUseLiveChat(access.tier)) {
-      return NextResponse.json({ error: "Chat uchun 2 yoki 3-tarif kerak" }, { status: 403 });
+    if (!access.ok) {
+      return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
     }
-    priority = isPriorityTier(access.tier);
+    const mode = getEnrollmentAccessMode();
+    // Enrollment-authoritative: seat grants chat; tariff priority is optional.
+    if (mode === "enrollment") {
+      priority = false;
+    } else if (!canUseLiveChat(access.tier)) {
+      return NextResponse.json({ error: "Chat uchun 2 yoki 3-tarif kerak" }, { status: 403 });
+    } else {
+      priority = isPriorityTier(access.tier);
+    }
   }
 
   const body = await req.json();

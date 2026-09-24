@@ -5,7 +5,7 @@
  * Documented in docs/architecture/PHASE1-FEATURE-FLAGS.md
  */
 
-export type EnrollmentAccessMode = "off" | "shadow" | "dual";
+export type EnrollmentAccessMode = "off" | "shadow" | "dual" | "enrollment";
 
 function envFlag(name: string, defaultValue: boolean): boolean {
   const raw = process.env[name];
@@ -19,20 +19,27 @@ function envFlag(name: string, defaultValue: boolean): boolean {
 /**
  * Enrollment access mode.
  *
- * Preferred env: FF_ENROLLMENT_ACCESS_MODE=off|shadow|dual (default off)
+ * Preferred env: FF_ENROLLMENT_ACCESS_MODE=off|shadow|dual|enrollment (default off)
  *
  * Compatibility with Phase 1 boolean FF_ENROLLMENT_ACCESS:
  * - unset / false / off → off
  * - shadow → shadow
  * - true / dual / on / 1 → dual
+ * - enrollment → enrollment (prefer FF_ENROLLMENT_ACCESS_MODE)
  *
  * OFF: legacy Subscription access only (serve OLD).
  * SHADOW: serve OLD; compute NEW; log MATCH/MISMATCH (no UX change).
  * DUAL: prefer NEW when Enrollment seat open; else legacy fallback.
+ * ENROLLMENT: Enrollment is sole SoT — no Subscription.endsAt allow path.
  */
 export function getEnrollmentAccessMode(): EnrollmentAccessMode {
   const modeRaw = process.env.FF_ENROLLMENT_ACCESS_MODE?.trim().toLowerCase();
-  if (modeRaw === "off" || modeRaw === "shadow" || modeRaw === "dual") {
+  if (
+    modeRaw === "off" ||
+    modeRaw === "shadow" ||
+    modeRaw === "dual" ||
+    modeRaw === "enrollment"
+  ) {
     return modeRaw;
   }
 
@@ -41,17 +48,24 @@ export function getEnrollmentAccessMode(): EnrollmentAccessMode {
     return "off";
   }
   if (legacy === "shadow") return "shadow";
+  if (legacy === "enrollment") return "enrollment";
   if (["1", "true", "yes", "on", "dual"].includes(legacy)) return "dual";
   return "off";
+}
+
+/** True when runtime may grant access from Enrollment seats (dual or enrollment). */
+export function usesEnrollmentAccessPath(): boolean {
+  const m = getEnrollmentAccessMode();
+  return m === "dual" || m === "enrollment";
 }
 
 export const featureFlags = {
   /**
    * @deprecated Prefer getEnrollmentAccessMode(). Kept boolean for docs compatibility:
-   * true only when mode === dual.
+   * true when dual or enrollment.
    */
   get enrollmentAccess(): boolean {
-    return getEnrollmentAccessMode() === "dual";
+    return usesEnrollmentAccessPath();
   },
 
   /**

@@ -3,7 +3,7 @@ import path from "path";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveSubscription } from "@/lib/access";
+import { hasCourseContentAccess } from "@/lib/access";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -17,8 +17,8 @@ export async function POST(req: Request) {
   const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
   if (!assignment) return NextResponse.json({ error: "Topshiriq topilmadi" }, { status: 404 });
 
-  const sub = await getActiveSubscription(session.user.id, assignment.courseId);
-  if (!sub) return NextResponse.json({ error: "Obuna yo'q" }, { status: 403 });
+  const allowed = await hasCourseContentAccess(session.user.id, assignment.courseId);
+  if (!allowed) return NextResponse.json({ error: "Kursga yozilmagansiz" }, { status: 403 });
 
   if (!text && !(file instanceof File)) {
     return NextResponse.json({ error: "Matn yoki fayl kiriting" }, { status: 400 });

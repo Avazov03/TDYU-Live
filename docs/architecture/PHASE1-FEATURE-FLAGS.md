@@ -4,8 +4,8 @@ All defaults **false** (or safe) so CURRENT runtime is unchanged.
 
 | Flag env | Code key | Default | Controls | When to enable | Rollback |
 |----------|----------|---------|----------|----------------|----------|
-| `FF_ENROLLMENT_ACCESS_MODE` | `getEnrollmentAccessMode()` | `off` | `off` = legacy only; `shadow` = serve legacy + compare Enrollment (log MATCH/MISMATCH); `dual` = Enrollment when present else legacy fallback | shadow after fixture/dry-run PASS; dual only after shadow soak | Set `off` |
-| `FF_ENROLLMENT_ACCESS` | `enrollmentAccess` (compat) | unset/`false` → off | Boolean/compat: `shadow` → shadow; `true`/`dual` → dual | Prefer `FF_ENROLLMENT_ACCESS_MODE` | unset / false |
+| `FF_ENROLLMENT_ACCESS_MODE` | `getEnrollmentAccessMode()` | `off` | `off` = legacy only; `shadow` = serve legacy + compare Enrollment (log MATCH/MISMATCH); `dual` = Enrollment when present else legacy fallback; `enrollment` = Enrollment sole SoT (Phase 2.6 cutover) | shadow after fixture/dry-run PASS; dual after shadow soak; enrollment on staging after dual PASS | Set `off` or prior mode |
+| `FF_ENROLLMENT_ACCESS` | `enrollmentAccess` (compat) | unset/`false` → off | Boolean/compat: `shadow` → shadow; `true`/`dual` → dual; `enrollment` → enrollment | Prefer `FF_ENROLLMENT_ACCESS_MODE` | unset / false |
 
 ### Permanent replay (later recording phase)
 

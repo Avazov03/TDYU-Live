@@ -211,4 +211,27 @@ describe("Phase 2 enrollment access", () => {
     });
     assert.equal(r.ok, true);
   });
+
+  it("K: accessOpen=false denies even if status still active-shaped", () => {
+    const r = evaluateEnrollmentLessonAccess({
+      userId: USER,
+      courseId: COURSE_A,
+      lessonStatus: "ended",
+      enrollment: enr({ status: "active", accessOpen: false }),
+    });
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.reason, "access_closed");
+  });
+
+  it("L: enrollment mode live without legacy tier gate allows enrolled student", () => {
+    const r = evaluateEnrollmentLessonAccess({
+      userId: USER,
+      courseId: COURSE_A,
+      lessonStatus: "live",
+      enrollment: enr(),
+      applyLegacyLiveTier: false,
+      legacyTier: "t1",
+    });
+    assert.equal(r.ok, true);
+  });
 });
