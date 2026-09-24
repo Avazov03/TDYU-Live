@@ -46,10 +46,12 @@ Disposable database `lexify_foundation_fresh` on the staging host (not productio
 |---|---|
 | DB | `tdyulive_staging` (≠ production `tdyulive`) |
 | Port | 3101 (prod 3100) |
-| PM2 | `tdyu-live-staging` online; prod `tdyu-live` untouched |
+| PM2 | `tdyu-live-staging` via `ecosystem.staging.cjs` + `start-staging.sh` (sources `.env`) |
 | AUTH secret | Different from production |
 | `prisma migrate status` | Up to date with applied chain |
 | Flags (approved foundation) | `FF_COURSE_CHECKOUT_V2=false`, `FF_ENROLLMENT_ACCESS_MODE=shadow` |
+
+**Flag determinism:** PM2 must not retain stale `FF_*` in the process environment. Staging starts through `start-staging.sh`, which `source`s `.env` before `next start`.
 
 ## 5. Target schema validation
 
