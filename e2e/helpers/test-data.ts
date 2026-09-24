@@ -28,10 +28,10 @@ export const STAGING_FIXTURE = {
   enrollmentId: "7a0499ee-d997-4e83-8481-86306db81433",
   lessonId: "a5555555-5555-5555-5555-555555555501",
   lessonTitle: "Fixture ended lesson",
-  /** Checkout V2 browser target — not owned by active1 before purchase. */
-  checkoutV2CourseId: "a4444444-4444-4444-4444-444444444402",
-  checkoutV2CourseTitle: "Fixture Course B",
-  checkoutV2ListPrice: 280000,
-  checkoutV2LessonId: "a5555555-5555-5555-5555-5555555555c2",
-  checkoutV2LessonTitle: "Staging C2 recording",
+  /** Checkout V2 browser target — RFC UUID (Zod-strict); staging fixture. */
+  checkoutV2CourseId: "b2500001-0000-4000-8000-000000000025",
+  checkoutV2CourseTitle: "Phase 2.5 Checkout E2E Course",
+  checkoutV2ListPrice: 250000,
+  checkoutV2LessonId: "b2500001-0000-4000-8000-000000000026",
+  checkoutV2LessonTitle: "Phase 2.5 E2E lesson",
 } as const;

@@ -25,14 +25,16 @@ import { STAGING_FIXTURE } from "../helpers/test-data";
 const COURSE_B = {
   id:
     process.env.E2E_CHECKOUT_V2_COURSE_ID?.trim() ||
-    "a4444444-4444-4444-4444-444444444402",
-  title: process.env.E2E_CHECKOUT_V2_COURSE_TITLE?.trim() || "Fixture Course B",
-  listPrice: Number(process.env.E2E_CHECKOUT_V2_LIST_PRICE ?? "280000"),
+    "b2500001-0000-4000-8000-000000000025",
+  title:
+    process.env.E2E_CHECKOUT_V2_COURSE_TITLE?.trim() ||
+    "Phase 2.5 Checkout E2E Course",
+  listPrice: Number(process.env.E2E_CHECKOUT_V2_LIST_PRICE ?? "250000"),
   lessonId:
     process.env.E2E_CHECKOUT_V2_LESSON_ID?.trim() ||
-    "a5555555-5555-5555-5555-5555555555c2",
+    "b2500001-0000-4000-8000-000000000026",
   lessonTitle:
-    process.env.E2E_CHECKOUT_V2_LESSON_TITLE?.trim() || "Staging C2 recording",
+    process.env.E2E_CHECKOUT_V2_LESSON_TITLE?.trim() || "Phase 2.5 E2E lesson",
 };
 
 const COURSE_A = {
