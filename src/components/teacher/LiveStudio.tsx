@@ -36,7 +36,7 @@ export function LiveStudio({
   );
 
   const isLive = status === "live";
-  const isLobby = status === "lobby";
+  const isLobby = status === "lobby" || status === "waiting_room";
   const canOpenLobby = status === "scheduled";
   const inRoom = isLive || isLobby;
 
@@ -93,12 +93,24 @@ export function LiveStudio({
         </div>
         <div className="live-studio-actions">
           {canOpenLobby ? (
-            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("lobby")}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              data-testid="live-open-waiting"
+              disabled={loading}
+              onClick={() => void act("lobby")}
+            >
               {loading ? "Ochilmoqda..." : "Kutish xonasini ochish"}
             </button>
           ) : null}
           {isLobby ? (
-            <button className="btn btn-primary" type="button" disabled={loading} onClick={() => void act("start")}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              data-testid="live-start"
+              disabled={loading}
+              onClick={() => void act("start")}
+            >
               {loading ? "Boshlanmoqda..." : "Jonli efirni boshlash"}
             </button>
           ) : null}
@@ -108,7 +120,13 @@ export function LiveStudio({
             </Link>
           ) : null}
           {isLive ? (
-            <button className="btn btn-danger" type="button" disabled={loading} onClick={() => void act("end")}>
+            <button
+              className="btn btn-danger"
+              type="button"
+              data-testid="live-end"
+              disabled={loading}
+              onClick={() => void act("end")}
+            >
               {loading ? "Yozuv saqlanmoqda..." : "Efirni tugatish"}
             </button>
           ) : null}

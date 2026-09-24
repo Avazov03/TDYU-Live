@@ -116,6 +116,11 @@ export function isFeatureEnabled(name: FeatureFlagName): boolean {
   return Boolean(v);
 }
 
+/** Live Wave 1 — read env each call so tests/staging flips apply after restart. */
+export function isLiveWaitingRoomV2Enabled(): boolean {
+  return envFlag("FF_LIVE_WAITING_ROOM_V2", false);
+}
+
 /**
  * Wave 4 — hide student-facing T1/T2/T3 Tarif UI.
  * Explicit FF_DISABLE_TARIFF_UI=true OR Enrollment-authoritative mode.

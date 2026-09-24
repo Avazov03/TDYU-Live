@@ -6,6 +6,8 @@ import { completeLiveStream } from "@/lib/mux";
 import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
+import { canTeacherEndLive, endLiveSession } from "@/lib/live-session";
+import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 
 const bodySchema = z
   .object({
@@ -31,6 +33,16 @@ export async function POST(
   });
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
 
+  if (lesson.status === "cancelled") {
+    return NextResponse.json({ error: "Bekor qilingan dars" }, { status: 400 });
+  }
+  if (lesson.status === "ended") {
+    return NextResponse.json({ lesson });
+  }
+  if (!canTeacherEndLive(lesson.status) && lesson.status !== "scheduled") {
+    return NextResponse.json({ error: "Bu darsni yopib bo‘lmaydi" }, { status: 400 });
+  }
+
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   const recordingUrl = parsed.success ? parsed.data?.recordingUrl : undefined;
 
@@ -52,6 +64,11 @@ export async function POST(
     },
   });
 
+  let liveSession = null;
+  if (isLiveWaitingRoomV2Enabled()) {
+    liveSession = await endLiveSession(lesson.id);
+  }
+
   await notifyCourseStudents(lesson.courseId, {
     type: "lesson_live",
     titleUz: hasRealVod ? "Yozuv tayyor" : "Dars tugadi",
@@ -61,5 +78,5 @@ export async function POST(
     relatedId: lesson.id,
   });
 
-  return NextResponse.json({ lesson: updated });
+  return NextResponse.json({ lesson: updated, liveSession });
 }

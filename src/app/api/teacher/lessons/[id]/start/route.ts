@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { createLiveStreamOrDemo } from "@/lib/mux";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
+import { canTeacherStartLive, isWaitingLessonStatus, startLiveSession } from "@/lib/live-session";
+import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 
 /** Haqiqiy jonli efir — yozuv shu paytdan. Kutishdan yoki to‘g‘ridan. */
 export async function POST(
@@ -24,16 +26,34 @@ export async function POST(
   });
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
 
+  if (lesson.status === "cancelled") {
+    return NextResponse.json({ error: "Bekor qilingan darsni boshlab bo‘lmaydi" }, { status: 400 });
+  }
+  if (lesson.status === "ended") {
+    return NextResponse.json({ error: "Tugagan darsni qayta boshlab bo‘lmaydi" }, { status: 400 });
+  }
+
   if (lesson.status === "live") {
     const demo = Boolean(lesson.streamKey?.startsWith("demo_"));
+    let liveSession = null;
+    if (isLiveWaitingRoomV2Enabled()) {
+      liveSession = await startLiveSession(lesson.id);
+    }
     return NextResponse.json({
       lesson,
       demo,
       rtmpUrl: demo ? null : "rtmps://global-live.mux.com:443/app",
+      liveSession,
     });
   }
 
-  if (lesson.status !== "lobby" && lesson.status !== "scheduled") {
+  if (
+    lesson.status !== "scheduled" &&
+    !isWaitingLessonStatus(lesson.status)
+  ) {
+    return NextResponse.json({ error: "Efirni shu holatdan boshlab bo‘lmaydi" }, { status: 400 });
+  }
+  if (!canTeacherStartLive(lesson.status)) {
     return NextResponse.json({ error: "Efirni shu holatdan boshlab bo‘lmaydi" }, { status: 400 });
   }
 
@@ -47,6 +67,11 @@ export async function POST(
       streamKey: stream.streamKey,
     },
   });
+
+  let liveSession = null;
+  if (isLiveWaitingRoomV2Enabled()) {
+    liveSession = await startLiveSession(lesson.id);
+  }
 
   await notifyCourseStudents(
     lesson.courseId,
@@ -63,5 +88,6 @@ export async function POST(
     lesson: updated,
     demo: stream.demo,
     rtmpUrl: stream.demo ? null : "rtmps://global-live.mux.com:443/app",
+    liveSession,
   });
 }

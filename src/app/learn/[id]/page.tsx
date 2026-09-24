@@ -8,7 +8,8 @@ import { MeetRoom } from "@/components/live/MeetRoom";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { accessMessage, getLessonAccess } from "@/lib/access";
-import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
+import { shouldHideStudentTariffUi, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isWaitingLessonStatus } from "@/lib/live-session";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
@@ -46,8 +47,18 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
 
   const access = await getLessonAccess(session?.user?.id, lesson.courseId, lesson.status);
   const hideTariff = shouldHideStudentTariffUi();
+  const liveV2 = isLiveWaitingRoomV2Enabled();
+  const waitingLike = isWaitingLessonStatus(lesson.status);
 
-  if (access.ok && session?.user?.id && (lesson.status === "live" || lesson.status === "lobby" || lesson.status === "ended")) {
+  // Waiting-room presence is NOT attendance (Wave 1). Legacy path kept when flag off.
+  const shouldMarkAttendance =
+    access.ok &&
+    Boolean(session?.user?.id) &&
+    (liveV2
+      ? lesson.status === "live" || lesson.status === "ended"
+      : lesson.status === "live" || lesson.status === "lobby" || lesson.status === "ended");
+
+  if (shouldMarkAttendance && session?.user?.id) {
     await prisma.attendance.upsert({
       where: { userId_lessonId: { userId: session.user.id, lessonId: lesson.id } },
       update: {},
@@ -61,7 +72,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
         (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id)),
   );
   const canJoinLive =
-    (lesson.status === "live" || lesson.status === "lobby") && (access.ok || staffJoin);
+    (lesson.status === "live" || waitingLike) && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 

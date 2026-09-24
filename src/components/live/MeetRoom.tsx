@@ -71,6 +71,26 @@ async function api(body: Record<string, unknown>) {
     pointer?: { on: boolean; x: number; y: number };
     chat?: ChatLine[];
     since?: number;
+    peerId?: string;
+  };
+}
+
+async function authorizeJoin(lessonId: string) {
+  const res = await fetch("/api/live/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lessonId }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error?.message || data?.error || "Ruxsat yo'q");
+  }
+  return data as {
+    ok: true;
+    peerId: string;
+    joinToken: string;
+    phase: "lobby" | "live";
+    liveSessionId: string;
   };
 }
 
@@ -305,6 +325,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   ref,
 ) {
   const peerIdRef = useRef(`p_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`);
+  const joinTokenRef = useRef<string>("");
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
@@ -350,6 +371,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       void api({
         lessonId,
         peerId: peerIdRef.current,
+        joinToken: joinTokenRef.current || undefined,
         name: displayName,
         action: "event",
         data,
@@ -431,6 +453,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       void api({
         lessonId,
         peerId: peerIdRef.current,
+        joinToken: joinTokenRef.current || undefined,
         name: displayName,
         action: "signal",
         to,
@@ -545,10 +568,25 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
   useEffect(() => {
     let stopped = false;
-    const peerId = peerIdRef.current;
     let poll = 0;
 
     const start = async () => {
+      try {
+        const authz = await authorizeJoin(lessonId);
+        if (stopped) return;
+        peerIdRef.current = authz.peerId;
+        joinTokenRef.current = authz.joinToken || "";
+      } catch (err) {
+        if (stopped) return;
+        if (phase === "lobby") {
+          // Flag off / session not open: keep waiting chrome without signaling.
+          setNotice("Dars tez orada boshlanadi");
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Ruxsat yo'q");
+        return;
+      }
+      const peerId = peerIdRef.current;
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -568,7 +606,13 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         for (const pc of pcs.current.values()) {
           await bindStream(pc, stream);
         }
-        await api({ lessonId, peerId, name: displayName, action: "join" });
+        await api({
+          lessonId,
+          peerId,
+          joinToken: joinTokenRef.current || undefined,
+          name: displayName,
+          action: "join",
+        });
         sendEvent({ kind: "state", micOn: Boolean(moderator), camOn: Boolean(moderator) });
         if (moderator && phase === "live") startRecorder(stream);
         const list = await navigator.mediaDevices.enumerateDevices();
@@ -578,7 +622,13 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         });
       } catch {
         try {
-          await api({ lessonId, peerId, name: displayName, action: "join" });
+          await api({
+            lessonId,
+            peerId,
+            joinToken: joinTokenRef.current || undefined,
+            name: displayName,
+            action: "join",
+          });
         } catch {
           /* join without media */
         }
@@ -588,10 +638,12 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
     const tick = async () => {
       if (stopped) return;
+      const peerId = peerIdRef.current;
       try {
         const snap = await api({
           lessonId,
           peerId,
+          joinToken: joinTokenRef.current || undefined,
           name: displayName,
           action: "poll",
           since: sinceRef.current,
@@ -671,7 +723,12 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     return () => {
       stopped = true;
       window.clearInterval(poll);
-      void api({ lessonId, peerId, action: "leave" }).catch(() => undefined);
+      void api({
+        lessonId,
+        peerId: peerIdRef.current,
+        joinToken: joinTokenRef.current || undefined,
+        action: "leave",
+      }).catch(() => undefined);
       connections.forEach((pc) => pc.close());
       connections.clear();
       remotesMap.clear();
@@ -1228,7 +1285,21 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
       <div className="meet-bar">
         <span className="meet-bar-meta">
-          {phase === "lobby" ? <span className="meet-lobby-pill">KUTISH · yozuv yo‘q</span> : null}
+          {phase === "lobby" ? (
+            <>
+              <span className="meet-lobby-pill" data-testid="live-waiting-banner">
+                KUTISH · yozuv yo‘q
+              </span>
+              <p className="muted small" data-testid="live-waiting-message" style={{ margin: "8px 0 0" }}>
+                Dars tez orada boshlanadi
+              </p>
+            </>
+          ) : (
+            <span className="live-pill" data-testid="live-live-banner">
+              <span className="live-dot" />
+              Jonli efir
+            </span>
+          )}
           {recording ? <span className="meet-rec">REC</span> : null}
           {moderator ? "Ustoz" : "Talaba"} · {remotes.length + 1} kishi
           {raisedCount ? ` · ${raisedCount} qo‘l` : ""}

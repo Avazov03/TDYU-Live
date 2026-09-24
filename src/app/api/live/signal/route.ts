@@ -11,6 +11,10 @@ import {
   pushLiveSignal,
   type SignalPayload,
 } from "@/lib/live-rooms";
+import { authorizeLiveJoin } from "@/lib/live-auth";
+import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { livePeerIdForUser, verifyLiveJoinToken } from "@/lib/live-join-token";
+import { findActiveLiveSession, isJoinableLiveLessonStatus } from "@/lib/live-session";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 
 const eventKind = z.enum([
@@ -28,11 +32,12 @@ const eventKind = z.enum([
 
 const postSchema = z.object({
   lessonId: z.string().trim().min(1),
-  peerId: z.string().trim().min(8).max(80),
+  peerId: z.string().trim().min(8).max(80).optional(),
   name: z.string().trim().max(80).optional(),
   action: z.enum(["join", "leave", "signal", "poll", "event"]),
   since: z.number().int().nonnegative().optional(),
   to: z.string().trim().min(1).optional(),
+  joinToken: z.string().trim().min(1).optional(),
   data: z
     .object({
       kind: eventKind,
@@ -60,7 +65,8 @@ const postSchema = z.object({
     .optional(),
 });
 
-async function liveGate(userId: string, role: string, lessonId: string) {
+/** Legacy gate when FF_LIVE_WAITING_ROOM_V2 is off. */
+async function liveGateLegacy(userId: string, role: string, lessonId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { course: { include: { teacher: true } } },
@@ -84,14 +90,54 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });
   }
 
-  const { lessonId, peerId, name, action, since, to, data } = parsed.data;
-  const gate = await liveGate(session.user.id, session.user.role, lessonId);
-  if (!gate.ok) {
-    return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+  const { lessonId, name, action, since, to, data, joinToken } = parsed.data;
+  const v2 = isLiveWaitingRoomV2Enabled();
+  const boundPeerId = livePeerIdForUser(session.user.id);
+
+  let moderator = false;
+
+  if (v2) {
+    const authz = await authorizeLiveJoin({
+      userId: session.user.id,
+      role: session.user.role,
+      lessonId,
+    });
+    if (!authz.ok) {
+      return NextResponse.json({ error: authz.message, code: authz.code }, { status: authz.http });
+    }
+    moderator = authz.moderator;
+
+    if (joinToken) {
+      const ver = verifyLiveJoinToken(joinToken, {
+        userId: session.user.id,
+        lessonId,
+        liveSessionId: authz.liveSessionId.startsWith("legacy:")
+          ? undefined
+          : authz.liveSessionId,
+      });
+      if (!ver.ok) {
+        return NextResponse.json({ error: "Join token yaroqsiz", code: ver.reason }, { status: 403 });
+      }
+    } else if (action === "join") {
+      // join issues presence; token optional on first join (authorizeLiveJoin already ran)
+    } else {
+      // poll/signal/event without token still require active session + enrollment (checked above)
+      const active = await findActiveLiveSession(lessonId);
+      if (!active && !isJoinableLiveLessonStatus(authz.lessonStatus)) {
+        return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+      }
+    }
+  } else {
+    const gate = await liveGateLegacy(session.user.id, session.user.role, lessonId);
+    if (!gate.ok) {
+      return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+    }
+    moderator = gate.moderator;
   }
 
+  const peerId = boundPeerId;
   const displayName = name?.trim() || session.user.name?.trim() || "Mehmon";
-  const role = gate.moderator ? "moderator" : "student";
+  const role = moderator ? "moderator" : "student";
 
   if (action === "leave") {
     leaveLivePeer(lessonId, peerId);
@@ -100,7 +146,7 @@ export async function POST(req: Request) {
 
   if (action === "join") {
     const snap = joinLivePeer(lessonId, peerId, displayName, role);
-    return NextResponse.json(snap);
+    return NextResponse.json({ ...snap, peerId });
   }
 
   if (action === "event") {

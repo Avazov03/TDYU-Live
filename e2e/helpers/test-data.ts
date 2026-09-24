@@ -39,4 +39,7 @@ export const STAGING_FIXTURE = {
   denyCourseTitle: "Phase 5 Wave 5 Deny Probe Course",
   denyLessonId: "c2500001-0000-4000-8000-000000000036",
   denyLessonTitle: "Phase 5 Wave 5 deny lesson",
+  /** Phase 7 Live Wave 1 — scheduled lesson on Course A (staging seed). */
+  liveLessonId: "d2500001-0000-4000-8000-000000000045",
+  liveLessonTitle: "Phase 7 Live Wave 1 lesson",
 } as const;
