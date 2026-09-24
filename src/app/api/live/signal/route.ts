@@ -12,10 +12,13 @@ import {
   type SignalPayload,
 } from "@/lib/live-rooms";
 import { authorizeLiveJoin } from "@/lib/live-auth";
-import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isLiveAvPolicyV2Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 import { livePeerIdForUser, verifyLiveJoinToken } from "@/lib/live-join-token";
 import { findActiveLiveSession, isJoinableLiveLessonStatus } from "@/lib/live-session";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+
+/** Teacher A/V controls must use /api/live/av when Wave 2 flag is on. */
+const AV_TEACHER_KINDS = new Set(["grant", "revoke", "mute", "camera_off"]);
 
 const eventKind = z.enum([
   "offer",
@@ -24,6 +27,8 @@ const eventKind = z.enum([
   "hand",
   "grant",
   "revoke",
+  "mute",
+  "camera_off",
   "present",
   "chat",
   "state",
@@ -152,6 +157,19 @@ export async function POST(req: Request) {
   if (action === "event") {
     if (!data) {
       return NextResponse.json({ error: "Signal to'liq emas" }, { status: 400 });
+    }
+    if (isLiveAvPolicyV2Enabled() && AV_TEACHER_KINDS.has(data.kind)) {
+      return NextResponse.json(
+        {
+          error: "A/V boshqaruv /api/live/av orqali",
+          code: "USE_AV_API",
+        },
+        { status: 403 },
+      );
+    }
+    // Students cannot forge grant/revoke/mute even when flag is off (room also checks role).
+    if (AV_TEACHER_KINDS.has(data.kind) && !moderator) {
+      return NextResponse.json({ error: "Faqat ustoz", code: "NOT_MODERATOR" }, { status: 403 });
     }
     const snap = applyRoomEvent(lessonId, peerId, data as SignalPayload);
     return NextResponse.json(snap);

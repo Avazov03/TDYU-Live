@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { authorizeLiveJoin } from "@/lib/live-auth";
+import { isLiveAvPolicyV2Enabled } from "@/lib/feature-flags";
 
 const bodySchema = z.object({
   lessonId: z.string().uuid().or(z.string().trim().min(1)),
@@ -50,5 +51,6 @@ export async function POST(req: Request) {
     lessonStatus: result.lessonStatus,
     phase: result.phase,
     moderator: result.moderator,
+    avPolicyV2: isLiveAvPolicyV2Enabled(),
   });
 }

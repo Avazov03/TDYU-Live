@@ -35,6 +35,9 @@ type PeerInfo = {
   allowCam: boolean;
   micOn: boolean;
   camOn: boolean;
+  avPermission?: "none" | "requested" | "granted" | "revoked";
+  teacherMuted?: boolean;
+  teacherCamOff?: boolean;
 };
 
 type PresentState = { fileUrl: string; fileName: string; mime: string } | null;
@@ -91,7 +94,40 @@ async function authorizeJoin(lessonId: string) {
     joinToken: string;
     phase: "lobby" | "live";
     liveSessionId: string;
+    avPolicyV2?: boolean;
   };
+}
+
+async function avApi(body: Record<string, unknown>) {
+  const res = await fetch("/api/live/av", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "A/V amali muvaffaqiyatsiz");
+  return data as {
+    peers?: PeerInfo[];
+    self?: PeerInfo | null;
+    since?: number;
+    peerId?: string;
+  };
+}
+
+function avStatusLabel(info: PeerInfo | null | undefined): string {
+  if (!info || info.role === "moderator") return "";
+  if (info.teacherMuted) return "Mikrofon o‘qituvchi tomonidan o‘chirildi";
+  if (info.teacherCamOff) return "Kamera o‘qituvchi tomonidan o‘chirildi";
+  switch (info.avPermission) {
+    case "requested":
+      return "Ruxsat so‘raldi";
+    case "granted":
+      return "Ruxsat berildi";
+    case "revoked":
+      return "Ruxsat bekor qilindi";
+    default:
+      return info.handRaised ? "Ruxsat so‘raldi" : "Ruxsat yo‘q";
+  }
 }
 
 function recorderOptions(): MediaRecorderOptions {
@@ -335,6 +371,9 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const prevSpeakRef = useRef(Boolean(moderator));
+  const prevMutedRef = useRef(false);
+  const prevCamOffRef = useRef(false);
+  const prevAvPermRef = useRef<string>("none");
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -361,10 +400,15 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     video: [],
   });
   const [notice, setNotice] = useState("");
+  const [avPolicyV2, setAvPolicyV2] = useState(false);
+  const avPolicyRef = useRef(false);
 
   const localSpeaking = useSpeaking(localStream, micOn);
   const canSpeak = moderator || Boolean(selfInfo?.canSpeak);
   const allowCam = moderator || Boolean(selfInfo?.allowCam);
+  const teacherMuted = Boolean(selfInfo?.teacherMuted);
+  const teacherCamOff = Boolean(selfInfo?.teacherCamOff);
+  const studentAvLabel = !moderator ? avStatusLabel(selfInfo) : "";
 
   const sendEvent = useCallback(
     (data: Record<string, unknown>) => {
@@ -432,6 +476,9 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         allowCam: false,
         micOn: false,
         camOn: false,
+        avPermission: "none",
+        teacherMuted: false,
+        teacherCamOff: false,
       };
       const next = prev.filter((p) => p.info.id !== id);
       next.push({ info, stream });
@@ -576,6 +623,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         if (stopped) return;
         peerIdRef.current = authz.peerId;
         joinTokenRef.current = authz.joinToken || "";
+        avPolicyRef.current = Boolean(authz.avPolicyV2);
+        setAvPolicyV2(Boolean(authz.avPolicyV2));
       } catch (err) {
         if (stopped) return;
         if (phase === "lobby") {
@@ -587,6 +636,26 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         return;
       }
       const peerId = peerIdRef.current;
+
+      // Waiting room: NEVER request camera/mic (Wave 2).
+      if (phase === "lobby") {
+        try {
+          await api({
+            lessonId,
+            peerId,
+            joinToken: joinTokenRef.current || undefined,
+            name: displayName,
+            action: "join",
+          });
+          sendEvent({ kind: "state", micOn: false, camOn: false });
+          setMicOn(false);
+          setCamOn(false);
+        } catch {
+          /* join without media */
+        }
+        return;
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -596,6 +665,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+        // Students: tracks present but OFF until teacher grant + explicit toggle.
+        // Teachers: may publish immediately (browser permission permitting).
         if (!moderator) {
           stream.getTracks().forEach((t) => {
             t.enabled = false;
@@ -603,6 +674,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         }
         localStreamRef.current = stream;
         setLocalStream(stream);
+        setMicOn(Boolean(moderator));
+        setCamOn(Boolean(moderator));
         for (const pc of pcs.current.values()) {
           await bindStream(pc, stream);
         }
@@ -632,7 +705,11 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         } catch {
           /* join without media */
         }
-        if (!stopped) setError("Kameraga ruxsat berilmadi. Siz baribir xonadasiz — qo‘l ko‘tarib so‘rash mumkin.");
+        if (!stopped) {
+          setError(
+            "Brauzer kamera/mikrofon ruxsatini bermadi. Siz baribir xonadasiz — qo‘l ko‘tarib so‘rash mumkin.",
+          );
+        }
       }
     };
 
@@ -755,38 +832,56 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   useEffect(() => {
     if (moderator || !selfInfo) return;
     const stream = localStreamRef.current;
-    if (!stream) return;
+    setHandRaised(Boolean(selfInfo.handRaised));
+
     if (selfInfo.canSpeak && !prevSpeakRef.current) {
-      stream.getAudioTracks().forEach((t) => {
-        t.enabled = true;
-      });
       queueMicrotask(() => {
-        setMicOn(true);
-        setHandRaised(false);
-        setNotice("Ustoz mikrofonni ochdi — gapirishingiz mumkin.");
+        setNotice("Ruxsat berildi — mikrofon/kamerani o‘zingiz yoqing.");
       });
-      sendEvent({ kind: "state", micOn: true, camOn: false });
     }
-    if (!selfInfo.canSpeak && prevSpeakRef.current) {
-      stream.getAudioTracks().forEach((t) => {
-        t.enabled = false;
-      });
-      stream.getVideoTracks().forEach((t) => {
-        t.enabled = false;
-      });
-      queueMicrotask(() => {
-        setMicOn(false);
-        setCamOn(false);
-      });
-      sendEvent({ kind: "state", micOn: false, camOn: false });
+
+    const forceMicOff =
+      !selfInfo.canSpeak || Boolean(selfInfo.teacherMuted) || selfInfo.avPermission === "revoked";
+    const forceCamOff =
+      !selfInfo.allowCam || Boolean(selfInfo.teacherCamOff) || selfInfo.avPermission === "revoked";
+
+    if (stream) {
+      if (forceMicOff) {
+        stream.getAudioTracks().forEach((t) => {
+          t.enabled = false;
+        });
+      }
+      if (forceCamOff) {
+        stream.getVideoTracks().forEach((t) => {
+          t.enabled = false;
+        });
+      }
     }
-    if (!selfInfo.allowCam) {
-      stream.getVideoTracks().forEach((t) => {
-        t.enabled = false;
+
+    if (forceMicOff) queueMicrotask(() => setMicOn(false));
+    if (forceCamOff) queueMicrotask(() => setCamOn(false));
+
+    const lostSpeak = !selfInfo.canSpeak && prevSpeakRef.current;
+    const justRevoked =
+      selfInfo.avPermission === "revoked" && prevAvPermRef.current !== "revoked";
+    const justMuted = Boolean(selfInfo.teacherMuted) && !prevMutedRef.current;
+    const justCamOff = Boolean(selfInfo.teacherCamOff) && !prevCamOffRef.current;
+
+    if (lostSpeak || justRevoked || justMuted || justCamOff) {
+      sendEvent({
+        kind: "state",
+        micOn: forceMicOff ? false : Boolean(selfInfo.micOn),
+        camOn: forceCamOff ? false : Boolean(selfInfo.camOn),
       });
-      queueMicrotask(() => setCamOn(false));
     }
+    if (justRevoked) queueMicrotask(() => setNotice("Ruxsat bekor qilindi"));
+    else if (justMuted) queueMicrotask(() => setNotice("Mikrofon o‘qituvchi tomonidan o‘chirildi"));
+    else if (justCamOff) queueMicrotask(() => setNotice("Kamera o‘qituvchi tomonidan o‘chirildi"));
+
     prevSpeakRef.current = selfInfo.canSpeak;
+    prevMutedRef.current = Boolean(selfInfo.teacherMuted);
+    prevCamOffRef.current = Boolean(selfInfo.teacherCamOff);
+    prevAvPermRef.current = selfInfo.avPermission ?? "none";
   }, [moderator, selfInfo, sendEvent]);
 
   useEffect(() => {
@@ -810,12 +905,21 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     return () => window.clearTimeout(t);
   }, [notice]);
 
+  const applySelfSnap = (snap: { self?: PeerInfo | null }) => {
+    if (snap.self) setSelfInfo(snap.self);
+  };
+
   const toggleMic = () => {
+    if (phase === "lobby" && !moderator) {
+      void toggleHand();
+      return;
+    }
+    if (!moderator && teacherMuted) {
+      setNotice("Mikrofon o‘qituvchi tomonidan o‘chirildi");
+      return;
+    }
     if (!canSpeak && !moderator) {
-      const next = !handRaised;
-      setHandRaised(next);
-      sendEvent({ kind: "hand", handRaised: next });
-      setNotice(next ? "Qo‘l ko‘tarildi — ustoz ruxsat bersa gapirasiz." : "Qo‘l tushirildi.");
+      void toggleHand();
       return;
     }
     const next = !micOn;
@@ -827,6 +931,14 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   };
 
   const toggleCam = () => {
+    if (phase === "lobby" && !moderator) {
+      setNotice("Kutish xonasida kamera o‘chirilgan.");
+      return;
+    }
+    if (!moderator && teacherCamOff) {
+      setNotice("Kamera o‘qituvchi tomonidan o‘chirildi");
+      return;
+    }
     if (!allowCam && !moderator) {
       setNotice("Kamerani ustoz ruxsat berganida yoqasiz.");
       return;
@@ -839,17 +951,86 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     sendEvent({ kind: "state", micOn, camOn: next });
   };
 
-  const toggleHand = () => {
+  const toggleHand = async () => {
+    if (moderator) return;
     const next = !handRaised;
     setHandRaised(next);
+    if (avPolicyRef.current || avPolicyV2) {
+      try {
+        const snap = await avApi({
+          lessonId,
+          name: displayName,
+          action: next ? "raise_hand" : "lower_hand",
+        });
+        applySelfSnap(snap);
+        setNotice(next ? "Ruxsat so‘raldi" : "Qo‘l tushirildi.");
+      } catch (err) {
+        setHandRaised(!next);
+        setNotice(err instanceof Error ? err.message : "So‘rov yuborilmadi");
+      }
+      return;
+    }
     sendEvent({ kind: "hand", handRaised: next });
+    setNotice(next ? "Qo‘l ko‘tarildi — ustoz ruxsat bersa gapirasiz." : "Qo‘l tushirildi.");
   };
 
   const grant = (targetId: string, mic: boolean, cam: boolean) => {
+    if (avPolicyRef.current || avPolicyV2) {
+      void avApi({
+        lessonId,
+        name: displayName,
+        action: "grant",
+        targetPeerId: targetId,
+        mic,
+        cam,
+      })
+        .then(applySelfSnap)
+        .catch((err) => setNotice(err instanceof Error ? err.message : "Grant xato"));
+      return;
+    }
     sendEvent({ kind: "grant", targetId, mic, cam });
   };
   const revoke = (targetId: string) => {
+    if (avPolicyRef.current || avPolicyV2) {
+      void avApi({
+        lessonId,
+        name: displayName,
+        action: "revoke",
+        targetPeerId: targetId,
+      })
+        .then(applySelfSnap)
+        .catch((err) => setNotice(err instanceof Error ? err.message : "Revoke xato"));
+      return;
+    }
     sendEvent({ kind: "revoke", targetId });
+  };
+  const muteStudent = (targetId: string) => {
+    if (avPolicyRef.current || avPolicyV2) {
+      void avApi({
+        lessonId,
+        name: displayName,
+        action: "mute",
+        targetPeerId: targetId,
+      })
+        .then(applySelfSnap)
+        .catch((err) => setNotice(err instanceof Error ? err.message : "Mute xato"));
+      return;
+    }
+    sendEvent({ kind: "mute", targetId });
+  };
+  const cameraOffStudent = (targetId: string) => {
+    if (avPolicyRef.current || avPolicyV2) {
+      void avApi({
+        lessonId,
+        name: displayName,
+        action: "camera_off",
+        targetPeerId: targetId,
+      })
+        .then(applySelfSnap)
+        .catch((err) => setNotice(err instanceof Error ? err.message : "Camera-off xato"));
+      return;
+    }
+    sendEvent({ kind: "camera_off", targetId });
   };
 
   const stopShare = useCallback(async () => {
@@ -1138,21 +1319,56 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
                   onClick={() => setFocus(p.info.id)}
                 />
                 {moderator && p.info.role === "student" ? (
-                  <div className="meet-grant">
-                    {p.info.handRaised || !p.info.canSpeak ? (
-                      <>
-                        <button type="button" title="Mikrofon" onClick={(e) => { e.stopPropagation(); grant(p.info.id, true, false); }}>
-                          Mic
-                        </button>
-                        <button type="button" title="Kamera" onClick={(e) => { e.stopPropagation(); grant(p.info.id, true, true); }}>
-                          Cam
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={(e) => { e.stopPropagation(); revoke(p.info.id); }}>
-                        To‘xtat
-                      </button>
-                    )}
+                  <div className="meet-grant" data-testid="live-teacher-av-controls">
+                    {p.info.handRaised ? (
+                      <span className="small" data-testid="live-hand-request">
+                        ✋ so‘rov
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      title="A/V ruxsat"
+                      data-testid="live-av-grant"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        grant(p.info.id, true, true);
+                      }}
+                    >
+                      Grant
+                    </button>
+                    <button
+                      type="button"
+                      title="Ruxsatni bekor"
+                      data-testid="live-av-revoke"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        revoke(p.info.id);
+                      }}
+                    >
+                      Revoke
+                    </button>
+                    <button
+                      type="button"
+                      title="Mikrofon o‘chir"
+                      data-testid="live-av-mute"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        muteStudent(p.info.id);
+                      }}
+                    >
+                      Mute
+                    </button>
+                    <button
+                      type="button"
+                      title="Kamera o‘chir"
+                      data-testid="live-av-camera-off"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cameraOffStudent(p.info.id);
+                      }}
+                    >
+                      CamOff
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -1232,23 +1448,37 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             <ul className="meet-people">
               <li>
                 {displayName} (siz){handRaised ? " ✋" : ""}
+                {studentAvLabel ? (
+                  <span className="small muted" data-testid="live-av-status">
+                    {" "}
+                    · {studentAvLabel}
+                  </span>
+                ) : null}
               </li>
               {remotes.map((p) => (
-                <li key={p.info.id}>
+                <li key={p.info.id} data-testid={`live-peer-${p.info.id}`}>
                   {p.info.name}
                   {p.info.role === "moderator" ? " · ustoz" : ""}
                   {p.info.handRaised ? " ✋" : ""}
-                  {p.info.canSpeak ? " · gapirmoqda" : ""}
+                  {p.info.canSpeak ? " · A/V ok" : ""}
+                  {p.info.avPermission ? ` · ${p.info.avPermission}` : ""}
                   {moderator && p.info.role === "student" ? (
                     <span className="meet-grant">
-                      <button type="button" onClick={() => grant(p.info.id, true, false)}>
-                        Mic
+                      <button type="button" data-testid="live-av-grant" onClick={() => grant(p.info.id, true, true)}>
+                        Grant
                       </button>
-                      <button type="button" onClick={() => grant(p.info.id, true, true)}>
-                        Cam
+                      <button type="button" data-testid="live-av-revoke" onClick={() => revoke(p.info.id)}>
+                        Revoke
                       </button>
-                      <button type="button" onClick={() => revoke(p.info.id)}>
-                        To‘xtat
+                      <button type="button" data-testid="live-av-mute" onClick={() => muteStudent(p.info.id)}>
+                        Mute
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="live-av-camera-off"
+                        onClick={() => cameraOffStudent(p.info.id)}
+                      >
+                        CamOff
                       </button>
                     </span>
                   ) : null}
@@ -1303,12 +1533,18 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           {recording ? <span className="meet-rec">REC</span> : null}
           {moderator ? "Ustoz" : "Talaba"} · {remotes.length + 1} kishi
           {raisedCount ? ` · ${raisedCount} qo‘l` : ""}
+          {studentAvLabel ? (
+            <span className="small" data-testid="live-av-status" style={{ marginLeft: 8 }}>
+              {studentAvLabel}
+            </span>
+          ) : null}
         </span>
         <div className="meet-bar-actions">
           <button
             className={`meet-icon-btn${micOn ? "" : " is-off"}`}
             type="button"
             title={canSpeak ? "Mikrofon" : "Qo‘l ko‘tarish"}
+            data-testid="live-mic-btn"
             onClick={toggleMic}
           >
             <Icon name={micOn ? "mic" : "micoff"} size={18} />
@@ -1317,6 +1553,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             className={`meet-icon-btn${camOn ? "" : " is-off"}`}
             type="button"
             title="Kamera"
+            data-testid="live-cam-btn"
             onClick={toggleCam}
           >
             <Icon name={camOn ? "video" : "videooff"} size={18} />
@@ -1326,7 +1563,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
               className={`meet-icon-btn${handRaised ? " is-active" : ""}`}
               type="button"
               title="Qo‘l ko‘tarish"
-              onClick={toggleHand}
+              data-testid="live-raise-hand"
+              onClick={() => void toggleHand()}
             >
               <Icon name="hand" size={18} />
             </button>

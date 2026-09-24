@@ -94,6 +94,12 @@ export const featureFlags = {
   liveWaitingRoomV2: envFlag("FF_LIVE_WAITING_ROOM_V2", false),
 
   /**
+   * When true: server-enforced student A/V permission (Wave 2).
+   * Default false.
+   */
+  liveAvPolicyV2: envFlag("FF_LIVE_AV_POLICY_V2", false),
+
+  /**
    * When true: shared live room store (Redis etc.). Default false.
    */
   liveSharedRooms: envFlag("FF_LIVE_SHARED_ROOMS", false),
@@ -119,6 +125,11 @@ export function isFeatureEnabled(name: FeatureFlagName): boolean {
 /** Live Wave 1 — read env each call so tests/staging flips apply after restart. */
 export function isLiveWaitingRoomV2Enabled(): boolean {
   return envFlag("FF_LIVE_WAITING_ROOM_V2", false);
+}
+
+/** Live Wave 2 — A/V permission policy. */
+export function isLiveAvPolicyV2Enabled(): boolean {
+  return envFlag("FF_LIVE_AV_POLICY_V2", false);
 }
 
 /**

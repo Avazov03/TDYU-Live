@@ -1,12 +1,32 @@
+/**
+ * In-memory live room + signaling (poll-based).
+ * Wave 2: A/V permission is session-scoped here (not DB) — see live-av-policy.ts.
+ */
+
+import {
+  applyGrant,
+  applyRaiseHand,
+  applyRevoke,
+  applyTeacherCameraOff,
+  applyTeacherMute,
+  clampStudentPublishState,
+  initialModeratorAvFlags,
+  initialStudentAvFlags,
+  type AvPermission,
+} from "@/lib/live-av-policy";
+
 export type PeerRole = "moderator" | "student";
 
 export type LivePeer = {
   id: string;
   name: string;
   role: PeerRole;
+  avPermission: AvPermission;
   handRaised: boolean;
   canSpeak: boolean;
   allowCam: boolean;
+  teacherMuted: boolean;
+  teacherCamOff: boolean;
   micOn: boolean;
   camOn: boolean;
 };
@@ -22,7 +42,19 @@ export type PointerState = { on: boolean; x: number; y: number };
 export type ChatLine = { id: number; from: string; name: string; text: string };
 
 export type SignalPayload = {
-  kind: "offer" | "answer" | "ice" | "hand" | "grant" | "revoke" | "present" | "chat" | "state" | "pointer";
+  kind:
+    | "offer"
+    | "answer"
+    | "ice"
+    | "hand"
+    | "grant"
+    | "revoke"
+    | "mute"
+    | "camera_off"
+    | "present"
+    | "chat"
+    | "state"
+    | "pointer";
   sdp?: string;
   candidate?: {
     candidate?: string;
@@ -40,6 +72,9 @@ export type SignalPayload = {
   pointerOn?: boolean;
   x?: number;
   y?: number;
+  avPermission?: AvPermission;
+  teacherMuted?: boolean;
+  teacherCamOff?: boolean;
 };
 
 export type LiveSignal = { id: number; from: string; to: string; data: SignalPayload };
@@ -66,7 +101,15 @@ const MAX_MESSAGES = 500;
 function room(lessonId: string) {
   let state = rooms.get(lessonId);
   if (!state) {
-    state = { peers: new Map(), messages: [], chat: [], present: null, pointer: { on: false, x: 0.5, y: 0.5 }, seq: 0, chatSeq: 0 };
+    state = {
+      peers: new Map(),
+      messages: [],
+      chat: [],
+      present: null,
+      pointer: { on: false, x: 0.5, y: 0.5 },
+      seq: 0,
+      chatSeq: 0,
+    };
     rooms.set(lessonId, state);
   }
   return state;
@@ -87,12 +130,54 @@ function publicPeer(p: PeerRow): LivePeer {
     id: p.id,
     name: p.name,
     role: p.role,
+    avPermission: p.avPermission,
     handRaised: p.handRaised,
     canSpeak: p.canSpeak,
     allowCam: p.allowCam,
+    teacherMuted: p.teacherMuted,
+    teacherCamOff: p.teacherCamOff,
     micOn: p.micOn,
     camOn: p.camOn,
   };
+}
+
+function flagsFromPeer(p: PeerRow) {
+  return {
+    avPermission: p.avPermission,
+    canSpeak: p.canSpeak,
+    allowCam: p.allowCam,
+    teacherMuted: p.teacherMuted,
+    teacherCamOff: p.teacherCamOff,
+    micOn: p.micOn,
+    camOn: p.camOn,
+    handRaised: p.handRaised,
+  };
+}
+
+function applyFlagsToPeer(p: PeerRow, flags: ReturnType<typeof flagsFromPeer>) {
+  p.avPermission = flags.avPermission;
+  p.canSpeak = flags.canSpeak;
+  p.allowCam = flags.allowCam;
+  p.teacherMuted = flags.teacherMuted;
+  p.teacherCamOff = flags.teacherCamOff;
+  p.micOn = flags.micOn;
+  p.camOn = flags.camOn;
+  p.handRaised = flags.handRaised;
+}
+
+function pushPeerAvBroadcast(lessonId: string, from: string, target: PeerRow, kind: SignalPayload["kind"]) {
+  pushLiveSignal(lessonId, from, "*", {
+    kind,
+    targetId: target.id,
+    mic: target.canSpeak,
+    cam: target.allowCam,
+    micOn: target.micOn,
+    camOn: target.camOn,
+    handRaised: target.handRaised,
+    avPermission: target.avPermission,
+    teacherMuted: target.teacherMuted,
+    teacherCamOff: target.teacherCamOff,
+  });
 }
 
 export function snapshot(state: RoomState, peerId: string, since: number) {
@@ -122,16 +207,21 @@ export function joinLivePeer(
 ) {
   const state = room(lessonId);
   prune(state);
+  const existing = state.peers.get(peerId);
+  if (existing) {
+    existing.name = name.trim().slice(0, 80) || existing.name;
+    existing.role = role;
+    existing.lastSeen = Date.now();
+    // Preserve A/V permission flags on re-join (Wave 2).
+    return snapshot(state, peerId, 0);
+  }
   const isMod = role === "moderator";
+  const flags = isMod ? initialModeratorAvFlags() : initialStudentAvFlags();
   state.peers.set(peerId, {
     id: peerId,
     name: name.trim().slice(0, 80) || "Mehmon",
     role,
-    handRaised: false,
-    canSpeak: isMod,
-    allowCam: isMod,
-    micOn: isMod,
-    camOn: isMod,
+    ...flags,
     lastSeen: Date.now(),
   });
   return snapshot(state, peerId, 0);
@@ -152,6 +242,97 @@ export function pushLiveSignal(lessonId: string, from: string, to: string, data:
   state.messages.push({ id: state.seq, from, to, data });
 }
 
+export type AvControlAction =
+  | "raise_hand"
+  | "lower_hand"
+  | "grant"
+  | "revoke"
+  | "mute"
+  | "camera_off";
+
+export type AvControlResult =
+  | { ok: true; snap: ReturnType<typeof snapshot> }
+  | { ok: false; code: string; message: string };
+
+/**
+ * Server-side A/V control (Wave 2). Caller must already authorize the actor.
+ * Actor is identified by stable peerId (u_<userId>).
+ */
+export function applyAvControl(input: {
+  lessonId: string;
+  actorPeerId: string;
+  action: AvControlAction;
+  targetPeerId?: string;
+  mic?: boolean;
+  cam?: boolean;
+}): AvControlResult {
+  const state = room(input.lessonId);
+  prune(state);
+  const me = state.peers.get(input.actorPeerId);
+  if (!me) {
+    return { ok: false, code: "NOT_IN_ROOM", message: "Xonaga kirmagan" };
+  }
+  me.lastSeen = Date.now();
+
+  if (input.action === "raise_hand" || input.action === "lower_hand") {
+    if (me.role === "moderator") {
+      return { ok: false, code: "MODERATOR_NO_HAND", message: "Ustoz qo‘l ko‘tarmaydi" };
+    }
+    const raised = input.action === "raise_hand";
+    applyFlagsToPeer(me, applyRaiseHand(flagsFromPeer(me), raised));
+    pushPeerAvBroadcast(input.lessonId, input.actorPeerId, me, "hand");
+    return { ok: true, snap: snapshot(state, input.actorPeerId, 0) };
+  }
+
+  if (me.role !== "moderator") {
+    return { ok: false, code: "NOT_MODERATOR", message: "Faqat ustoz" };
+  }
+
+  const targetId = input.targetPeerId;
+  if (!targetId) {
+    return { ok: false, code: "NO_TARGET", message: "Ishtirokchi tanlanmagan" };
+  }
+  if (targetId === input.actorPeerId) {
+    return { ok: false, code: "SELF_TARGET", message: "O‘zingizga qo‘llab bo‘lmaydi" };
+  }
+  const target = state.peers.get(targetId);
+  if (!target) {
+    return { ok: false, code: "TARGET_NOT_FOUND", message: "Ishtirokchi topilmadi" };
+  }
+  if (target.role === "moderator") {
+    return { ok: false, code: "TARGET_MODERATOR", message: "Ustozni boshqarib bo‘lmaydi" };
+  }
+
+  if (input.action === "grant") {
+    // Default full A/V grant when mic/cam omitted (teacher "Grant A/V").
+    const mic = input.mic ?? true;
+    const cam = input.cam ?? true;
+    applyFlagsToPeer(target, applyGrant(flagsFromPeer(target), { mic, cam }));
+    pushPeerAvBroadcast(input.lessonId, input.actorPeerId, target, "grant");
+    return { ok: true, snap: snapshot(state, input.actorPeerId, 0) };
+  }
+
+  if (input.action === "revoke") {
+    applyFlagsToPeer(target, applyRevoke(flagsFromPeer(target)));
+    pushPeerAvBroadcast(input.lessonId, input.actorPeerId, target, "revoke");
+    return { ok: true, snap: snapshot(state, input.actorPeerId, 0) };
+  }
+
+  if (input.action === "mute") {
+    applyFlagsToPeer(target, applyTeacherMute(flagsFromPeer(target)));
+    pushPeerAvBroadcast(input.lessonId, input.actorPeerId, target, "mute");
+    return { ok: true, snap: snapshot(state, input.actorPeerId, 0) };
+  }
+
+  if (input.action === "camera_off") {
+    applyFlagsToPeer(target, applyTeacherCameraOff(flagsFromPeer(target)));
+    pushPeerAvBroadcast(input.lessonId, input.actorPeerId, target, "camera_off");
+    return { ok: true, snap: snapshot(state, input.actorPeerId, 0) };
+  }
+
+  return { ok: false, code: "UNKNOWN_ACTION", message: "Noma’lum amal" };
+}
+
 export function applyRoomEvent(lessonId: string, from: string, data: SignalPayload) {
   const state = room(lessonId);
   prune(state);
@@ -159,42 +340,71 @@ export function applyRoomEvent(lessonId: string, from: string, data: SignalPaylo
   if (!me) return snapshot(state, from, state.seq);
 
   if (data.kind === "hand") {
-    me.handRaised = Boolean(data.handRaised);
-    pushLiveSignal(lessonId, from, "*", { kind: "hand", handRaised: me.handRaised, targetId: from });
+    if (me.role !== "moderator") {
+      applyFlagsToPeer(me, applyRaiseHand(flagsFromPeer(me), Boolean(data.handRaised)));
+      pushPeerAvBroadcast(lessonId, from, me, "hand");
+    }
   }
 
   if (data.kind === "state") {
-    me.micOn = Boolean(data.micOn);
-    me.camOn = Boolean(data.camOn);
-    pushLiveSignal(lessonId, from, "*", { kind: "state", targetId: from, micOn: me.micOn, camOn: me.camOn });
+    const clamped = clampStudentPublishState(
+      flagsFromPeer(me),
+      { micOn: Boolean(data.micOn), camOn: Boolean(data.camOn) },
+      me.role === "moderator",
+    );
+    me.micOn = clamped.micOn;
+    me.camOn = clamped.camOn;
+    pushLiveSignal(lessonId, from, "*", {
+      kind: "state",
+      targetId: from,
+      micOn: me.micOn,
+      camOn: me.camOn,
+      avPermission: me.avPermission,
+      teacherMuted: me.teacherMuted,
+      teacherCamOff: me.teacherCamOff,
+    });
   }
 
   if (data.kind === "grant" && me.role === "moderator" && data.targetId) {
-    const target = state.peers.get(data.targetId);
-    if (target) {
-      if (data.mic) {
-        target.canSpeak = true;
-        target.handRaised = false;
-      }
-      if (data.cam) target.allowCam = true;
-      pushLiveSignal(lessonId, from, "*", {
-        kind: "grant",
-        targetId: target.id,
-        mic: target.canSpeak,
-        cam: target.allowCam,
-      });
-    }
+    const result = applyAvControl({
+      lessonId,
+      actorPeerId: from,
+      action: "grant",
+      targetPeerId: data.targetId,
+      mic: data.mic,
+      cam: data.cam,
+    });
+    if (result.ok) return result.snap;
   }
 
   if (data.kind === "revoke" && me.role === "moderator" && data.targetId) {
-    const target = state.peers.get(data.targetId);
-    if (target && target.role !== "moderator") {
-      target.canSpeak = false;
-      target.allowCam = false;
-      target.micOn = false;
-      target.camOn = false;
-      pushLiveSignal(lessonId, from, "*", { kind: "revoke", targetId: target.id });
-    }
+    const result = applyAvControl({
+      lessonId,
+      actorPeerId: from,
+      action: "revoke",
+      targetPeerId: data.targetId,
+    });
+    if (result.ok) return result.snap;
+  }
+
+  if (data.kind === "mute" && me.role === "moderator" && data.targetId) {
+    const result = applyAvControl({
+      lessonId,
+      actorPeerId: from,
+      action: "mute",
+      targetPeerId: data.targetId,
+    });
+    if (result.ok) return result.snap;
+  }
+
+  if (data.kind === "camera_off" && me.role === "moderator" && data.targetId) {
+    const result = applyAvControl({
+      lessonId,
+      actorPeerId: from,
+      action: "camera_off",
+      targetPeerId: data.targetId,
+    });
+    if (result.ok) return result.snap;
   }
 
   if (data.kind === "present" && me.role === "moderator") {
@@ -231,4 +441,9 @@ export function pollLiveRoom(lessonId: string, peerId: string, since: number) {
 
 export function closeLiveRoom(lessonId: string) {
   rooms.delete(lessonId);
+}
+
+/** Test helper — wipe all rooms. */
+export function __resetLiveRoomsForTests() {
+  rooms.clear();
 }
