@@ -228,6 +228,17 @@ Validated:
 - Checkout V2 browser test remains placeholder / skipped
 - `FF_COURSE_CHECKOUT_V2` and enrollment shadow mode are **not** changed by this suite
 
+## Phase 2.3D role smoke (staging fixtures)
+
+With `.env.e2e.staging.example` values + SSH tunnel to `:3101`:
+
+- **17 passed / 1 skipped** (`npm run test:e2e:smoke`) — only Checkout V2 placeholder remains skipped
+- Real UI login for Student / Teacher / Admin (no auth bypass)
+- Deterministic course/lesson via `E2E_COURSE_*` / `E2E_LESSON_*` → staging Fixture Course A
+- `loginAs` reloads once if the login heading fails to paint (staging static-chunk flake under RAM pressure)
+- Staging flags unchanged: `FF_COURSE_CHECKOUT_V2=false`, `FF_ENROLLMENT_ACCESS_MODE=shadow`
+- Production app/DB/env/flags untouched
+
 ## Debugging
 
 1. Reproduce headed: `npm run test:e2e:headed -- e2e/smoke/student.spec.ts`

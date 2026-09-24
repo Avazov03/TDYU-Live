@@ -14,10 +14,21 @@ export async function loginAs(
 ): Promise<void> {
   options?.monitor?.noteAction(`Open /login as ${creds.email}`);
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: /Xush kelibsiz/i })).toBeVisible();
+  // Staging under memory pressure can drop a first /_next/static chunk load;
+  // wait for the real login form, then one reload if the welcome heading never paints.
+  const welcome = page.getByRole("heading", { name: /Xush kelibsiz/i });
+  const emailInput = page.locator("#login-email");
+  try {
+    await expect(welcome).toBeVisible({ timeout: 15_000 });
+  } catch {
+    options?.monitor?.noteAction("Login page incomplete — reload once");
+    await page.reload();
+    await expect(welcome).toBeVisible({ timeout: 15_000 });
+  }
+  await expect(emailInput).toBeVisible();
 
   options?.monitor?.noteAction(`Fill email ${creds.email}`);
-  await page.locator("#login-email").fill(creds.email);
+  await emailInput.fill(creds.email);
   options?.monitor?.noteAction("Fill password");
   // Prefer #login-password: getByLabel('Parol') also matches "Parolni ko'rsatish".
   await page.locator("#login-password").fill(creds.password);

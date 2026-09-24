@@ -16,7 +16,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  workers: isCI ? 2 : undefined,
+  // Windows paths with spaces + parallel retain-on-failure traces can ENOENT on close.
+  workers: isCI ? 2 : 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   reporter: [

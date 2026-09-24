@@ -30,10 +30,12 @@ test.describe("Student smoke", () => {
   });
 
   test("Student can open My Courses", async ({ studentPage, monitor }) => {
-    monitor.noteAction('Click nav "Kurslarim"');
-    await studentPage.getByRole("link", { name: "Kurslarim" }).first().click();
+    monitor.noteAction('Click nav link to /my-courses');
+    // Desktop notch may render icon-only links without visible "Kurslarim" text.
+    await studentPage.locator('a[href="/my-courses"]').first().click();
     await expect(studentPage).toHaveURL(/\/my-courses/);
-    await expect(studentPage.getByText("Kurslarim").first()).toBeVisible();
+    // Prefer page kicker (sidebar also has a hidden "Kurslarim" span).
+    await expect(studentPage.locator(".lx-kicker").filter({ hasText: "Kurslarim" })).toBeVisible();
     await expect(
       studentPage.getByRole("heading", { name: /O'qituvchi, keyin uning kurslari/i }),
     ).toBeVisible();
@@ -45,8 +47,9 @@ test.describe("Student smoke", () => {
   test("Student can open an enrolled course", async ({ studentPage, monitor }) => {
     monitor.noteAction("Goto /my-courses");
     await studentPage.goto("/my-courses");
+    await expect(studentPage.locator(".lx-kicker").filter({ hasText: "Kurslarim" })).toBeVisible();
     monitor.noteAction(`Open course ${SEED.courseTitleCivil}`);
-    await studentPage.getByRole("link", { name: new RegExp(SEED.courseTitleCivil, "i") }).click();
+    await studentPage.locator(`a[href="/courses/${SEED.courseCivilBasics}"]`).first().click();
     await expect(studentPage).toHaveURL(new RegExp(`/courses/${SEED.courseCivilBasics}`));
     await expect(studentPage.getByText(SEED.courseTitleCivil).first()).toBeVisible();
     await expect(studentPage.getByRole("heading", { name: "Sizning obunangiz" })).toBeVisible();
@@ -61,16 +64,20 @@ test.describe("Student smoke", () => {
       test.skip(true, `Lesson ${SEED.lessonIntro} not found. Seed DB or set E2E_LESSON_ID.`);
       return;
     }
-    await expect(studentPage.getByRole("heading", { name: SEED.lessonTitleIntro })).toBeVisible();
+    await expect(
+      studentPage.getByRole("heading", { level: 2, name: SEED.lessonTitleIntro }),
+    ).toBeVisible();
     await expect(studentPage.getByLabel("Kurs progressi")).toBeVisible();
   });
 
   test("Student can navigate back correctly", async ({ studentPage, monitor }) => {
     monitor.noteAction("Goto lesson then back via Kurslarim");
     await studentPage.goto(`/learn/${SEED.lessonIntro}`);
-    await expect(studentPage.getByRole("heading", { name: SEED.lessonTitleIntro })).toBeVisible();
+    await expect(
+      studentPage.getByRole("heading", { level: 2, name: SEED.lessonTitleIntro }),
+    ).toBeVisible();
 
-    await studentPage.getByRole("link", { name: "Kurslarim" }).first().click();
+    await studentPage.locator('a[href="/my-courses"]').first().click();
     await expect(studentPage).toHaveURL(/\/my-courses/);
     await expect(
       studentPage.getByRole("heading", { name: /O'qituvchi, keyin uning kurslari/i }),
@@ -78,8 +85,9 @@ test.describe("Student smoke", () => {
   });
 
   test("Student can open search", async ({ studentPage, monitor }) => {
-    monitor.noteAction("Goto /search?q=fuqarolik");
-    await studentPage.goto("/search?q=fuqarolik");
+    const q = encodeURIComponent(SEED.courseTitleCivil.split(/\s+/)[0] || "Fixture");
+    monitor.noteAction(`Goto /search?q=${q}`);
+    await studentPage.goto(`/search?q=${q}`);
     await expect(studentPage).toHaveURL(/\/search/);
     await expect(studentPage.getByRole("heading", { name: /natijalari|Kurs yoki/i })).toBeVisible();
   });
