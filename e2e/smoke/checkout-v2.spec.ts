@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { test } from "../fixtures";
 import { loginAs } from "../auth/login";
 import {
@@ -173,9 +173,9 @@ test.describe("Checkout V2", () => {
     await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toHaveCount(0);
     await expect(page.getByLabel("Kurs progressi")).toBeVisible();
 
-    // --- Idempotency replay (same key) via authenticated API ---
+    // --- Idempotency replay (same key) via authenticated browser fetch ---
     monitor.noteAction("Replay same Idempotency-Key");
-    const replay = await postCheckoutV2(page.request, COURSE_B.id, idemKey);
+    const replay = await browserCheckoutV2(page, COURSE_B.id, idemKey);
     expect(replay.status).toBe(200);
     expect(replay.body.ok).toBe(true);
     expect(replay.body.idempotentReplay).toBe(true);
@@ -185,8 +185,8 @@ test.describe("Checkout V2", () => {
 
     // --- Already enrolled with a new key ---
     monitor.noteAction("New key → ALREADY_ENROLLED");
-    const conflict = await postCheckoutV2(
-      page.request,
+    const conflict = await browserCheckoutV2(
+      page,
       COURSE_B.id,
       `e2e-already-${Date.now()}`,
     );
@@ -201,8 +201,9 @@ test.describe("Checkout V2", () => {
   });
 });
 
-async function postCheckoutV2(
-  request: APIRequestContext,
+/** Uses the page's cookie jar (NextAuth session) — page.request can miss auth cookies. */
+async function browserCheckoutV2(
+  page: import("@playwright/test").Page,
   courseId: string,
   idempotencyKey: string,
 ): Promise<{
@@ -213,16 +214,19 @@ async function postCheckoutV2(
     idempotentReplay?: boolean;
   };
 }> {
-  const res = await request.post("/api/checkout/v2", {
-    headers: {
-      "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey,
+  return page.evaluate(
+    async ({ courseId: cid, idempotencyKey: key }) => {
+      const res = await fetch("/api/checkout/v2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": key,
+        },
+        body: JSON.stringify({ courseId: cid, provider: "demo" }),
+      });
+      const body = await res.json();
+      return { status: res.status, body };
     },
-    data: { courseId, provider: "demo" },
-  });
-  const body = (await res.json()) as CheckoutV2Ok & {
-    ok: boolean;
-    error?: { code?: string; message?: string };
-  };
-  return { status: res.status(), body };
+    { courseId, idempotencyKey },
+  );
 }

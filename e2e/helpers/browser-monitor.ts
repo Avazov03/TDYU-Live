@@ -228,6 +228,15 @@ export class BrowserMonitor {
     if (lower.includes("failed to load resource") && this.ignore.some((s) => lower.includes(s))) {
       return true;
     }
+    // Chromium logs 4xx fetch failures as console "error"; treat expected client
+    // outcomes (auth isolation, conflict, validation) as non-critical — same as
+    // HTTP 401/403 policy above. 5xx remain critical via onResponse.
+    if (
+      lower.includes("failed to load resource") &&
+      /status of (401|403|409|422)\b/.test(lower)
+    ) {
+      return true;
+    }
     return false;
   }
 
