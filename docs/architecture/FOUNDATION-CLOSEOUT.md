@@ -76,7 +76,10 @@ Supports multi-course seats, open-enrollment uniqueness, UZS currency, refund mo
 
 ## 8. E2E regression
 
-Existing suite only (no new E2E phase). See closeout report for latest run counts.
+Existing suite only (no new E2E phase).
+
+- Full smoke with temporary Checkout V2 enablement (then flags restored): **18 passed / 0 skipped / 0 failed**
+- Staging flags after closeout: `FF_COURSE_CHECKOUT_V2=false`, `FF_ENROLLMENT_ACCESS_MODE=shadow` (verified in process environ)
 
 ## 9. Production safety
 
