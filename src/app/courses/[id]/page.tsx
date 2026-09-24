@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
+import { CheckoutV2Button } from "@/components/course/CheckoutV2Button";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveSubscription } from "@/lib/access";
+import { getActiveSubscription, getOpenEnrollment } from "@/lib/access";
+import { featureFlags } from "@/lib/feature-flags";
+import { resolveServerListPrice } from "@/lib/checkout-v2/eligibility";
 import { TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
 import { clockLabel, dayTitle, hasPlayableRecording, statusLabel } from "@/lib/plan";
@@ -31,6 +34,13 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const sub = session?.user?.id
     ? await getActiveSubscription(session.user.id, course.id)
     : null;
+  const enrollment = session?.user?.id
+    ? await getOpenEnrollment(session.user.id, course.id)
+    : null;
+
+  const owned = Boolean(sub || enrollment);
+  const v2Enabled = featureFlags.courseCheckoutV2;
+  const listPrice = resolveServerListPrice(course.listPrice);
 
   const prices: { tier: TariffTier; price: number }[] = [
     { tier: "t1", price: course.priceT1 },
@@ -39,7 +49,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   ];
 
   return (
-    <AppShell active={sub ? "my-courses" : "home"}>
+    <AppShell active={owned ? "my-courses" : "home"}>
       <div className="lx-board">
         <p className="lx-kicker">
           {course.faculty.nameUz} · {course.subject.nameUz}
@@ -54,21 +64,43 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           </p>
         ) : null}
 
-        {sub ? (
-          <section className="lx-section">
-            <h3>Sizning obunangiz</h3>
+        {owned ? (
+          <section className="lx-section" data-testid="course-owned">
+            <h3>{sub ? "Sizning obunangiz" : "Sizning kursingiz"}</h3>
             <div className="lx-row">
               <div>
                 <p className="lx-kicker">Faol</p>
-                <h3>{TARIFF_LABELS[sub.tier]}</h3>
-                <p className="small muted" style={{ margin: 0 }}>
-                  {formatDateTime(sub.endsAt)} gacha
-                </p>
+                <h3>
+                  {sub
+                    ? TARIFF_LABELS[sub.tier]
+                    : "Enrollment · Checkout V2"}
+                </h3>
+                {sub ? (
+                  <p className="small muted" style={{ margin: 0 }}>
+                    {formatDateTime(sub.endsAt)} gacha
+                  </p>
+                ) : (
+                  <p className="small muted" style={{ margin: 0 }}>
+                    Kursga yozilgansiz
+                  </p>
+                )}
               </div>
               <Link href="/app" className="lx-go">
                 Bugunga
               </Link>
             </div>
+          </section>
+        ) : v2Enabled && listPrice != null ? (
+          <section className="lx-section" data-testid="course-checkout-v2">
+            <h3>Kursni sotib olish</h3>
+            <p className="muted small" style={{ margin: "0 0 12px" }}>
+              Checkout V2 · {formatSom(listPrice)}. Demo to‘lov — haqiqiy pul yechilmaydi.
+            </p>
+            <CheckoutV2Button
+              courseId={course.id}
+              label={session?.user ? `Sotib olish · ${formatSom(listPrice)}` : "Kirib sotib olish"}
+              className="btn btn-primary"
+            />
           </section>
         ) : (
           <section className="lx-section">
@@ -110,8 +142,8 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             <EmptyGuide
               title="Hali dars qo‘yilmagan"
               text="O‘qituvchi reja qo‘shgach shu yerda ochiladi."
-              href={sub ? "/schedule" : "/#tariflar"}
-              cta={sub ? "Dars rejaga" : "Tariflarga"}
+              href={owned ? "/schedule" : "/#tariflar"}
+              cta={owned ? "Dars rejaga" : "Tariflarga"}
             />
           ) : (
             <div className="lx-stack">
@@ -132,10 +164,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                         })}
                       </p>
                     </div>
-                    {sub ? <span className="lx-go">Ochish</span> : null}
+                    {owned ? <span className="lx-go">Ochish</span> : null}
                   </>
                 );
-                return sub ? (
+                return owned ? (
                   <Link key={lesson.id} href={`/learn/${lesson.id}`} className="lx-row">
                     {body}
                   </Link>

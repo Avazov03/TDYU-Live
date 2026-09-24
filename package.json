@@ -23,6 +23,7 @@
     "db:phase2:fixture": "tsx scripts/phase2-access-fixture.ts",
     "db:phase2:backfill-dry-run": "tsx scripts/phase2-backfill-dry-run-report.ts",
     "test:access": "tsx --test src/lib/enrollment-access.test.ts",
+    "test:checkout-v2": "tsx --test src/lib/checkout-v2/*.test.ts",
     "test:e2e:env": "tsx --test e2e/helpers/env.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",

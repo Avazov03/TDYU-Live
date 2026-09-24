@@ -28,4 +28,10 @@ export const STAGING_FIXTURE = {
   enrollmentId: "7a0499ee-d997-4e83-8481-86306db81433",
   lessonId: "a5555555-5555-5555-5555-555555555501",
   lessonTitle: "Fixture ended lesson",
+  /** Checkout V2 browser target — not owned by active1 before purchase. */
+  checkoutV2CourseId: "a4444444-4444-4444-4444-444444444402",
+  checkoutV2CourseTitle: "Fixture Course B",
+  checkoutV2ListPrice: 280000,
+  checkoutV2LessonId: "a5555555-5555-5555-5555-5555555555c2",
+  checkoutV2LessonTitle: "Staging C2 recording",
 } as const;

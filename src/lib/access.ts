@@ -104,6 +104,26 @@ export async function getActiveSubscription(userId: string, courseId: string) {
   return sub;
 }
 
+/** Open Enrollment seat for (userId, courseId) — Checkout V2 / dual access SoT. */
+export async function getOpenEnrollment(userId: string, courseId: string) {
+  const rows = await prisma.enrollment.findMany({
+    where: { userId, courseId },
+    select: {
+      id: true,
+      status: true,
+      accessOpen: true,
+      purchaseId: true,
+      activatedAt: true,
+    },
+  });
+  return (
+    rows.find(
+      (e) =>
+        e.accessOpen && (e.status === "active" || e.status === "completed"),
+    ) ?? null
+  );
+}
+
 /** Legacy Subscription + endsAt + tier (CURRENT SoT). */
 export async function getLegacyLessonAccess(
   userId: string | undefined,
