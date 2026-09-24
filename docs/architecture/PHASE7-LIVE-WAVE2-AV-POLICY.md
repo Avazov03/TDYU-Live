@@ -139,7 +139,7 @@ npm run test:live
 
 ## 13. E2E
 
-`e2e/live/wave2-av-policy.spec.ts` — gated by `E2E_LIVE_WAVE2=1`.  
+`e2e/live/a-wave2-av-policy.spec.ts` — gated by `E2E_LIVE_WAVE2=1`.  
 Asserts OFF defaults, raise hand, grant status, revoke, unauthorized raise deny.  
 Fake media flags optional for device enable paths.
 
