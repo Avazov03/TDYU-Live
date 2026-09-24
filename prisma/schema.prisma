@@ -488,6 +488,8 @@ model Payment {
   purchaseId     String?         @map("purchase_id")
   tier           TariffTier
   amount         Int
+  /// Explicit currency (V2: UZS). Additive Phase 2.3A — do not infer only from Purchase.
+  currency       String          @default("UZS")
   status         PaymentStatus   @default(demo_paid)
   provider       PaymentProvider @default(demo)
   /// Target: exclude from real revenue when true.
@@ -587,6 +589,9 @@ model Enrollment {
   @@index([userId, status])
   @@index([courseId, status])
   @@index([userId, courseId])
+  /// One open seat per (userId, courseId): partial unique index in SQL migration
+  /// `enrollments_one_open_per_user_course` WHERE access_open AND status IN (active, completed).
+  /// Not expressible as Prisma @@unique (would block refunded/closed re-buy history).
   @@map("enrollments")
 }
 
