@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { AssignmentsBoard } from "@/components/cabinet/AssignmentsBoard";
-import { getActiveSubscriptions, requireStudentCabinet } from "@/lib/access";
+import { getStudentOwnedCourses, requireStudentCabinet } from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isPriorityTier } from "@/lib/tariffs";
 
@@ -8,9 +9,12 @@ export const dynamic = "force-dynamic";
 
 export default async function AssignmentsPage() {
   const { user } = await requireStudentCabinet("/assignments");
-  const subs = await getActiveSubscriptions(user.id);
-  const courseIds = subs.map((s) => s.course.id);
-  const priority = subs.some((s) => isPriorityTier(s.tier));
+  const owned = await getStudentOwnedCourses(user.id);
+  const courseIds = owned.map((o) => o.courseId);
+  const priority =
+    getEnrollmentAccessMode() === "enrollment"
+      ? false
+      : owned.some((o) => isPriorityTier(o.tier));
 
   const items = await prisma.assignment.findMany({
     where: { courseId: { in: courseIds } },

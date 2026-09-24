@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
-import { requireStudentCabinet, getActiveSubscriptions } from "@/lib/access";
+import { requireStudentCabinet, getStudentOwnedCourses } from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { canWatchLive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
@@ -11,9 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function StudentAppPage() {
   const { user } = await requireStudentCabinet("/app");
-  const subs = await getActiveSubscriptions(user.id);
-  const courseIds = subs.map((s) => s.course.id);
-  const tierByCourse = new Map(subs.map((s) => [s.course.id, s.tier]));
+  const owned = await getStudentOwnedCourses(user.id);
+  const courseIds = owned.map((o) => o.courseId);
+  const tierByCourse = new Map(owned.map((o) => [o.courseId, o.tier]));
+  const enrollmentLiveOpen = getEnrollmentAccessMode() === "enrollment";
   const now = new Date();
   const week = new Date(now);
   week.setDate(week.getDate() + 7);
@@ -47,7 +49,7 @@ export default async function StudentAppPage() {
     }),
   ]);
 
-  const teachers = new Set(subs.map((s) => s.course.teacher.id)).size;
+  const teachers = new Set(owned.map((o) => o.course.teacher.id)).size;
 
   return (
     <AppShell active="home">
@@ -55,7 +57,7 @@ export default async function StudentAppPage() {
         <p className="lx-kicker">Bugun</p>
         <h2>Nima qilish kerak</h2>
         <p className="muted small lx-lead">
-          {subs.length} ta kurs · {teachers} ta o&apos;qituvchi
+          {owned.length} ta kurs · {teachers} ta o&apos;qituvchi
         </p>
 
         {live.length === 0 && upcoming.length === 0 && due.length === 0 && !lastSeen ? (
@@ -78,7 +80,10 @@ export default async function StudentAppPage() {
                     <h3>{lesson.titleUz}</h3>
                     <p className="small muted" style={{ margin: 0 }}>{lesson.course.titleUz}</p>
                     <span className="badge danger" style={{ marginTop: 8, display: "inline-block" }}>
-                      {canWatchLive(tierByCourse.get(lesson.courseId) ?? "t1") ? "Jonli" : "Yozuvdan keyin"}
+                      {enrollmentLiveOpen ||
+                      canWatchLive(tierByCourse.get(lesson.courseId) ?? "t1")
+                        ? "Jonli"
+                        : "Yozuvdan keyin"}
                     </span>
                   </div>
                   <span className="lx-go">Kirish</span>

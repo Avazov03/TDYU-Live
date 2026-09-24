@@ -1,15 +1,14 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { ScheduleBoard } from "@/components/cabinet/ScheduleBoard";
-import { getActiveSubscriptions, requireStudentCabinet } from "@/lib/access";
+import { getStudentOwnedCourseIds, requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {
   const { user } = await requireStudentCabinet("/schedule");
-  const subs = await getActiveSubscriptions(user.id);
-  const courseIds = subs.map((s) => s.course.id);
+  const courseIds = await getStudentOwnedCourseIds(user.id);
 
   const lessons = await prisma.lesson.findMany({
     where: { courseId: { in: courseIds } },

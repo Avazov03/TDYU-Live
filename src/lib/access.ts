@@ -150,6 +150,130 @@ export async function getOpenEnrollment(userId: string, courseId: string) {
   );
 }
 
+const studentCourseSelect = {
+  id: true,
+  titleUz: true,
+  descriptionUz: true,
+  isPublished: true,
+  teacherId: true,
+  teacher: { select: { id: true, fullName: true } },
+  subject: { select: { nameUz: true } },
+  faculty: { select: { nameUz: true } },
+} as const;
+
+export type StudentOwnedCourse = {
+  courseId: string;
+  enrollmentId: string | null;
+  status: "active" | "completed" | "legacy_subscription";
+  accessOpen: boolean;
+  /** Legacy display hint only — not used for ownership in enrollment mode. */
+  tier: TariffTier;
+  course: {
+    id: string;
+    titleUz: string;
+    descriptionUz: string | null;
+    isPublished: boolean;
+    teacherId: string;
+    teacher: { id: string; fullName: string };
+    subject: { nameUz: string };
+    faculty: { nameUz: string };
+  };
+};
+
+/**
+ * Pure ownership merge for Wave 2 listing (testable without DB).
+ *
+ * - enrollment: Enrollment seats only (Subscription alone never owns)
+ * - dual: Enrollment ∪ active Subscription (dedupe by courseId; Enrollment wins)
+ * - off|shadow: active Subscription only
+ */
+export function mergeStudentOwnedCourseIds(input: {
+  mode: ReturnType<typeof getEnrollmentAccessMode>;
+  enrollmentCourseIds: string[];
+  activeSubscriptionCourseIds: string[];
+}): string[] {
+  const { mode, enrollmentCourseIds, activeSubscriptionCourseIds } = input;
+  if (mode === "enrollment") {
+    return [...new Set(enrollmentCourseIds)];
+  }
+  if (mode === "dual") {
+    return [...new Set([...enrollmentCourseIds, ...activeSubscriptionCourseIds])];
+  }
+  return [...new Set(activeSubscriptionCourseIds)];
+}
+
+/** Open Enrollment seats with course payload (active|completed + accessOpen). */
+export async function getOpenEnrollmentsWithCourses(userId: string) {
+  return prisma.enrollment.findMany({
+    where: {
+      userId,
+      accessOpen: true,
+      status: { in: ["active", "completed"] },
+    },
+    include: { course: { select: studentCourseSelect } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Student cabinet course membership for /app, /schedule, /assignments, My Courses.
+ * Does not expire other courses. Does not use endsAt for Enrollment seats.
+ */
+export async function getStudentOwnedCourses(
+  userId: string,
+): Promise<StudentOwnedCourse[]> {
+  const mode = getEnrollmentAccessMode();
+  const byCourse = new Map<string, StudentOwnedCourse>();
+
+  if (mode === "enrollment" || mode === "dual") {
+    const enrollments = await getOpenEnrollmentsWithCourses(userId);
+    for (const enr of enrollments) {
+      byCourse.set(enr.courseId, {
+        courseId: enr.courseId,
+        enrollmentId: enr.id,
+        status: enr.status === "completed" ? "completed" : "active",
+        accessOpen: enr.accessOpen,
+        tier: "t2",
+        course: enr.course,
+      });
+    }
+  }
+
+  if (mode === "off" || mode === "shadow" || mode === "dual") {
+    const subs = await getActiveSubscriptions(userId);
+    for (const sub of subs) {
+      if (mode === "dual" && byCourse.has(sub.course.id)) continue;
+      byCourse.set(sub.course.id, {
+        courseId: sub.course.id,
+        enrollmentId: null,
+        status: "legacy_subscription",
+        accessOpen: true,
+        tier: sub.tier,
+        course: sub.course,
+      });
+    }
+  }
+
+  return [...byCourse.values()];
+}
+
+export async function getStudentOwnedCourseIds(userId: string): Promise<string[]> {
+  const owned = await getStudentOwnedCourses(userId);
+  return owned.map((o) => o.courseId);
+}
+
+/** Course detail "owned" badge — Enrollment-only when mode=enrollment. */
+export function isStudentCourseOwned(input: {
+  mode: ReturnType<typeof getEnrollmentAccessMode>;
+  hasOpenEnrollment: boolean;
+  hasActiveSubscription: boolean;
+}): boolean {
+  const { mode, hasOpenEnrollment, hasActiveSubscription } = input;
+  if (mode === "enrollment") return hasOpenEnrollment;
+  if (mode === "dual") return hasOpenEnrollment || hasActiveSubscription;
+  return hasActiveSubscription;
+}
+
 /**
  * Course-scoped content gate (assignments, materials) — uses lesson access SoT
  * with status "ended" so seat rules apply without requiring a live lesson.

@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
-import { getActiveSubscriptions, requireAppUser } from "@/lib/access";
+import { requireAppUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatSom } from "@/lib/tariffs";
 import Link from "next/link";

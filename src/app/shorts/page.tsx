@@ -2,35 +2,56 @@ import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { LiveShortsFeed } from "@/components/shorts/LiveShortsFeed";
 import { prisma } from "@/lib/prisma";
-import { getActiveSubscriptions, requireAppUser } from "@/lib/access";
+import {
+  getAnyOpenEnrollment,
+  getStudentOwnedCourseIds,
+  requireAppUser,
+} from "@/lib/access";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { canWatchLive } from "@/lib/tariffs";
 import { isStudentRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Shorts = live lesson feed scoped to owned courses (Wave 2).
+ * Not an independent content catalog — membership uses the same ownership SoT
+ * as /app /schedule (Enrollment-first when mode=enrollment).
+ */
 export default async function ShortsPage() {
   const { user, sub } = await requireAppUser("/shorts");
   const student = isStudentRole(user.role);
+  const mode = getEnrollmentAccessMode();
 
-  if (student && (!sub || !canWatchLive(sub.tier))) {
-    return (
-      <AppShell active="home">
-        <div className="lx-board">
-          <p className="lx-kicker">Shorts</p>
-          <h2>Jonli efir ochiq emas</h2>
-          <EmptyGuide
-            title="2 va 3-tarif kerak"
-            text="Jonli efir Shorts orqali faqat yuqori tariflarda ochiladi."
-            href="/#tariflar"
-            cta="Tarifni tanlash"
-          />
-        </div>
-      </AppShell>
-    );
+  if (student) {
+    const liveAllowed =
+      mode === "enrollment"
+        ? Boolean(await getAnyOpenEnrollment(user.id))
+        : Boolean(sub && canWatchLive(sub.tier));
+    if (!liveAllowed) {
+      return (
+        <AppShell active="home">
+          <div className="lx-board">
+            <p className="lx-kicker">Shorts</p>
+            <h2>Jonli efir ochiq emas</h2>
+            <EmptyGuide
+              title={mode === "enrollment" ? "Kursga yozilish kerak" : "2 va 3-tarif kerak"}
+              text={
+                mode === "enrollment"
+                  ? "Jonli efir Shorts faqat ochiq Enrollment bo‘lgan kurslar uchun."
+                  : "Jonli efir Shorts orqali faqat yuqori tariflarda ochiladi."
+              }
+              href={mode === "enrollment" ? "/my-courses" : "/#tariflar"}
+              cta={mode === "enrollment" ? "Kurslarim" : "Tarifni tanlash"}
+            />
+          </div>
+        </AppShell>
+      );
+    }
   }
 
   const courseFilter = student
-    ? { id: { in: (await getActiveSubscriptions(user.id)).map((s) => s.course.id) } }
+    ? { id: { in: await getStudentOwnedCourseIds(user.id) } }
     : { isPublished: true };
 
   const lives = await prisma.lesson.findMany({

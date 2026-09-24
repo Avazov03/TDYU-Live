@@ -1,8 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { MyCoursesBoard } from "@/components/cabinet/MyCoursesBoard";
-import { requireStudentCabinet } from "@/lib/access";
+import { getStudentOwnedCourses, requireStudentCabinet } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { isSubscriptionActive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
 import type { TariffTier } from "@/generated/prisma/client";
 
@@ -10,47 +9,27 @@ export const dynamic = "force-dynamic";
 
 export default async function MyCoursesPage() {
   const { user } = await requireStudentCabinet("/my-courses");
+  const owned = await getStudentOwnedCourses(user.id);
+  const courseIds = owned.map((o) => o.courseId);
 
-  const [subs, enrollments] = await Promise.all([
-    prisma.subscription.findMany({
-      where: { userId: user.id },
-      include: {
-        course: {
-          include: {
-            teacher: { select: { id: true, fullName: true } },
-            subject: { select: { nameUz: true } },
-            lessons: {
-              where: { status: { in: ["live", "scheduled"] } },
-              orderBy: { scheduledAt: "asc" },
-              take: 1,
-            },
+  const nextLessons =
+    courseIds.length === 0
+      ? []
+      : await prisma.lesson.findMany({
+          where: {
+            courseId: { in: courseIds },
+            status: { in: ["live", "scheduled"] },
           },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.enrollment.findMany({
-      where: {
-        userId: user.id,
-        accessOpen: true,
-        status: { in: ["active", "completed"] },
-      },
-      include: {
-        course: {
-          include: {
-            teacher: { select: { id: true, fullName: true } },
-            subject: { select: { nameUz: true } },
-            lessons: {
-              where: { status: { in: ["live", "scheduled"] } },
-              orderBy: { scheduledAt: "asc" },
-              take: 1,
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+          orderBy: { scheduledAt: "asc" },
+          select: { courseId: true, titleUz: true, scheduledAt: true },
+        });
+
+  const nextByCourse = new Map<string, (typeof nextLessons)[number]>();
+  for (const lesson of nextLessons) {
+    if (!nextByCourse.has(lesson.courseId)) {
+      nextByCourse.set(lesson.courseId, lesson);
+    }
+  }
 
   type BoardItem = {
     id: string;
@@ -64,48 +43,26 @@ export default async function MyCoursesPage() {
     nextLabel: string;
   };
 
-  const byCourse = new Map<string, BoardItem>();
-
-  for (const sub of subs) {
-    const active = isSubscriptionActive(sub.endsAt);
-    const next = sub.course.lessons[0];
-    byCourse.set(sub.course.id, {
-      id: sub.id,
-      courseId: sub.course.id,
-      title: sub.course.titleUz,
-      subject: sub.course.subject.nameUz,
-      teacherId: sub.course.teacher.id,
-      teacherName: sub.course.teacher.fullName,
-      active,
-      tier: sub.tier,
-      nextLabel: next
-        ? `Keyingi: ${next.titleUz} · ${formatDateTime(next.scheduledAt)}`
-        : "Keyingi dars yo'q",
-    });
-  }
-
-  // Additive: Enrollment-only seats (Checkout V2) appear when no Subscription row.
-  for (const enr of enrollments) {
-    if (byCourse.has(enr.course.id)) continue;
-    const next = enr.course.lessons[0];
-    byCourse.set(enr.course.id, {
-      id: enr.id,
-      courseId: enr.course.id,
-      title: enr.course.titleUz,
-      subject: enr.course.subject.nameUz,
-      teacherId: enr.course.teacher.id,
-      teacherName: enr.course.teacher.fullName,
+  const items: BoardItem[] = owned.map((row) => {
+    const next = nextByCourse.get(row.courseId);
+    return {
+      id: row.enrollmentId ?? `legacy-${row.courseId}`,
+      courseId: row.courseId,
+      title: row.course.titleUz,
+      subject: row.course.subject.nameUz,
+      teacherId: row.course.teacher.id,
+      teacherName: row.course.teacher.fullName,
       active: true,
-      tier: "t2",
+      tier: row.tier,
       nextLabel: next
         ? `Keyingi: ${next.titleUz} · ${formatDateTime(next.scheduledAt)}`
         : "Keyingi dars yo'q",
-    });
-  }
+    };
+  });
 
   return (
     <AppShell active="my-courses">
-      <MyCoursesBoard items={[...byCourse.values()]} />
+      <MyCoursesBoard items={items} />
     </AppShell>
   );
 }

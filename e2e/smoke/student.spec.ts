@@ -52,7 +52,7 @@ test.describe("Student smoke", () => {
     await studentPage.locator(`a[href="/courses/${SEED.courseCivilBasics}"]`).first().click();
     await expect(studentPage).toHaveURL(new RegExp(`/courses/${SEED.courseCivilBasics}`));
     await expect(studentPage.getByText(SEED.courseTitleCivil).first()).toBeVisible();
-    await expect(studentPage.getByRole("heading", { name: "Sizning obunangiz" })).toBeVisible();
+    await expect(studentPage.getByRole("heading", { name: /Sizning (obunangiz|kursingiz)/i })).toBeVisible();
     await expect(studentPage.getByRole("heading", { name: "Darslar" })).toBeVisible();
   });
 

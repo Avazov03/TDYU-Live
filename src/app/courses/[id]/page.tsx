@@ -6,8 +6,12 @@ import { CheckoutV2Button } from "@/components/course/CheckoutV2Button";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveSubscription, getOpenEnrollment } from "@/lib/access";
-import { featureFlags } from "@/lib/feature-flags";
+import {
+  getActiveSubscription,
+  getOpenEnrollment,
+  isStudentCourseOwned,
+} from "@/lib/access";
+import { featureFlags, getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { resolveServerListPrice } from "@/lib/checkout-v2/eligibility";
 import { TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
@@ -38,7 +42,11 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
     ? await getOpenEnrollment(session.user.id, course.id)
     : null;
 
-  const owned = Boolean(sub || enrollment);
+  const owned = isStudentCourseOwned({
+    mode: getEnrollmentAccessMode(),
+    hasOpenEnrollment: Boolean(enrollment),
+    hasActiveSubscription: Boolean(sub),
+  });
   const v2Enabled = featureFlags.courseCheckoutV2;
   const listPrice = resolveServerListPrice(course.listPrice);
 
@@ -66,16 +74,28 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
         {owned ? (
           <section className="lx-section" data-testid="course-owned">
-            <h3>{sub ? "Sizning obunangiz" : "Sizning kursingiz"}</h3>
+            <h3>
+              {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment")
+                ? "Sizning kursingiz"
+                : "Sizning obunangiz"}
+            </h3>
             <div className="lx-row">
               <div>
                 <p className="lx-kicker">Faol</p>
                 <h3>
-                  {sub
-                    ? TARIFF_LABELS[sub.tier]
-                    : "Enrollment · Checkout V2"}
+                  {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment")
+                    ? enrollment.status === "completed"
+                      ? "Enrollment · yakunlangan"
+                      : "Enrollment"
+                    : sub
+                      ? TARIFF_LABELS[sub.tier]
+                      : "Enrollment"}
                 </h3>
-                {sub ? (
+                {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment") ? (
+                  <p className="small muted" style={{ margin: 0 }}>
+                    Kursga yozilgansiz
+                  </p>
+                ) : sub ? (
                   <p className="small muted" style={{ margin: 0 }}>
                     {formatDateTime(sub.endsAt)} gacha
                   </p>
