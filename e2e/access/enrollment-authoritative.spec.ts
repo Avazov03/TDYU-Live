@@ -53,7 +53,7 @@ test.describe("Enrollment authoritative access", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: LESSON_A_TITLE }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Tarifni oshirish|Kurslarni ko/i })).toHaveCount(0);
   });
 
   test("Direct lesson URL without enrollment is denied", async ({ page, monitor }) => {
@@ -65,7 +65,7 @@ test.describe("Enrollment authoritative access", () => {
     monitor.noteAction(`Probe foreign lesson ${COURSE_B_LESSON}`);
     await page.goto(`/learn/${COURSE_B_LESSON}`);
     // Paywall CTA; progress chrome may still render around the deny state.
-    await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toBeVisible({
+    await expect(page.getByRole("link", { name: /Tarifni oshirish|Kurslarni ko/i })).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText(/Obuna muddati|Kursga yozil|tizimga kiring|to'lov/i).first()).toBeVisible();
@@ -80,6 +80,6 @@ test.describe("Enrollment authoritative access", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: LESSON_A_TITLE }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Tarifni oshirish|Kurslarni ko/i })).toHaveCount(0);
   });
 });

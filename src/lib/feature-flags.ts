@@ -77,6 +77,7 @@ export const featureFlags = {
   /**
    * When true: hide/disable Student Tarif UI entry points.
    * Default false — Phase 1 does not change UI.
+   * Also auto-hidden when FF_ENROLLMENT_ACCESS_MODE=enrollment (Wave 4).
    */
   disableTariffUi: envFlag("FF_DISABLE_TARIFF_UI", false),
 
@@ -113,4 +114,14 @@ export type FeatureFlagName = keyof typeof featureFlags;
 export function isFeatureEnabled(name: FeatureFlagName): boolean {
   const v = featureFlags[name];
   return Boolean(v);
+}
+
+/**
+ * Wave 4 — hide student-facing T1/T2/T3 Tarif UI.
+ * Explicit FF_DISABLE_TARIFF_UI=true OR Enrollment-authoritative mode.
+ * Reads env each call so tests can flip flags.
+ */
+export function shouldHideStudentTariffUi(): boolean {
+  if (envFlag("FF_DISABLE_TARIFF_UI", false)) return true;
+  return getEnrollmentAccessMode() === "enrollment";
 }

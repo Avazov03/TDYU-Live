@@ -20,7 +20,13 @@ type CourseItem = {
 
 type ActiveFilter = "all" | "active" | "expired";
 
-export function MyCoursesBoard({ items }: { items: CourseItem[] }) {
+export function MyCoursesBoard({
+  items,
+  hideTariffUi = false,
+}: {
+  items: CourseItem[];
+  hideTariffUi?: boolean;
+}) {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [teacherId, setTeacherId] = useState("all");
 
@@ -92,9 +98,13 @@ export function MyCoursesBoard({ items }: { items: CourseItem[] }) {
       {items.length === 0 ? (
         <EmptyGuide
           title="Hali kurs yo‘q"
-          text="Tarif to‘lab, onboardingda o‘qituvchi va kursni tanlang."
-          href="/#tariflar"
-          cta="Tarif tanlash"
+          text={
+            hideTariffUi
+              ? "Kurs sotib oling — My Courses da Enrollment ko‘rinadi."
+              : "Tarif to‘lab, onboardingda o‘qituvchi va kursni tanlang."
+          }
+          href={hideTariffUi ? "/search" : "/#tariflar"}
+          cta={hideTariffUi ? "Kurslarni qidirish" : "Tarif tanlash"}
         />
       ) : null}
 
@@ -128,7 +138,11 @@ export function MyCoursesBoard({ items }: { items: CourseItem[] }) {
                     {sub.nextLabel}
                   </p>
                   <span className={`badge ${sub.active ? "accent" : ""}`}>
-                    {sub.active ? TARIFF_LABELS[sub.tier] : "Muddati tugagan"}
+                    {sub.active
+                      ? hideTariffUi
+                        ? "Enrollment"
+                        : TARIFF_LABELS[sub.tier]
+                      : "Muddati tugagan"}
                   </span>
                 </div>
                 <span className="lx-go">Ochish</span>

@@ -22,6 +22,8 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 type Props = {
   cabinetHref?: string | null;
   user?: { name: string; image?: string | null } | null;
+  /** Wave 4 — hide Tariflar nav + Tarif CTA when Enrollment-first. */
+  hideTariffNav?: boolean;
 };
 
 type NavItem = {
@@ -146,12 +148,16 @@ function ThemeBtn({ onPop }: { onPop: () => void }) {
   );
 }
 
-export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
+export function LexifyNotchNavbar({ cabinetHref, user, hideTariffNav = false }: Props) {
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const active = useActiveSection();
   const pathname = usePathname();
+  const navItems = hideTariffNav ? NAV.filter((item) => item.id !== "tariflar") : NAV;
+  const guestCtaHref = hideTariffNav ? "/search" : "/#tariflar";
+  const guestCtaLabel = hideTariffNav ? (cabinetHref ? "Kabinet" : "Kurslar") : cabinetHref ? "Kabinet" : "Tarif";
+  const userFallbackHref = cabinetHref || (hideTariffNav ? "/search" : "/#tariflar");
 
   const popHeader = () => {
     const el = headerRef.current;
@@ -229,7 +235,7 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
 
             <div className="vn-right">
               <nav className="vn-nav" aria-label="Asosiy menyu">
-                {NAV.map((item) => (
+                {navItems.map((item) => (
                   <NavLink
                     key={item.id}
                     item={item}
@@ -243,15 +249,15 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
                 {user ? (
                   <>
                     <Link
-                      href={cabinetHref || "/#tariflar"}
+                      href={userFallbackHref}
                       className="vn-user"
                       title={user.name}
                     >
                       <Avatar name={user.name} image={user.image} />
                       <span className="vn-name">{user.name}</span>
                     </Link>
-                    <Link href={cabinetHref || "/#tariflar"} className="vn-cta">
-                      {cabinetHref ? "Kabinet" : "Tarif"}
+                    <Link href={userFallbackHref} className="vn-cta">
+                      {guestCtaLabel}
                     </Link>
                   </>
                 ) : (
@@ -295,7 +301,7 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
             transition={{ duration: 0.2 }}
           >
             <nav className="vn-drawer-nav" aria-label="Mobil menyu">
-              {NAV.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href}
@@ -320,8 +326,8 @@ export function LexifyNotchNavbar({ cabinetHref, user }: Props) {
                     <Avatar name={user.name} image={user.image} />
                     <span>{user.name}</span>
                   </div>
-                  <Link href={cabinetHref || "/#tariflar"} className="vn-cta vn-drawer-cta" onClick={() => setOpen(false)}>
-                    {cabinetHref ? "Kabinet" : "Tarif"}
+                  <Link href={userFallbackHref} className="vn-cta vn-drawer-cta" onClick={() => setOpen(false)}>
+                    {guestCtaLabel}
                   </Link>
                   <button type="button" className="vn-drawer-link" onClick={() => signOut({ callbackUrl: "/" })}>
                     Chiqish

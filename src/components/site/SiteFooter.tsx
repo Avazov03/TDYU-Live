@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
 
 function IconPin({ className }: { className?: string }) {
   return (
@@ -68,21 +69,28 @@ function IconLinkedin({ className }: { className?: string }) {
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  const hideTariff = shouldHideStudentTariffUi();
+  const ctaHref = hideTariff ? "/search" : "/#tariflar";
+  const ctaLabel = hideTariff ? "Kurslarni ko‘rish" : "Tarif tanlash";
 
   return (
     <footer className="lx-footer">
       <div className="lx-footer-shell">
         <div className="lx-footer-cta">
           <p className="lx-footer-cta-lead">
-            TDYU professorlaridan jonli huquqiy kurslar. Tarif tanlang — o&apos;qituvchingizga yoziling.
+            {hideTariff
+              ? "TDYU professorlaridan jonli huquqiy kurslar. Kursni tanlang — Enrollment orqali darsga kiring."
+              : "TDYU professorlaridan jonli huquqiy kurslar. Tarif tanlang — o'qituvchingizga yoziling."}
           </p>
           <div className="lx-footer-cta-card">
             <h2 className="lx-footer-cta-title">Kursni bugun boshlang</h2>
             <p className="lx-footer-cta-text">
-              1 / 2 / 3-tarif — demo to&apos;lov 30 kun. Keyin yo&apos;nalish va o&apos;qituvchini tanlaysiz.
+              {hideTariff
+                ? "Alohida kurs xarid. Bir nechta kurs birga ishlaydi — boshqasini yopmaydi."
+                : "1 / 2 / 3-tarif — demo to'lov 30 kun. Keyin yo'nalish va o'qituvchini tanlaysiz."}
             </p>
-            <Link href="/#tariflar" className="lx-footer-cta-btn">
-              Tarif tanlash
+            <Link href={ctaHref} className="lx-footer-cta-btn">
+              {ctaLabel}
             </Link>
           </div>
         </div>
@@ -96,11 +104,13 @@ export function SiteFooter() {
               </span>
             </Link>
             <p>
-              {BRAND.name} — TDYU uchun jonli dars platformasi. Tarif → o&apos;qituvchi → dars.
+              {hideTariff
+                ? `${BRAND.name} — TDYU uchun jonli dars platformasi. Kurs → Enrollment → dars.`
+                : `${BRAND.name} — TDYU uchun jonli dars platformasi. Tarif → o'qituvchi → dars.`}
             </p>
-            <Link href="/#tariflar" className="lx-footer-pill">
+            <Link href={ctaHref} className="lx-footer-pill">
               <IconTelegram className="lx-footer-pill-ico" />
-              Tariflar
+              {hideTariff ? "Kurslar" : "Tariflar"}
             </Link>
           </div>
 
@@ -117,7 +127,9 @@ export function SiteFooter() {
                 <Link href="/#haqida">Loyiha haqida</Link>
               </li>
               <li>
-                <Link href="/#tariflar">Tariflar</Link>
+                <Link href={hideTariff ? "/search" : "/#tariflar"}>
+                  {hideTariff ? "Kurslar" : "Tariflar"}
+                </Link>
               </li>
               <li>
                 <Link href="/privacy">Maxfiylik</Link>
@@ -178,7 +190,7 @@ export function SiteFooter() {
             © {year} {BRAND.name}. Barcha huquqlar himoyalangan.
           </p>
           <div className="lx-footer-social" aria-label="Ijtimoiy tarmoqlar">
-            <a className="lx-footer-social-btn" href="/#tariflar" aria-label="Telegram / tariflar">
+            <a className="lx-footer-social-btn" href={ctaHref} aria-label={hideTariff ? "Kurslar" : "Telegram / tariflar"}>
               <IconTelegram />
             </a>
             <a className="lx-footer-social-btn" href="/#haqida" aria-label="Loyiha haqida">

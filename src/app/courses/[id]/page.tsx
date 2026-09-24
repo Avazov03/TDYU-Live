@@ -11,7 +11,7 @@ import {
   getOpenEnrollment,
   isStudentCourseOwned,
 } from "@/lib/access";
-import { featureFlags, getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { featureFlags, getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { resolveServerListPrice } from "@/lib/checkout-v2/eligibility";
 import { TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
@@ -48,6 +48,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
     hasActiveSubscription: Boolean(sub),
   });
   const v2Enabled = featureFlags.courseCheckoutV2;
+  const hideTariff = shouldHideStudentTariffUi();
   const listPrice = resolveServerListPrice(course.listPrice);
 
   const prices: { tier: TariffTier; price: number }[] = [
@@ -122,6 +123,17 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
               className="btn btn-primary"
             />
           </section>
+        ) : hideTariff ? (
+          <section className="lx-section" data-testid="course-no-tariff">
+            <h3>Kurs xarid</h3>
+            <p className="muted small" style={{ margin: "0 0 12px" }}>
+              Tarif paketlar o‘chirilgan. Kursni Checkout V2 orqali olish keyinroq yoqiladi
+              {listPrice != null ? ` (narx: ${formatSom(listPrice)})` : ""}.
+            </p>
+            <Link href="/search" className="btn btn-primary">
+              Boshqa kurslar
+            </Link>
+          </section>
         ) : (
           <section className="lx-section">
             <h3>Tarif tanlang</h3>
@@ -162,8 +174,8 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             <EmptyGuide
               title="Hali dars qo‘yilmagan"
               text="O‘qituvchi reja qo‘shgach shu yerda ochiladi."
-              href={owned ? "/schedule" : "/#tariflar"}
-              cta={owned ? "Dars rejaga" : "Tariflarga"}
+              href={owned ? "/schedule" : hideTariff ? "/search" : "/#tariflar"}
+              cta={owned ? "Dars rejaga" : hideTariff ? "Kurslar" : "Tariflarga"}
             />
           ) : (
             <div className="lx-stack">

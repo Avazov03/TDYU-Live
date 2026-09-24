@@ -5,7 +5,7 @@ import {
   getAnyOpenEnrollment,
   resolveStudentHomePath,
 } from "@/lib/access";
-import { getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { PLATFORM_PRICES, TARIFF_BLURBS, TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
@@ -20,11 +20,18 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const STEPS = [
+const STEPS_LEGACY = [
   { n: "01", title: "Kirish", text: "Ro'yxatdan o'ting yoki hisobingizga kiring." },
   { n: "02", title: "Tarif", text: "1 / 2 / 3-tarif — demo to'lov 30 kun." },
   { n: "03", title: "Yo'nalish", text: "Fakultet va o'qituvchini tanlang, kursiga yoziling." },
   { n: "04", title: "Dars", text: "Reja, jonli efir va yozuv — tarifingizga qarab." },
+] as const;
+
+const STEPS_COURSE = [
+  { n: "01", title: "Kirish", text: "Ro'yxatdan o'ting yoki hisobingizga kiring." },
+  { n: "02", title: "Kurs", text: "Kerakli kursni tanlang va sotib oling." },
+  { n: "03", title: "Enrollment", text: "Kursga yozilasiz — bir nechta kurs birga ishlaydi." },
+  { n: "04", title: "Dars", text: "Reja, jonli efir va yozuv — Kurslarim orqali." },
 ] as const;
 
 const ROLES = [
@@ -52,6 +59,8 @@ export default async function LandingPage() {
         hasActiveEntitlement: Boolean(entitlement),
       })
     : null;
+  const hideTariff = shouldHideStudentTariffUi();
+  const STEPS = hideTariff ? STEPS_COURSE : STEPS_LEGACY;
 
   const prices: { tier: TariffTier; price: number }[] = [
     { tier: "t1", price: PLATFORM_PRICES.t1 },
@@ -68,7 +77,9 @@ export default async function LandingPage() {
           <h1 className="site-hero-name">{BRAND.name}</h1>
           <p className="site-hero-tag">TDYU professorlaridan jonli huquqiy kurslar</p>
           <p className="site-hero-lead">
-            Tarif tanlang, yo&apos;nalish va o&apos;qituvchini belgilang — shu o&apos;qituvchining darsiga yozilasiz.
+            {hideTariff
+              ? "Kursni tanlang, sotib oling — Enrollment orqali darsga kirasiz. Bir nechta kurs birga ishlaydi."
+              : "Tarif tanlang, yo'nalish va o'qituvchini belgilang — shu o'qituvchining darsiga yozilasiz."}
           </p>
           <div className="site-hero-cta">
             {home === "/app" ? (
@@ -80,8 +91,11 @@ export default async function LandingPage() {
                 O&apos;qituvchi tanlash
               </Link>
             ) : session?.user ? (
-              <Link href="/#tariflar" className="btn btn-primary">
-                Tarif tanlash
+              <Link
+                href={hideTariff ? "/search" : "/#tariflar"}
+                className="btn btn-primary"
+              >
+                {hideTariff ? "Kurslarni ko‘rish" : "Tarif tanlash"}
               </Link>
             ) : (
               <>
@@ -139,8 +153,25 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section id="tariflar" className="lx-section lx-section-wide">
-          {sub ? (
+        <section id="tariflar" className="lx-section lx-section-wide" data-testid="landing-pricing">
+          {hideTariff ? (
+            <div className="lx-status" data-testid="landing-course-cta">
+              <p className="lx-status-label">Kurslar</p>
+              <p className="lx-status-meta">
+                Tarif paketlar o‘rniga alohida kurslar. Qidiruvdan kurs toping yoki Kabinetga o‘ting.
+              </p>
+              <div className="row gap-8" style={{ flexWrap: "wrap" }}>
+                <Link href="/search" className="btn btn-primary">
+                  Kurslarni qidirish
+                </Link>
+                {home === "/app" ? (
+                  <Link href="/app" className="btn">
+                    Kabinet
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : sub ? (
             <div className="lx-status">
               <p className="lx-status-label">{TARIFF_LABELS[sub.tier]} faol</p>
               <p className="lx-status-meta">

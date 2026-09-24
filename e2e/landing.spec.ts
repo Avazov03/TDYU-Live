@@ -26,6 +26,11 @@ test.describe("Lexify landing", () => {
     await page.goto("/");
     await expect(page.getByRole("link", { name: "Qanday" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Loyiha" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Tariflar" }).first()).toBeVisible();
+    // Wave 4: Tariflar hidden under enrollment mode; course CTA replaces pricing.
+    const tarif = page.getByRole("link", { name: "Tariflar" });
+    const courseCta = page.getByTestId("landing-course-cta");
+    const hasTarif = (await tarif.count()) > 0;
+    const hasCourseCta = (await courseCta.count()) > 0;
+    expect(hasTarif || hasCourseCta).toBe(true);
   });
 });

@@ -8,6 +8,7 @@ import { MeetRoom } from "@/components/live/MeetRoom";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { accessMessage, getLessonAccess } from "@/lib/access";
+import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
@@ -44,6 +45,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   if (!lesson) notFound();
 
   const access = await getLessonAccess(session?.user?.id, lesson.courseId, lesson.status);
+  const hideTariff = shouldHideStudentTariffUi();
 
   if (access.ok && session?.user?.id && (lesson.status === "live" || lesson.status === "lobby" || lesson.status === "ended")) {
     await prisma.attendance.upsert({
@@ -135,8 +137,12 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                   {!access.ok ? accessMessage(access.reason) : "Video hali tayyor emas."}
                 </p>
                 {!access.ok && access.reason !== "unauthenticated" ? (
-                  <Link href="/#tariflar" className="btn btn-primary" style={{ marginTop: 12 }}>
-                    Tarifni oshirish
+                  <Link
+                    href={hideTariff ? "/search" : "/#tariflar"}
+                    className="btn btn-primary"
+                    style={{ marginTop: 12 }}
+                  >
+                    {hideTariff ? "Kurslarni ko‘rish" : "Tarifni oshirish"}
                   </Link>
                 ) : null}
                 {!access.ok && access.reason === "unauthenticated" ? (

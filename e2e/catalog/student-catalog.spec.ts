@@ -64,6 +64,6 @@ test.describe("Student catalog Enrollment-first", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: STAGING_FIXTURE.lessonTitle }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Tarifni oshirish|Kurslarni ko/i })).toHaveCount(0);
   });
 });

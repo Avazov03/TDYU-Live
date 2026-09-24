@@ -4,7 +4,7 @@ import {
   getAnyOpenEnrollment,
   studentHasCabinetMembership,
 } from "@/lib/access";
-import { getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { LexifyNotchNavbar } from "@/components/site/LexifyNotchNavbar";
@@ -16,6 +16,7 @@ export async function SiteHeader() {
   const role = session?.user?.role;
   const mode = getEnrollmentAccessMode();
   const userId = session?.user?.id;
+  const hideTariffNav = shouldHideStudentTariffUi();
 
   let cabinetHref: string | null = null;
   if (isAdminRole(role)) {
@@ -55,5 +56,11 @@ export async function SiteHeader() {
       }
     : null;
 
-  return <LexifyNotchNavbar cabinetHref={cabinetHref} user={user} />;
+  return (
+    <LexifyNotchNavbar
+      cabinetHref={cabinetHref}
+      user={user}
+      hideTariffNav={hideTariffNav}
+    />
+  );
 }

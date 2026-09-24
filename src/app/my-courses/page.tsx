@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { MyCoursesBoard } from "@/components/cabinet/MyCoursesBoard";
 import { getStudentOwnedCourses, requireStudentCabinet } from "@/lib/access";
+import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import type { TariffTier } from "@/generated/prisma/client";
@@ -11,6 +12,7 @@ export default async function MyCoursesPage() {
   const { user } = await requireStudentCabinet("/my-courses");
   const owned = await getStudentOwnedCourses(user.id);
   const courseIds = owned.map((o) => o.courseId);
+  const hideTariffUi = shouldHideStudentTariffUi();
 
   const nextLessons =
     courseIds.length === 0
@@ -62,7 +64,7 @@ export default async function MyCoursesPage() {
 
   return (
     <AppShell active="my-courses">
-      <MyCoursesBoard items={items} />
+      <MyCoursesBoard items={items} hideTariffUi={hideTariffUi} />
     </AppShell>
   );
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
+import { featureFlags } from "@/lib/feature-flags";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { isStudentRole } from "@/lib/roles";
 
@@ -10,7 +11,22 @@ const schema = z.object({
   teacherId: z.string().trim().min(1),
 });
 
+/**
+ * Wave 4 — V1 enroll must NEVER expire other course Subscriptions.
+ * Pure helper documents the invariant (also unit-tested).
+ */
+export function shouldExpireOtherSubscriptionsOnEnroll(): boolean {
+  return false;
+}
+
 export async function POST(req: Request) {
+  if (featureFlags.disableOnboardEnroll) {
+    return NextResponse.json(
+      { error: "Legacy enroll o‘chirilgan. Kursni Checkout V2 orqali oling." },
+      { status: 403 },
+    );
+  }
+
   const session = await auth();
   if (!session?.user?.id || !isStudentRole(session.user.role)) {
     return NextResponse.json({ error: "Kirish kerak" }, { status: 401 });
@@ -45,15 +61,19 @@ export async function POST(req: Request) {
   });
 
   const userId = session.user.id;
-  const others = await prisma.subscription.findMany({
-    where: { userId, courseId: { not: courseId }, endsAt: { gt: new Date() } },
-    select: { id: true },
-  });
-  if (others.length > 0) {
-    await prisma.subscription.updateMany({
-      where: { id: { in: others.map((s) => s.id) } },
-      data: { endsAt: new Date() },
+
+  // Wave 4: do not expire other active Subscriptions (multi-course safe).
+  if (shouldExpireOtherSubscriptionsOnEnroll()) {
+    const others = await prisma.subscription.findMany({
+      where: { userId, courseId: { not: courseId }, endsAt: { gt: new Date() } },
+      select: { id: true },
     });
+    if (others.length > 0) {
+      await prisma.subscription.updateMany({
+        where: { id: { in: others.map((s) => s.id) } },
+        data: { endsAt: new Date() },
+      });
+    }
   }
 
   await prisma.subscription.upsert({
@@ -73,5 +93,11 @@ export async function POST(req: Request) {
   });
 
   const sub = await getAnyActiveSubscription(userId);
-  return NextResponse.json({ ok: true, courseId, teacherName: teacher.fullName, courseTitle: sub?.course.titleUz });
+  return NextResponse.json({
+    ok: true,
+    courseId,
+    teacherName: teacher.fullName,
+    courseTitle: sub?.course.titleUz,
+    expiredOtherCourses: false,
+  });
 }
