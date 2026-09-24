@@ -439,6 +439,13 @@ export function pollLiveRoom(lessonId: string, peerId: string, since: number) {
   return snapshot(state, peerId, since);
 }
 
+export function listLivePeerIds(lessonId: string): string[] {
+  const state = rooms.get(lessonId);
+  if (!state) return [];
+  prune(state);
+  return [...state.peers.keys()];
+}
+
 export function closeLiveRoom(lessonId: string) {
   rooms.delete(lessonId);
 }

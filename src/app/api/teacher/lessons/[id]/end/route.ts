@@ -7,7 +7,8 @@ import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 import { canTeacherEndLive, endLiveSession } from "@/lib/live-session";
-import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isLiveAttendanceV3Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { closeAllOpenAttendanceForLiveSession } from "@/lib/live-attendance";
 
 const bodySchema = z
   .object({
@@ -67,6 +68,9 @@ export async function POST(
   let liveSession = null;
   if (isLiveWaitingRoomV2Enabled()) {
     liveSession = await endLiveSession(lesson.id);
+    if (isLiveAttendanceV3Enabled() && liveSession?.id) {
+      await closeAllOpenAttendanceForLiveSession(liveSession.id);
+    }
   }
 
   await notifyCourseStudents(lesson.courseId, {

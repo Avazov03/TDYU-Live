@@ -42,4 +42,7 @@ export const STAGING_FIXTURE = {
   /** Phase 7 Live Wave 1 — scheduled lesson on Course A (staging seed). */
   liveLessonId: "d2500001-0000-4000-8000-000000000045",
   liveLessonTitle: "Phase 7 Live Wave 1 lesson",
+  /** Phase 7 Live Wave 3 — separate lesson so attendance E2E does not fight Wave 1/2 fixture state. */
+  liveLessonIdWave3: "d2500001-0000-4000-8000-000000000046",
+  liveLessonTitleWave3: "Phase 7 Live Wave 3 attendance lesson",
 } as const;

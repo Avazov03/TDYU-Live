@@ -100,6 +100,12 @@ export const featureFlags = {
   liveAvPolicyV2: envFlag("FF_LIVE_AV_POLICY_V2", false),
 
   /**
+   * When true: AttendanceInterval for LIVE participation (Wave 3).
+   * Waiting room ≠ attendance. Default false.
+   */
+  liveAttendanceV3: envFlag("FF_LIVE_ATTENDANCE_V3", false),
+
+  /**
    * When true: shared live room store (Redis etc.). Default false.
    */
   liveSharedRooms: envFlag("FF_LIVE_SHARED_ROOMS", false),
@@ -130,6 +136,11 @@ export function isLiveWaitingRoomV2Enabled(): boolean {
 /** Live Wave 2 — A/V permission policy. */
 export function isLiveAvPolicyV2Enabled(): boolean {
   return envFlag("FF_LIVE_AV_POLICY_V2", false);
+}
+
+/** Live Wave 3 — AttendanceInterval for LIVE only. */
+export function isLiveAttendanceV3Enabled(): boolean {
+  return envFlag("FF_LIVE_ATTENDANCE_V3", false);
 }
 
 /**

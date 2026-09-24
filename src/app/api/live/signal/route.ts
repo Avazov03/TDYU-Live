@@ -7,6 +7,7 @@ import {
   applyRoomEvent,
   joinLivePeer,
   leaveLivePeer,
+  listLivePeerIds,
   pollLiveRoom,
   pushLiveSignal,
   type SignalPayload,
@@ -16,6 +17,12 @@ import { isLiveAvPolicyV2Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/featu
 import { livePeerIdForUser, verifyLiveJoinToken } from "@/lib/live-join-token";
 import { findActiveLiveSession, isJoinableLiveLessonStatus } from "@/lib/live-session";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import {
+  ATTENDANCE_STALE_MS,
+  closeLiveAttendanceInterval,
+  closeStaleAttendanceForMissingPeers,
+  userIdFromLivePeerId,
+} from "@/lib/live-attendance";
 
 /** Teacher A/V controls must use /api/live/av when Wave 2 flag is on. */
 const AV_TEACHER_KINDS = new Set(["grant", "revoke", "mute", "camera_off"]);
@@ -146,6 +153,13 @@ export async function POST(req: Request) {
 
   if (action === "leave") {
     leaveLivePeer(lessonId, peerId);
+    const active = await findActiveLiveSession(lessonId);
+    if (active && !moderator) {
+      await closeLiveAttendanceInterval({
+        userId: session.user.id,
+        liveSessionId: active.id,
+      });
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -191,5 +205,21 @@ export async function POST(req: Request) {
   }
 
   const snap = pollLiveRoom(lessonId, peerId, since ?? 0);
+
+  // Stale disconnect cleanup (Wave 3): peers gone from room longer than stale window.
+  const active = await findActiveLiveSession(lessonId);
+  if (active?.status === "live") {
+    const present = new Set<string>();
+    for (const id of listLivePeerIds(lessonId)) {
+      const uid = userIdFromLivePeerId(id);
+      if (uid) present.add(uid);
+    }
+    void closeStaleAttendanceForMissingPeers({
+      liveSessionId: active.id,
+      presentUserIds: present,
+      staleBefore: new Date(Date.now() - ATTENDANCE_STALE_MS),
+    }).catch(() => undefined);
+  }
+
   return NextResponse.json(snap);
 }
