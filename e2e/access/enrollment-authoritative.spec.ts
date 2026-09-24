@@ -9,13 +9,13 @@ import {
 import { STAGING_FIXTURE } from "../helpers/test-data";
 
 /**
- * Phase 2.6 Enrollment-authoritative browser checks.
+ * Phase 5 Wave 1 — Enrollment-authoritative browser checks.
  *
- * NOT part of `test:e2e:smoke` (keeps 18/0/0 Phase 2.5 suite stable).
+ * NOT part of `test:e2e:smoke` (keeps 18/0/0 smoke suite stable).
  * Run with:
- *   E2E_DB_READY=1 E2E_ENROLLMENT_AUTHORITATIVE=1 npx playwright test e2e/access
+ *   E2E_DB_READY=1 E2E_ENROLLMENT_AUTHORITATIVE=1 npm run test:e2e:access
  *
- * Staging must have FF_ENROLLMENT_ACCESS_MODE=enrollment (PM2 --update-env).
+ * Staging must have FF_ENROLLMENT_ACCESS_MODE=enrollment (via start-staging.sh /.env).
  */
 function enrollmentAuthoritativeEnabled() {
   const v = process.env.E2E_ENROLLMENT_AUTHORITATIVE?.trim().toLowerCase();
@@ -61,16 +61,13 @@ test.describe("Enrollment authoritative access", () => {
     test.skip(!creds, skipReasonMissingCreds("student"));
     await loginAs(page, creds!, { monitor });
 
-    // Phase 2.5 course — only owned after Checkout V2 purchase; after prep may be enrolled.
-    // Use a lesson on a course active1 does not own: Fixture Course C if present,
-    // else assert paywall on a known foreign lesson when not enrolled.
+    // Course B lesson — must not be owned for this assertion (reset fixture seat before run).
     monitor.noteAction(`Probe foreign lesson ${COURSE_B_LESSON}`);
     await page.goto(`/learn/${COURSE_B_LESSON}`);
-    // If enrolled via prior V2 purchase, owned section is ok; otherwise paywall.
-    const paywall = page.getByRole("link", { name: /Tarifni oshirish/i });
-    const progress = page.getByLabel("Kurs progressi");
-    const deniedOrOwned = (await paywall.count()) > 0 || (await progress.count()) > 0;
-    expect(deniedOrOwned).toBe(true);
+    await expect(page.getByRole("link", { name: /Tarifni oshirish/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByLabel("Kurs progressi")).toHaveCount(0);
   });
 
   test("Course A lesson stays accessible (multi-course)", async ({ page, monitor }) => {

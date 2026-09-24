@@ -7,6 +7,7 @@
 |-----|---------|
 | [architecture/TARGET-DOMAIN-MODEL.md](./architecture/TARGET-DOMAIN-MODEL.md) | Entities, relations, invariants |
 | [architecture/FOUNDATION-CLOSEOUT.md](./architecture/FOUNDATION-CLOSEOUT.md) | Foundation gate — READY FOR PHASE 5 |
+| [architecture/PHASE5-WAVE1-ENROLLMENT-ACCESS.md](./architecture/PHASE5-WAVE1-ENROLLMENT-ACCESS.md) | Wave 1 — Enrollment authoritative access |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |

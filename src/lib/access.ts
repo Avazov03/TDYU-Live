@@ -162,6 +162,28 @@ export async function hasCourseContentAccess(
   return access.ok;
 }
 
+/** Wave 1 alias — authoritative course seat check (Enrollment when mode=enrollment). */
+export async function canUserAccessCourse(
+  userId: string,
+  courseId: string,
+): Promise<boolean> {
+  return hasCourseContentAccess(userId, courseId);
+}
+
+/** Wave 1 alias — loads lesson then applies getLessonAccess (server-side only). */
+export async function canUserAccessLesson(
+  userId: string,
+  lessonId: string,
+): Promise<boolean> {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { courseId: true, status: true },
+  });
+  if (!lesson) return false;
+  const access = await getLessonAccess(userId, lesson.courseId, lesson.status);
+  return access.ok;
+}
+
 /** Legacy Subscription + endsAt + tier (CURRENT SoT when mode=off|shadow). */
 export async function getLegacyLessonAccess(
   userId: string | undefined,

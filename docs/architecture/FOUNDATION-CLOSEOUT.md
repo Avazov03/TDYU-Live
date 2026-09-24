@@ -50,6 +50,7 @@ Disposable database `lexify_foundation_fresh` on the staging host (not productio
 | AUTH secret | Different from production |
 | `prisma migrate status` | Up to date with applied chain |
 | Flags (approved foundation) | `FF_COURSE_CHECKOUT_V2=false`, `FF_ENROLLMENT_ACCESS_MODE=shadow` |
+| Flags (Phase 5 Wave 1 — staging) | `FF_COURSE_CHECKOUT_V2=false`, `FF_ENROLLMENT_ACCESS_MODE=enrollment` — see `PHASE5-WAVE1-ENROLLMENT-ACCESS.md` |
 
 **Flag determinism:** PM2 must not retain stale `FF_*` in the process environment. Staging starts through `start-staging.sh`, which `source`s `.env` before `next start`.
 
