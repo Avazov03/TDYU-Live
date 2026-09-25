@@ -13,10 +13,29 @@ elif command -v psql >/dev/null && psql -d postgres -tAc "SELECT 1" >/dev/null 2
   ADMIN_PSQL="psql -d postgres -v ON_ERROR_STOP=1"
 fi
 
+STAGING_ROLE=$(python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import urlparse
+env={}
+for line in Path(".env").read_text(encoding="utf-8", errors="replace").splitlines():
+    line=line.strip()
+    if not line or line.startswith("#") or "=" not in line: continue
+    k,v=line.split("=",1)
+    env[k]=v.strip().strip('"').strip("'")
+print(urlparse(env["DATABASE_URL"]).username or "")
+PY
+)
+if [[ -z "$STAGING_ROLE" ]]; then
+  echo "REFUSING: could not parse staging DB role"
+  exit 2
+fi
+
 echo "Using admin psql for CREATE DATABASE (role not printed)"
 $ADMIN_PSQL -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='tdyulive_migrate_verify' AND pid <> pg_backend_pid();" >/dev/null 2>&1 || true
 $ADMIN_PSQL -c "DROP DATABASE IF EXISTS tdyulive_migrate_verify;"
-$ADMIN_PSQL -c "CREATE DATABASE tdyulive_migrate_verify OWNER CURRENT_USER;"
+$ADMIN_PSQL -c "CREATE DATABASE tdyulive_migrate_verify OWNER \"$STAGING_ROLE\";"
+$ADMIN_PSQL -d tdyulive_migrate_verify -c "GRANT ALL ON SCHEMA public TO \"$STAGING_ROLE\";" >/dev/null 2>&1 || true
+$ADMIN_PSQL -d tdyulive_migrate_verify -c "ALTER SCHEMA public OWNER TO \"$STAGING_ROLE\";" >/dev/null 2>&1 || true
 
 # Build verify URL from staging .env host/user but swap DB name — without echoing.
 export DATABASE_URL
@@ -30,29 +49,9 @@ for line in Path(".env").read_text(encoding="utf-8", errors="replace").splitline
     k,v=line.split("=",1)
     env[k]=v.strip().strip('"').strip("'")
 u=urlparse(env["DATABASE_URL"])
-# If staging role cannot connect to new DB owned by postgres, use peer via unix — try staging creds with new db name
 print(urlunparse(u._replace(path="/tdyulive_migrate_verify")))
 PY
 )"
-
-# Grant connect to staging role if needed
-STAGING_ROLE=$(python3 - <<'PY'
-from pathlib import Path
-from urllib.parse import urlparse
-env={}
-for line in Path(".env").read_text(encoding="utf-8", errors="replace").splitlines():
-    line=line.strip()
-    if not line or line.startswith("#") or "=" not in line: continue
-    k,v=line.split("=",1)
-    env[k]=v.strip().strip('"').strip("'")
-print(urlparse(env["DATABASE_URL"]).username or "")
-PY
-)
-if [[ -n "$STAGING_ROLE" ]]; then
-  $ADMIN_PSQL -d tdyulive_migrate_verify -c "GRANT ALL ON SCHEMA public TO \"$STAGING_ROLE\";" >/dev/null 2>&1 || true
-  $ADMIN_PSQL -c "GRANT ALL PRIVILEGES ON DATABASE tdyulive_migrate_verify TO \"$STAGING_ROLE\";" >/dev/null 2>&1 || true
-  $ADMIN_PSQL -c "ALTER DATABASE tdyulive_migrate_verify OWNER TO \"$STAGING_ROLE\";" >/dev/null 2>&1 || true
-fi
 
 echo "Running prisma migrate deploy on disposable DB (URL masked)"
 npx prisma migrate deploy
