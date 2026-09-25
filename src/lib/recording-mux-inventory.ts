@@ -303,24 +303,68 @@ export async function runRecordingMuxInventory(
   }
 
   if (includeOrphans) {
-    const orphans = await prisma.lesson.findMany({
-      where: {
-        OR: [
-          { muxVodPlaybackId: { not: null } },
-          { recordingUrl: { not: null } },
-        ],
-        ...(recordingsTableMissing ? {} : { recordings: { none: {} } }),
-      },
-      select: {
-        id: true,
-        courseId: true,
-        status: true,
-        recordingUrl: true,
-        muxVodPlaybackId: true,
-        course: { select: { lifecycleStatus: true, isPublished: true } },
-      },
-      take: 500,
-    });
+    type LessonRow = {
+      id: string;
+      courseId: string;
+      status: string;
+      recordingUrl: string | null;
+      muxVodPlaybackId: string | null;
+      courseLifecycle: string | null;
+      coursePublished: boolean | null;
+    };
+
+    let orphans: LessonRow[] = [];
+    try {
+      orphans = await prisma.lesson.findMany({
+        where: {
+          OR: [
+            { muxVodPlaybackId: { not: null } },
+            { recordingUrl: { not: null } },
+          ],
+          ...(recordingsTableMissing ? {} : { recordings: { none: {} } }),
+        },
+        select: {
+          id: true,
+          courseId: true,
+          status: true,
+          recordingUrl: true,
+          muxVodPlaybackId: true,
+          course: { select: { lifecycleStatus: true, isPublished: true } },
+        },
+        take: 500,
+      }).then((rows) =>
+        rows.map((l) => ({
+          id: l.id,
+          courseId: l.courseId,
+          status: l.status,
+          recordingUrl: l.recordingUrl,
+          muxVodPlaybackId: l.muxVodPlaybackId,
+          courseLifecycle: l.course?.lifecycleStatus ?? null,
+          coursePublished: l.course?.isPublished ?? null,
+        })),
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Production may lack lifecycle_status / recordings relation — raw SELECT fallback.
+      if (/does not exist/i.test(msg) || /lifecycle_status/i.test(msg) || /recordings/i.test(msg)) {
+        orphans = await prisma.$queryRawUnsafe<LessonRow[]>(
+          `SELECT l.id,
+                  l.course_id AS "courseId",
+                  l.status::text AS status,
+                  l.recording_url AS "recordingUrl",
+                  l.mux_vod_playback_id AS "muxVodPlaybackId",
+                  NULL::text AS "courseLifecycle",
+                  c.is_published AS "coursePublished"
+           FROM lessons l
+           JOIN courses c ON c.id = l.course_id
+           WHERE l.mux_vod_playback_id IS NOT NULL OR l.recording_url IS NOT NULL
+           ORDER BY l.scheduled_at DESC NULLS LAST
+           LIMIT 500`,
+        );
+      } else {
+        throw err;
+      }
+    }
 
     for (const lesson of orphans) {
       const hasMux = Boolean(lesson.muxVodPlaybackId);
@@ -394,10 +438,11 @@ export async function runRecordingMuxInventory(
         ? `legacy lesson media (recordings table missing); ${bucket.reason}`
         : `orphan lesson media; ${bucket.reason}`;
 
-      if (!recordingsTableMissing && vodClass === "ORPHAN_MUX_REFERENCE") {
+      if (!recordingsTableMissing) {
         migrationBucket = "ORPHAN";
-      } else if (recordingsTableMissing && migrationBucket === "SAFE_CANDIDATE") {
-        // Cannot safely remmap Recording.muxPlaybackId until Wave 1 table exists.
+        reason = `orphan lesson media; ${bucket.reason}`;
+        if (hasMux) vodClass = "ORPHAN_MUX_REFERENCE";
+      } else if (migrationBucket === "SAFE_CANDIDATE") {
         migrationBucket = "BLOCKED";
         reason += "; blocked until recordings table exists on production";
       }
@@ -409,8 +454,8 @@ export async function runRecordingMuxInventory(
         recordingStatus: null,
         lessonStatus: lesson.status,
         courseLifecycle:
-          lesson.course?.lifecycleStatus ??
-          (lesson.course?.isPublished === false ? "unpublished_legacy" : "published_legacy"),
+          lesson.courseLifecycle ??
+          (lesson.coursePublished === false ? "unpublished_legacy" : "published_legacy"),
         muxPlaybackId: lesson.muxVodPlaybackId,
         lessonMuxVodPlaybackId: lesson.muxVodPlaybackId,
         storageKey: null,
