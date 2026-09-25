@@ -5,16 +5,26 @@ import { LiveChat } from "@/components/lesson/LiveChat";
 import { LessonRow } from "@/components/lesson/LessonRow";
 import { WatchShareButton } from "@/components/video/WatchShareButton";
 import { MeetRoom } from "@/components/live/MeetRoom";
+import { RecordingPublishButton } from "@/components/teacher/RecordingPublishButton";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { accessMessage, getLessonAccess } from "@/lib/access";
-import { shouldHideStudentTariffUi, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import {
+  shouldHideStudentTariffUi,
+  isLiveWaitingRoomV2Enabled,
+  isRecordingReviewV1Enabled,
+} from "@/lib/feature-flags";
 import { isWaitingLessonStatus } from "@/lib/live-session";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { hasPlayableRecording, statusLabel } from "@/lib/plan";
+import {
+  getLatestRecordingForLesson,
+  studentMayPlayRecording,
+  teacherMayPreviewRecording,
+} from "@/lib/recording-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +58,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const access = await getLessonAccess(session?.user?.id, lesson.courseId, lesson.status);
   const hideTariff = shouldHideStudentTariffUi();
   const liveV2 = isLiveWaitingRoomV2Enabled();
+  const reviewV1 = isRecordingReviewV1Enabled();
   const waitingLike = isWaitingLessonStatus(lesson.status);
 
   // Waiting-room presence is NOT attendance (Wave 1). Legacy path kept when flag off.
@@ -55,7 +66,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     access.ok &&
     Boolean(session?.user?.id) &&
     (liveV2
-      ? lesson.status === "live" || lesson.status === "ended"
+      ? lesson.status === "live" || lesson.status === "ended" || lesson.status === "published"
       : lesson.status === "live" || lesson.status === "lobby" || lesson.status === "ended");
 
   if (shouldMarkAttendance && session?.user?.id) {
@@ -76,19 +87,50 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const canWatchVod = access.ok || staffJoin;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 
+  const recordingRow = reviewV1 ? await getLatestRecordingForLesson(lesson.id) : null;
+  const recordingStatus = recordingRow?.status ?? null;
+
   const playbackId =
     lesson.status === "live"
       ? lesson.muxLivePlaybackId
-      : lesson.muxVodPlaybackId || lesson.muxLivePlaybackId;
+      : recordingRow?.muxPlaybackId || lesson.muxVodPlaybackId || lesson.muxLivePlaybackId;
 
-  const readyNow = hasPlayableRecording(lesson.recordingUrl, playbackId);
+  const localRecordingUrl = recordingRow?.storageKey || lesson.recordingUrl;
+
+  const studentMayPlay = reviewV1
+    ? studentMayPlayRecording({ flagOn: true, recordingStatus })
+    : true;
+  const teacherMayPreview = reviewV1
+    ? teacherMayPreviewRecording({ flagOn: true, recordingStatus })
+    : true;
+
+  const showLocalVideo =
+    canWatchVod &&
+    Boolean(localRecordingUrl) &&
+    (staffJoin ? teacherMayPreview : studentMayPlay);
+  const showMuxVod =
+    canWatchVod &&
+    Boolean(playbackId && !playbackId.startsWith("demo_")) &&
+    lesson.status !== "live" &&
+    (staffJoin ? teacherMayPreview : studentMayPlay);
+  const showPendingReview =
+    canWatchVod &&
+    reviewV1 &&
+    !staffJoin &&
+    recordingRow &&
+    !studentMayPlay &&
+    recordingStatus !== "failed";
+
+  const readyNow = reviewV1
+    ? Boolean(recordingStatus === "published")
+    : hasPlayableRecording(lesson.recordingUrl, playbackId);
   const playlist = lesson.course.lessons;
   const index = playlist.findIndex((item) => item.id === lesson.id);
   const prev = index > 0 ? playlist[index - 1] : null;
   const next = index >= 0 && index < playlist.length - 1 ? playlist[index + 1] : null;
   const doneCount = playlist.filter(
     (item) =>
-      item.status === "ended" &&
+      (item.status === "ended" || item.status === "published") &&
       hasPlayableRecording(item.recordingUrl, item.muxVodPlaybackId || item.muxLivePlaybackId),
   ).length;
   const progressPct = playlist.length ? Math.round((doneCount / playlist.length) * 100) : 0;
@@ -105,7 +147,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               moderator={staffJoin}
               phase={lesson.status === "live" ? "live" : "lobby"}
             />
-          ) : canWatchVod && lesson.recordingUrl ? (
+          ) : showLocalVideo ? (
             <div className="player-wrap">
               <video
                 src={`/api/media/recording/${lesson.id}`}
@@ -113,18 +155,34 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                 playsInline
                 preload="metadata"
                 title={lesson.titleUz}
+                data-testid="recording-player"
               />
             </div>
-          ) : canWatchVod && playbackId && !playbackId.startsWith("demo_") ? (
+          ) : showMuxVod ? (
             <div className="player-wrap">
               <iframe
-                src={muxPlayerUrl(playbackId)}
+                src={muxPlayerUrl(playbackId!)}
                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
                 title={lesson.titleUz}
+                data-testid="recording-mux-player"
               />
             </div>
-          ) : canWatchVod && (lesson.status === "ended" || lesson.status === "live") ? (
+          ) : showPendingReview ? (
+            <div className="player-wrap">
+              <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
+                <div>
+                  <div className="badge pending" style={{ marginBottom: 8 }} data-testid="recording-pending-review">
+                    YOZUV TEKSHIRUVDA
+                  </div>
+                  <h3>{lesson.titleUz}</h3>
+                  <p className="muted small">
+                    Yozuv o‘qituvchi tekshiruvidan keyin ochiladi.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : canWatchVod && (lesson.status === "ended" || lesson.status === "live" || lesson.status === "recording_processing") ? (
             <div className="player-wrap">
               <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
                 <div>
@@ -176,6 +234,10 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               <WatchShareButton path={`/learn/${lesson.id}`} />
             </div>
           </div>
+
+          {staffJoin && reviewV1 && recordingStatus ? (
+            <RecordingPublishButton lessonId={lesson.id} status={recordingStatus} />
+          ) : null}
 
           <div className="lx-learn-progress" aria-label="Kurs progressi">
             <div className="lx-learn-progress-meta">

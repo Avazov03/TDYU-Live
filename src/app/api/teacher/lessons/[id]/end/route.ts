@@ -7,8 +7,13 @@ import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 import { canTeacherEndLive, endLiveSession } from "@/lib/live-session";
-import { isLiveAttendanceV3Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import {
+  isLiveAttendanceV3Enabled,
+  isLiveWaitingRoomV2Enabled,
+  isRecordingReviewV1Enabled,
+} from "@/lib/feature-flags";
 import { closeAllOpenAttendanceForLiveSession } from "@/lib/live-attendance";
+import { startRecordingAfterLiveEnd } from "@/lib/recording-lifecycle";
 
 const bodySchema = z
   .object({
@@ -37,7 +42,13 @@ export async function POST(
   if (lesson.status === "cancelled") {
     return NextResponse.json({ error: "Bekor qilingan dars" }, { status: 400 });
   }
-  if (lesson.status === "ended") {
+  if (
+    lesson.status === "ended" ||
+    lesson.status === "recording_processing" ||
+    lesson.status === "recording_ready" ||
+    lesson.status === "teacher_review" ||
+    lesson.status === "published"
+  ) {
     return NextResponse.json({ lesson });
   }
   if (!canTeacherEndLive(lesson.status) && lesson.status !== "scheduled") {
@@ -52,18 +63,11 @@ export async function POST(
   }
   closeLiveRoom(lesson.id);
 
-  const vodMux = lesson.muxVodPlaybackId ?? lesson.muxLivePlaybackId;
+  const vodMux = lesson.muxVodPlaybackId;
   const savedUrl = recordingUrl || lesson.recordingUrl || null;
-  const hasRealVod = Boolean(savedUrl) || Boolean(vodMux && !vodMux.startsWith("demo_"));
-
-  const updated = await prisma.lesson.update({
-    where: { id: lesson.id },
-    data: {
-      status: "ended",
-      recordingUrl: savedUrl,
-      muxVodPlaybackId: vodMux,
-    },
-  });
+  const awaitingMuxVod = Boolean(
+    lesson.muxLiveStreamId && !lesson.muxLiveStreamId.startsWith("demo_"),
+  );
 
   let liveSession = null;
   if (isLiveWaitingRoomV2Enabled()) {
@@ -72,6 +76,45 @@ export async function POST(
       await closeAllOpenAttendanceForLiveSession(liveSession.id);
     }
   }
+
+  if (isRecordingReviewV1Enabled()) {
+    const result = await startRecordingAfterLiveEnd({
+      lessonId: lesson.id,
+      liveSessionId: liveSession?.id ?? null,
+      recordingUrl: savedUrl,
+      muxVodPlaybackId: vodMux,
+      awaitingMuxVod,
+    });
+
+    const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+
+    await notifyCourseStudents(lesson.courseId, {
+      type: "lesson_live",
+      titleUz: "Dars tugadi",
+      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz} yakunlandi.${
+        result.recording ? " Yozuv o‘qituvchi tekshiruvidan keyin ochiladi." : ""
+      }`,
+      relatedId: lesson.id,
+    });
+
+    return NextResponse.json({
+      lesson: updated,
+      liveSession,
+      recording: result.recording,
+    });
+  }
+
+  const hasRealVod =
+    Boolean(savedUrl) || Boolean(vodMux && !vodMux.startsWith("demo_"));
+
+  const updated = await prisma.lesson.update({
+    where: { id: lesson.id },
+    data: {
+      status: "ended",
+      recordingUrl: savedUrl,
+      muxVodPlaybackId: vodMux ?? lesson.muxLivePlaybackId,
+    },
+  });
 
   await notifyCourseStudents(lesson.courseId, {
     type: "lesson_live",

@@ -7,6 +7,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLessonAccess } from "@/lib/access";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
+import {
+  getLatestRecordingForLesson,
+  studentMayPlayRecording,
+  teacherMayPreviewRecording,
+} from "@/lib/recording-lifecycle";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -19,21 +25,55 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: { id },
     include: { course: { include: { teacher: true } } },
   });
-  if (!lesson?.recordingUrl) {
+  if (!lesson) {
     return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
   }
 
   const staff =
     isAdminRole(session.user.role) ||
     (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id);
-  if (!staff) {
-    const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
-    if (!access.ok) {
-      return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+
+  const reviewV1 = isRecordingReviewV1Enabled();
+  const recording = reviewV1 ? await getLatestRecordingForLesson(lesson.id) : null;
+
+  if (reviewV1) {
+    if (!recording) {
+      return NextResponse.json({ error: "Yozuv yo'q", code: "NO_RECORDING" }, { status: 404 });
+    }
+    if (staff) {
+      if (!teacherMayPreviewRecording({ flagOn: true, recordingStatus: recording.status })) {
+        return NextResponse.json({ error: "Yozuv tayyor emas", code: "NOT_READY" }, { status: 403 });
+      }
+    } else {
+      const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
+      if (!access.ok) {
+        return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+      }
+      if (!studentMayPlayRecording({ flagOn: true, recordingStatus: recording.status })) {
+        return NextResponse.json(
+          { error: "Yozuv hali chop etilmagan", code: "NOT_PUBLISHED" },
+          { status: 403 },
+        );
+      }
+    }
+  } else {
+    if (!lesson.recordingUrl) {
+      return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
+    }
+    if (!staff) {
+      const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
+      if (!access.ok) {
+        return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+      }
     }
   }
 
-  const rel = lesson.recordingUrl.replace(/^\/+/, "");
+  const url = recording?.storageKey || lesson.recordingUrl;
+  if (!url) {
+    return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
+  }
+
+  const rel = url.replace(/^\/+/, "");
   if (!rel.startsWith("uploads/recordings/")) {
     return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
   }

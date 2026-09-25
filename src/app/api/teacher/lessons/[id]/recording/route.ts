@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
+import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
+import { markRecordingReady } from "@/lib/recording-lifecycle";
 
 const MAX_BYTES = 120 * 1024 * 1024;
 
@@ -43,5 +45,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     data: { recordingUrl },
   });
 
-  return NextResponse.json({ url: recordingUrl, lesson: updated });
+  let recording = null;
+  if (isRecordingReviewV1Enabled()) {
+    const result = await markRecordingReady({
+      lessonId: lesson.id,
+      storageKey: recordingUrl,
+    });
+    recording = result.recording;
+  }
+
+  return NextResponse.json({ url: recordingUrl, lesson: updated, recording });
 }

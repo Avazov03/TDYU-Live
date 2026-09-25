@@ -111,9 +111,12 @@ export const featureFlags = {
   liveSharedRooms: envFlag("FF_LIVE_SHARED_ROOMS", false),
 
   /**
-   * When true: Recording TEACHER_REVIEW + 24h auto-publish. Default false.
+   * When true: Recording review lifecycle (Wave 1) + 24h auto-publish.
+   * Prefer FF_RECORDING_REVIEW_V1; FF_RECORDING_REVIEW_24H remains an alias.
+   * Default false.
    */
-  recordingReview24h: envFlag("FF_RECORDING_REVIEW_24H", false),
+  recordingReview24h:
+    envFlag("FF_RECORDING_REVIEW_V1", false) || envFlag("FF_RECORDING_REVIEW_24H", false),
 
   /**
    * When true: refund APIs/policies active. Default false.
@@ -141,6 +144,16 @@ export function isLiveAvPolicyV2Enabled(): boolean {
 /** Live Wave 3 — AttendanceInterval for LIVE only. */
 export function isLiveAttendanceV3Enabled(): boolean {
   return envFlag("FF_LIVE_ATTENDANCE_V3", false);
+}
+
+/**
+ * Phase 8 Recording Wave 1 — review before student publish + 24h auto-publish.
+ * FF_RECORDING_REVIEW_V1 (preferred) or legacy alias FF_RECORDING_REVIEW_24H.
+ */
+export function isRecordingReviewV1Enabled(): boolean {
+  return (
+    envFlag("FF_RECORDING_REVIEW_V1", false) || envFlag("FF_RECORDING_REVIEW_24H", false)
+  );
 }
 
 /**

@@ -15,6 +15,7 @@
 | [architecture/PHASE7-LIVE-WAVE1-WAITING-ROOM.md](./architecture/PHASE7-LIVE-WAVE1-WAITING-ROOM.md) | Live Wave 1 — waiting room + LiveSession |
 | [architecture/PHASE7-LIVE-WAVE2-AV-POLICY.md](./architecture/PHASE7-LIVE-WAVE2-AV-POLICY.md) | Live Wave 2 — camera/mic policy + teacher controls |
 | [architecture/PHASE7-LIVE-WAVE3-ATTENDANCE.md](./architecture/PHASE7-LIVE-WAVE3-ATTENDANCE.md) | Live Wave 3 — AttendanceInterval LIVE participation |
+| [architecture/PHASE8-RECORDING-WAVE1-LIFECYCLE.md](./architecture/PHASE8-RECORDING-WAVE1-LIFECYCLE.md) | Recording Wave 1 — review lifecycle + publish |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |
