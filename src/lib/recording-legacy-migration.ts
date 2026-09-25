@@ -598,10 +598,14 @@ export function assertMigrationApplyAllowed(input: {
 }
 
 export function isProductionLikeEnv(): boolean {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-  if (/lexify\.zonic\.fit/i.test(appUrl)) return true;
-  if (process.env.LEXIFY_ENV === "production") return true;
+  // Staging process always uses port 3101 — never treat as production.
   if (process.env.PORT === "3101") return false;
   if (process.env.LEXIFY_ENV === "staging") return false;
-  return process.env.NODE_ENV === "production" && process.env.PORT !== "3101";
+  if (process.env.STAGING === "1") return false;
+
+  if (process.env.LEXIFY_ENV === "production") return true;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+  if (/staging/i.test(appUrl)) return false;
+  if (/lexify\.zonic\.fit/i.test(appUrl)) return true;
+  return process.env.NODE_ENV === "production";
 }

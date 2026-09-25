@@ -7,6 +7,7 @@ import {
   fixtureSignedPlaybackIdFromPublic,
   isFixturePublicPlaybackId,
   isFixtureSignedPlaybackId,
+  isProductionLikeEnv,
   mapAppRecordingState,
 } from "./recording-legacy-migration";
 import {
@@ -237,6 +238,13 @@ describe("Recording Wave 3 apply gates", () => {
         flagEnabled: false,
       }),
     );
+  });
+
+  it("detects staging PORT 3101 as non-production", () => {
+    const prev = process.env.PORT;
+    process.env.PORT = "3101";
+    assert.equal(isProductionLikeEnv(), false);
+    process.env.PORT = prev;
   });
 });
 
