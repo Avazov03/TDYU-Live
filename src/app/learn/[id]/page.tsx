@@ -13,7 +13,7 @@ import {
   shouldHideStudentTariffUi,
   isLiveWaitingRoomV2Enabled,
   isRecordingReviewV1Enabled,
-  isRecordingSignedPlaybackV1Enabled,
+  mustUseSecureMuxPlayback,
 } from "@/lib/feature-flags";
 import { isWaitingLessonStatus } from "@/lib/live-session";
 import { canUseLiveChat } from "@/lib/tariffs";
@@ -61,7 +61,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const hideTariff = shouldHideStudentTariffUi();
   const liveV2 = isLiveWaitingRoomV2Enabled();
   const reviewV1 = isRecordingReviewV1Enabled();
-  const signedPlayback = isRecordingSignedPlaybackV1Enabled();
+  const forceSecureMux = mustUseSecureMuxPlayback();
   const waitingLike = isWaitingLessonStatus(lesson.status);
 
   // Waiting-room presence is NOT attendance (Wave 1). Legacy path kept when flag off.
@@ -161,13 +161,13 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                 data-testid="recording-player"
               />
             </div>
-          ) : showMuxVod && signedPlayback ? (
+          ) : showMuxVod && forceSecureMux ? (
             <SecureMuxPlayer
               lessonId={lesson.id}
               recordingId={recordingRow?.id}
               title={lesson.titleUz}
             />
-          ) : showMuxVod ? (
+          ) : showMuxVod && !forceSecureMux ? (
             <div className="player-wrap">
               <iframe
                 src={muxPlayerUrl(playbackId!)}

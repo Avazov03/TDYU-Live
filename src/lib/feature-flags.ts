@@ -127,6 +127,12 @@ export const featureFlags = {
    * When true: Mux VOD uses signed playback tokens (Wave 2). Default false.
    */
   recordingSignedPlaybackV1: envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false),
+
+  /**
+   * When true: legacy public VOD migration tooling + suppress public VOD player URLs.
+   * Default false. Staging-only during controlled migration.
+   */
+  recordingLegacyMigrationV1: envFlag("FF_RECORDING_LEGACY_MIGRATION_V1", false),
 } as const;
 
 export type FeatureFlagName = keyof typeof featureFlags;
@@ -164,6 +170,18 @@ export function isRecordingReviewV1Enabled(): boolean {
 /** Phase 8 Recording Wave 2 — signed Mux playback tokens. */
 export function isRecordingSignedPlaybackV1Enabled(): boolean {
   return envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false);
+}
+
+/** Phase 8 Recording Wave 3 — legacy public VOD migration. */
+export function isRecordingLegacyMigrationV1Enabled(): boolean {
+  return envFlag("FF_RECORDING_LEGACY_MIGRATION_V1", false);
+}
+
+/**
+ * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
+ */
+export function mustUseSecureMuxPlayback(): boolean {
+  return isRecordingSignedPlaybackV1Enabled() || isRecordingLegacyMigrationV1Enabled();
 }
 
 /**

@@ -51,4 +51,7 @@ export const STAGING_FIXTURE = {
   /** Phase 8 Recording Wave 2 — separate so Wave 1 publish does not collide. */
   recordingLessonIdWave2: "d2500001-0000-4000-8000-000000000048",
   recordingLessonTitleWave2: "Phase 8 Recording Wave 2 signed playback lesson",
+  /** Phase 8 Recording Wave 3 — legacy public VOD migration fixture. */
+  recordingLessonIdWave3: "d2500001-0000-4000-8000-000000000049",
+  recordingLessonTitleWave3: "Phase 8 Recording Wave 3 legacy migration lesson",
 } as const;
