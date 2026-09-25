@@ -35,6 +35,7 @@
     "db:recording:legacy-migrate:dry": "tsx scripts/recording-legacy-migrate.ts",
     "db:recording:legacy-migrate:apply": "tsx scripts/recording-legacy-migrate.ts --apply",
     "db:recording:mux:inventory": "tsx scripts/recording-mux-inventory.ts",
+    "db:recording:production-precheck": "tsx scripts/recording-production-precheck.ts",
     "test:live:wave2": "tsx --test src/lib/live-wave2-av.test.ts",
     "test:live:wave3": "tsx --test src/lib/live-wave3-attendance.test.ts",
     "test:e2e:env": "tsx --test e2e/helpers/env.test.ts",
