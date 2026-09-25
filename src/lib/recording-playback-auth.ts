@@ -23,6 +23,10 @@ import {
   signMuxPlaybackToken,
   MUX_PLAYBACK_TOKEN_TTL_SEC,
 } from "@/lib/mux-signed-playback";
+import {
+  isFixturePublicPlaybackId,
+  isFixtureSignedPlaybackId,
+} from "@/lib/recording-legacy-migration";
 import { writeAuditLog } from "@/lib/audit-log";
 
 export type PlaybackAuthOk = {
@@ -194,7 +198,12 @@ export async function issueRecordingPlaybackToken(input: {
     };
   }
 
-  if (!authz.playbackId || authz.playbackId.startsWith("demo_")) {
+  if (
+    !authz.playbackId ||
+    authz.playbackId.startsWith("demo_") ||
+    isFixturePublicPlaybackId(authz.playbackId) ||
+    isFixtureSignedPlaybackId(authz.playbackId)
+  ) {
     // Fixture / demo playback — authorize then issue fixture token (not Mux CDN).
     const fixtureId = authz.playbackId || `fixture_${authz.recordingId.slice(0, 8)}`;
     const signed = signFixturePlaybackToken({
