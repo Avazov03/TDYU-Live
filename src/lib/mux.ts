@@ -1,3 +1,5 @@
+import { isRecordingSignedPlaybackV1Enabled } from "@/lib/feature-flags";
+
 type LiveStreamResult = {
   liveStreamId: string;
   livePlaybackId: string;
@@ -48,6 +50,9 @@ export async function createLiveStream(lessonTitle: string): Promise<LiveStreamR
     };
   }
 
+  // Wave 2: VOD from live uses signed playback. Live preview stays public for OBS monitoring.
+  const vodPolicy = isRecordingSignedPlaybackV1Enabled() ? ["signed"] : ["public"];
+
   const res = await fetch("https://api.mux.com/video/v1/live-streams", {
     method: "POST",
     headers: {
@@ -56,7 +61,7 @@ export async function createLiveStream(lessonTitle: string): Promise<LiveStreamR
     },
     body: JSON.stringify({
       playback_policy: ["public"],
-      new_asset_settings: { playback_policy: ["public"] },
+      new_asset_settings: { playback_policy: vodPolicy },
       reconnect_window: 60,
       passthrough: lessonTitle,
     }),

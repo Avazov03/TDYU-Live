@@ -122,6 +122,11 @@ export const featureFlags = {
    * When true: refund APIs/policies active. Default false.
    */
   refundsV1: envFlag("FF_REFUNDS_V1", false),
+
+  /**
+   * When true: Mux VOD uses signed playback tokens (Wave 2). Default false.
+   */
+  recordingSignedPlaybackV1: envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false),
 } as const;
 
 export type FeatureFlagName = keyof typeof featureFlags;
@@ -154,6 +159,11 @@ export function isRecordingReviewV1Enabled(): boolean {
   return (
     envFlag("FF_RECORDING_REVIEW_V1", false) || envFlag("FF_RECORDING_REVIEW_24H", false)
   );
+}
+
+/** Phase 8 Recording Wave 2 — signed Mux playback tokens. */
+export function isRecordingSignedPlaybackV1Enabled(): boolean {
+  return envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false);
 }
 
 /**
