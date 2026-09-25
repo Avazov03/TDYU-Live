@@ -64,6 +64,7 @@ export type InventorySummary = {
   mode: "AUDIT_ONLY";
   muxApi: "AVAILABLE" | "UNAVAILABLE";
   realMuxVerification: "REAL" | "FIXTURE" | "UNAVAILABLE";
+  recordingsTableMissing: boolean;
   TOTAL_RECORDINGS: number;
   TOTAL_ORPHAN_LESSONS: number;
   PUBLIC_VOD: number;
@@ -172,21 +173,34 @@ export async function runRecordingMuxInventory(
   const queryMux = options.queryMux !== false && muxConfigured;
   const includeOrphans = options.includeOrphanLessons !== false;
 
-  const recordings = await prisma.recording.findMany({
-    include: {
-      lesson: {
-        select: {
-          id: true,
-          courseId: true,
-          status: true,
-          recordingUrl: true,
-          muxVodPlaybackId: true,
-          course: { select: { id: true, lifecycleStatus: true, isPublished: true } },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let recordings: any[] = [];
+  let recordingsTableMissing = false;
+  try {
+    recordings = await prisma.recording.findMany({
+      include: {
+        lesson: {
+          select: {
+            id: true,
+            courseId: true,
+            status: true,
+            recordingUrl: true,
+            muxVodPlaybackId: true,
+            course: { select: { id: true, lifecycleStatus: true, isPublished: true } },
+          },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/recordings/i.test(msg) && /does not exist/i.test(msg)) {
+      recordingsTableMissing = true;
+      recordings = [];
+    } else {
+      throw err;
+    }
+  }
 
   const items: InventoryItem[] = [];
   let realMux: "REAL" | "FIXTURE" | "UNAVAILABLE" = muxConfigured ? "REAL" : "UNAVAILABLE";
@@ -295,7 +309,7 @@ export async function runRecordingMuxInventory(
           { muxVodPlaybackId: { not: null } },
           { recordingUrl: { not: null } },
         ],
-        recordings: { none: {} },
+        ...(recordingsTableMissing ? {} : { recordings: { none: {} } }),
       },
       select: {
         id: true,
@@ -317,7 +331,9 @@ export async function runRecordingMuxInventory(
       let muxObjectType: "asset" | "live_stream" | null = null;
       let muxAssetStatus: string | null = null;
       let vodClass: VodClass | "ORPHAN_MUX_REFERENCE" = hasMux
-        ? "ORPHAN_MUX_REFERENCE"
+        ? recordingsTableMissing
+          ? "UNKNOWN"
+          : "ORPHAN_MUX_REFERENCE"
         : lesson.recordingUrl
           ? "LOCAL_ONLY"
           : "MISSING_ASSET";
@@ -326,9 +342,11 @@ export async function runRecordingMuxInventory(
         const pid = lesson.muxVodPlaybackId;
         if (isFixturePublicPlaybackId(pid)) {
           muxPolicy = "fixture_public";
+          vodClass = "PUBLIC_VOD";
           if (realMux !== "REAL") realMux = "FIXTURE";
         } else if (isFixtureSignedPlaybackId(pid)) {
           muxPolicy = "fixture_signed";
+          vodClass = "SIGNED_VOD";
           if (realMux !== "REAL") realMux = "FIXTURE";
         } else if (queryMux && !pid.startsWith("demo_")) {
           try {
@@ -341,21 +359,48 @@ export async function runRecordingMuxInventory(
                 const asset = await readMuxAsset(muxAssetId);
                 muxAssetStatus = asset?.status ?? null;
               }
+              const classified = classifyVodFromFacts({
+                muxPlaybackId: pid,
+                storageKey: null,
+                muxPolicy,
+                muxLookupAttempted: true,
+                muxFound: true,
+              });
+              vodClass = recordingsTableMissing
+                ? classified.vodClass
+                : "ORPHAN_MUX_REFERENCE";
+            } else {
+              vodClass = "MISSING_ASSET";
             }
           } catch {
-            /* leave unknown orphan */
+            vodClass = "UNKNOWN";
           }
+        } else if (!queryMux && !isFixturePublicPlaybackId(pid) && !isFixtureSignedPlaybackId(pid)) {
+          vodClass = recordingsTableMissing ? "UNKNOWN" : "ORPHAN_MUX_REFERENCE";
         }
       }
 
       const bucket = decideMigrationBucket({
         vodClass,
-        recordingStatus: null,
+        recordingStatus: recordingsTableMissing ? "published" : null,
         muxPolicy,
         muxAssetId,
         hasValidLesson: true,
         muxApiAvailable: queryMux,
       });
+
+      let migrationBucket = bucket.bucket;
+      let reason = recordingsTableMissing
+        ? `legacy lesson media (recordings table missing); ${bucket.reason}`
+        : `orphan lesson media; ${bucket.reason}`;
+
+      if (!recordingsTableMissing && vodClass === "ORPHAN_MUX_REFERENCE") {
+        migrationBucket = "ORPHAN";
+      } else if (recordingsTableMissing && migrationBucket === "SAFE_CANDIDATE") {
+        // Cannot safely remmap Recording.muxPlaybackId until Wave 1 table exists.
+        migrationBucket = "BLOCKED";
+        reason += "; blocked until recordings table exists on production";
+      }
 
       items.push({
         recordingId: null,
@@ -376,8 +421,8 @@ export async function runRecordingMuxInventory(
         muxObjectType,
         muxAssetStatus,
         vodClass,
-        migrationBucket: bucket.bucket,
-        reason: `orphan lesson media; ${bucket.reason}`,
+        migrationBucket,
+        reason,
         publicUrlReference,
       });
     }
@@ -391,6 +436,7 @@ export async function runRecordingMuxInventory(
     mode: "AUDIT_ONLY",
     muxApi: muxConfigured ? "AVAILABLE" : "UNAVAILABLE",
     realMuxVerification: realMux,
+    recordingsTableMissing,
     TOTAL_RECORDINGS: recordingItems.length,
     TOTAL_ORPHAN_LESSONS: items.length - recordingItems.length,
     PUBLIC_VOD: count((i) => i.vodClass === "PUBLIC_VOD"),

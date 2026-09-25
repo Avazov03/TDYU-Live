@@ -56,6 +56,7 @@ async function main() {
     MODE: summary.mode,
     MUX_API: summary.muxApi,
     REAL_MUX_VERIFICATION: summary.realMuxVerification,
+    RECORDINGS_TABLE_MISSING: summary.recordingsTableMissing,
     RECORDINGS: {
       TOTAL: summary.TOTAL_RECORDINGS,
       ORPHAN_LESSONS: summary.TOTAL_ORPHAN_LESSONS,
