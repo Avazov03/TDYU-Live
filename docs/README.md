@@ -21,6 +21,9 @@
 | [architecture/PHASE8-REAL-MUX-INVENTORY.md](./architecture/PHASE8-REAL-MUX-INVENTORY.md) | Recording — real Mux inventory (audit only) |
 | [architecture/PHASE8-PRODUCTION-RECORDING-SCHEMA-ALIGNMENT.md](./architecture/PHASE8-PRODUCTION-RECORDING-SCHEMA-ALIGNMENT.md) | Production Recording schema alignment |
 | [architecture/PHASE8-PRODUCTION-RECORDING-BACKFILL-MUX-MIGRATION.md](./architecture/PHASE8-PRODUCTION-RECORDING-BACKFILL-MUX-MIGRATION.md) | Production Recording backfill + signed Mux migration (blocked at audit) |
+| [architecture/PHASE8.1-MEDIA-RECOVERY-REPORT.md](./architecture/PHASE8.1-MEDIA-RECOVERY-REPORT.md) | Phase 8.1 — production media recovery (0 recoverable, blocked) |
+| [architecture/PHASE8.1-SIGNED-MUX-INGEST.md](./architecture/PHASE8.1-SIGNED-MUX-INGEST.md) | Phase 8.1 — signed-only Mux ingest, idempotency, canary |
+| [infrastructure/RECORDING-STORAGE.md](./infrastructure/RECORDING-STORAGE.md) | Persistent recording storage outside the release dir |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |

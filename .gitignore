@@ -69,3 +69,6 @@ next-env.d.ts
 # local zip extracts
 .tmp-eski/
 .eski-extract/
+
+# Phase 8.1 dev recording storage fallback
+/.data/

@@ -200,6 +200,110 @@ export async function createMuxSignedPlaybackId(assetId: string): Promise<string
   return json.data.id;
 }
 
+export type MuxDirectUpload = { uploadId: string; url: string };
+
+/**
+ * Server-side direct upload for recorded media. New asset is SIGNED-only from creation.
+ * POST /video/v1/uploads
+ */
+export async function createMuxDirectUpload(input: { passthrough: string }): Promise<MuxDirectUpload> {
+  const auth = muxAuthHeader();
+  if (!auth) throw new Error("MUX_NOT_CONFIGURED");
+
+  const res = await fetch("https://api.mux.com/video/v1/uploads", {
+    method: "POST",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      new_asset_settings: { playback_policy: ["signed"], passthrough: input.passthrough },
+      cors_origin: "*",
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Mux create upload failed: ${res.status} ${text.slice(0, 200)}`);
+  }
+  const json = (await res.json()) as { data: { id: string; url: string } };
+  return { uploadId: json.data.id, url: json.data.url };
+}
+
+/** PUT the local file to the Mux upload URL (streamed, not buffered). */
+export async function putFileToMuxUpload(input: {
+  url: string;
+  absPath: string;
+  size: number;
+  contentType: string;
+}): Promise<void> {
+  const { createReadStream } = await import("fs");
+  const { Readable } = await import("stream");
+  const body = Readable.toWeb(createReadStream(input.absPath)) as ReadableStream;
+  const res = await fetch(input.url, {
+    method: "PUT",
+    headers: { "Content-Type": input.contentType, "Content-Length": String(input.size) },
+    body,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+  if (!res.ok) {
+    throw new Error(`Mux upload PUT failed: ${res.status}`);
+  }
+}
+
+export type MuxUploadStatus = {
+  uploadId: string;
+  status: string;
+  assetId: string | null;
+};
+
+/** GET /video/v1/uploads/{UPLOAD_ID} */
+export async function getMuxUpload(uploadId: string): Promise<MuxUploadStatus | null> {
+  const auth = muxAuthHeader();
+  if (!auth) throw new Error("MUX_NOT_CONFIGURED");
+  const res = await fetch(`https://api.mux.com/video/v1/uploads/${encodeURIComponent(uploadId)}`, {
+    headers: { Authorization: auth },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Mux upload lookup failed: ${res.status}`);
+  const json = (await res.json()) as { data: { id: string; status: string; asset_id?: string } };
+  return { uploadId: json.data.id, status: json.data.status, assetId: json.data.asset_id ?? null };
+}
+
+export type MuxAssetDetail = {
+  assetId: string;
+  status: string;
+  durationSeconds: number | null;
+  passthrough: string | null;
+  playbackIds: MuxAssetPlaybackId[];
+  errorMessages: string[];
+};
+
+/** GET /video/v1/assets/{ASSET_ID} */
+export async function getMuxAsset(assetId: string): Promise<MuxAssetDetail | null> {
+  const auth = muxAuthHeader();
+  if (!auth) throw new Error("MUX_NOT_CONFIGURED");
+  const res = await fetch(`https://api.mux.com/video/v1/assets/${encodeURIComponent(assetId)}`, {
+    headers: { Authorization: auth },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Mux asset lookup failed: ${res.status}`);
+  const json = (await res.json()) as {
+    data: {
+      id: string;
+      status: string;
+      duration?: number;
+      passthrough?: string;
+      playback_ids?: { id: string; policy: MuxPlaybackPolicy }[];
+      errors?: { messages?: string[] };
+    };
+  };
+  return {
+    assetId: json.data.id,
+    status: json.data.status,
+    durationSeconds: typeof json.data.duration === "number" ? Math.round(json.data.duration) : null,
+    passthrough: json.data.passthrough ?? null,
+    playbackIds: (json.data.playback_ids ?? []).map((p) => ({ id: p.id, policy: p.policy })),
+    errorMessages: json.data.errors?.messages ?? [],
+  };
+}
+
 /**
  * Delete a playback ID (e.g. old public after signed mapping verified).
  * DELETE /video/v1/assets/{ASSET_ID}/playback-ids/{PLAYBACK_ID}

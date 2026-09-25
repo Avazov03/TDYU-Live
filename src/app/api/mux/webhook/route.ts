@@ -4,6 +4,7 @@ import { notifyCourseStudents } from "@/lib/notify";
 import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
 import { verifyMuxWebhookSignature } from "@/lib/mux-webhook";
 import { failRecording, markRecordingReady } from "@/lib/recording-lifecycle";
+import { finalizeIngestByPassthrough, parseIngestPassthrough } from "@/lib/recording-mux-ingest";
 
 type MuxEvent = {
   type?: string;
@@ -50,6 +51,19 @@ export async function POST(req: Request) {
 
   const liveStreamId = event.data?.live_stream_id;
   const playbackId = event.data?.playback_ids?.[0]?.id;
+
+  // Phase 8.1 uploaded (non-live) assets: mapped only via our own passthrough ledger.
+  if (
+    !liveStreamId &&
+    (event.type === "video.asset.ready" || event.type === "video.asset.errored") &&
+    parseIngestPassthrough(event.data?.passthrough)
+  ) {
+    if (!secret) {
+      return NextResponse.json({ error: "MUX_WEBHOOK_SECRET required" }, { status: 503 });
+    }
+    const result = await finalizeIngestByPassthrough(event.data!.passthrough!);
+    return NextResponse.json({ ok: true, ingest: result?.state ?? "UNKNOWN_PASSTHROUGH" });
+  }
 
   if (event.type === "video.asset.errored" && liveStreamId) {
     const lesson = await prisma.lesson.findFirst({ where: { muxLiveStreamId: liveStreamId } });

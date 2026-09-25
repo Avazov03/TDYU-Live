@@ -178,6 +178,14 @@ export function isRecordingLegacyMigrationV1Enabled(): boolean {
 }
 
 /**
+ * Phase 8.1 — after a durable recording upload, push it to Mux as a SIGNED-only asset.
+ * Default false. Requires Mux API credentials + signing key at runtime.
+ */
+export function isRecordingMuxIngestV1Enabled(): boolean {
+  return envFlag("FF_RECORDING_MUX_INGEST_V1", false);
+}
+
+/**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */
 export function mustUseSecureMuxPlayback(): boolean {

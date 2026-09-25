@@ -1,6 +1,5 @@
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
-import path from "path";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -13,6 +12,11 @@ import {
   studentMayPlayRecording,
   teacherMayPreviewRecording,
 } from "@/lib/recording-lifecycle";
+import {
+  isStorageKeyForLesson,
+  recordingContentType,
+  resolveStorageKeyToPath,
+} from "@/lib/recording-storage";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -73,11 +77,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
   }
 
-  const rel = url.replace(/^\/+/, "");
-  if (!rel.startsWith("uploads/recordings/")) {
+  if (!isStorageKeyForLesson(url, lesson)) {
     return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
   }
-  const filePath = path.join(process.cwd(), "public", rel);
+  let filePath: string;
+  let type: string;
+  try {
+    const resolved = resolveStorageKeyToPath(url);
+    filePath = resolved.absPath;
+    type = recordingContentType(resolved.container);
+  } catch {
+    return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
+  }
 
   let fileStat;
   try {
@@ -88,7 +99,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const size = fileStat.size;
   const range = req.headers.get("range");
-  const type = rel.endsWith(".mp4") ? "video/mp4" : "video/webm";
 
   let start = 0;
   let end = size - 1;

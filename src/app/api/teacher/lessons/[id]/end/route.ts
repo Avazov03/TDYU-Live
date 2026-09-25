@@ -14,6 +14,7 @@ import {
 } from "@/lib/feature-flags";
 import { closeAllOpenAttendanceForLiveSession } from "@/lib/live-attendance";
 import { startRecordingAfterLiveEnd } from "@/lib/recording-lifecycle";
+import { isStorageKeyForLesson } from "@/lib/recording-storage";
 
 const bodySchema = z
   .object({
@@ -56,7 +57,9 @@ export async function POST(
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
-  const recordingUrl = parsed.success ? parsed.data?.recordingUrl : undefined;
+  const clientRecordingUrl = parsed.success ? parsed.data?.recordingUrl : undefined;
+  const recordingUrl =
+    clientRecordingUrl && isStorageKeyForLesson(clientRecordingUrl, lesson) ? clientRecordingUrl : undefined;
 
   if (lesson.muxLiveStreamId) {
     await completeLiveStream(lesson.muxLiveStreamId);
@@ -112,7 +115,8 @@ export async function POST(
     data: {
       status: "ended",
       recordingUrl: savedUrl,
-      muxVodPlaybackId: vodMux ?? lesson.muxLivePlaybackId,
+      // Never copy the live-stream playback id into the VOD column: it is not a recording.
+      muxVodPlaybackId: vodMux,
     },
   });
 

@@ -47,6 +47,22 @@ export type PlaybackAuthFail = {
 };
 
 /**
+ * Student gate when FF_RECORDING_REVIEW_V1 is off. Recordings awaiting teacher
+ * approval (e.g. recovered legacy media) stay hidden even if a playback id exists.
+ */
+export function legacyStudentMayPlay(rec: {
+  status: string;
+  muxPlaybackId: string | null;
+  storageKey: string | null;
+}): boolean {
+  if (rec.status === "published") return true;
+  if (rec.status === "teacher_review" || rec.status === "hidden" || rec.status === "failed" || rec.status === "processing") {
+    return false;
+  }
+  return Boolean(rec.muxPlaybackId || rec.storageKey);
+}
+
+/**
  * Authorize playback for a recording identified by recordingId XOR lessonId.
  * Rejects any attempt to pass an arbitrary playbackId (callers must not forward one).
  */
@@ -128,7 +144,7 @@ export async function authorizeRecordingPlayback(input: {
     if (!studentMayPlayRecording({ flagOn: true, recordingStatus: recording.status })) {
       return { ok: false, status: 403, code: "NOT_PUBLISHED" };
     }
-  } else if (recording.status !== "published" && !recording.muxPlaybackId && !recording.storageKey) {
+  } else if (!legacyStudentMayPlay(recording)) {
     return { ok: false, status: 403, code: "NOT_PUBLISHED" };
   }
 

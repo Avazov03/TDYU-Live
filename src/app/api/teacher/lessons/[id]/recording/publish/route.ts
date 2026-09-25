@@ -8,6 +8,7 @@ import {
   markRecordingReady,
   publishRecording,
 } from "@/lib/recording-lifecycle";
+import { isStorageKeyForLesson } from "@/lib/recording-storage";
 
 /** Teacher: recording status for lesson. */
 export async function GET(
@@ -75,6 +76,9 @@ export async function POST(
       process.env.NODE_ENV !== "production";
     if (!allowHook) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (body.recordingUrl && !isStorageKeyForLesson(body.recordingUrl, lesson)) {
+      return NextResponse.json({ error: "Noto'g'ri yozuv kaliti", code: "INVALID_STORAGE_KEY" }, { status: 400 });
     }
     const { recording, advanced } = await markRecordingReady({
       lessonId: lesson.id,
