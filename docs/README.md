@@ -19,6 +19,7 @@
 | [architecture/PHASE8-RECORDING-WAVE2-SIGNED-PLAYBACK.md](./architecture/PHASE8-RECORDING-WAVE2-SIGNED-PLAYBACK.md) | Recording Wave 2 — signed Mux playback tokens |
 | [architecture/PHASE8-RECORDING-WAVE3-LEGACY-MIGRATION.md](./architecture/PHASE8-RECORDING-WAVE3-LEGACY-MIGRATION.md) | Recording Wave 3 — legacy public VOD migration |
 | [architecture/PHASE8-REAL-MUX-INVENTORY.md](./architecture/PHASE8-REAL-MUX-INVENTORY.md) | Recording — real Mux inventory (audit only) |
+| [architecture/PHASE8-PRODUCTION-RECORDING-SCHEMA-ALIGNMENT.md](./architecture/PHASE8-PRODUCTION-RECORDING-SCHEMA-ALIGNMENT.md) | Production Recording schema alignment |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |
