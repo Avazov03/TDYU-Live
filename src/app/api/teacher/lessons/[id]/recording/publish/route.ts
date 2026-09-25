@@ -68,8 +68,12 @@ export async function POST(
   const action = body.action ?? "publish";
 
   if (action === "simulate_ready") {
-    // Deterministic E2E / staging hook — never on production.
-    if (process.env.NODE_ENV === "production" && process.env.ALLOW_RECORDING_E2E_HOOKS !== "1") {
+    // Deterministic E2E / staging hook — never on bare production.
+    const allowHook =
+      process.env.ALLOW_RECORDING_E2E_HOOKS === "1" ||
+      process.env.E2E_MUX_WEBHOOK_FIXTURE === "1" ||
+      process.env.NODE_ENV !== "production";
+    if (!allowHook) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { recording, advanced } = await markRecordingReady({
