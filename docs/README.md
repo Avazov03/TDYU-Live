@@ -24,6 +24,8 @@
 | [architecture/PHASE8.1-MEDIA-RECOVERY-REPORT.md](./architecture/PHASE8.1-MEDIA-RECOVERY-REPORT.md) | Phase 8.1 — production media recovery (0 recoverable, blocked) |
 | [architecture/PHASE8.1-SIGNED-MUX-INGEST.md](./architecture/PHASE8.1-SIGNED-MUX-INGEST.md) | Phase 8.1 — signed-only Mux ingest, idempotency, canary |
 | [infrastructure/RECORDING-STORAGE.md](./infrastructure/RECORDING-STORAGE.md) | Persistent recording storage outside the release dir |
+| [architecture/PHASE8.2-MEDIA-RECOVERY-SOURCE-AUDIT.md](./architecture/PHASE8.2-MEDIA-RECOVERY-SOURCE-AUDIT.md) | Phase 8.2 — recovery sources, loss window, snapshot plan |
+| [architecture/PHASE8.2-MUX-SIGNING-READINESS.md](./architecture/PHASE8.2-MUX-SIGNING-READINESS.md) | Phase 8.2 — Mux API/signing/ingest readiness matrix |
 | [architecture/MIGRATION-PLAN.md](./architecture/MIGRATION-PLAN.md) | Legacy → target mapping, waves, rollback |
 | [architecture/API-PLAN.md](./architecture/API-PLAN.md) | Target API contracts |
 | [security/SECURITY-MODEL.md](./security/SECURITY-MODEL.md) | LINK≠ACCESS, authz, media, live |
