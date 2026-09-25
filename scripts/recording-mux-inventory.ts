@@ -5,21 +5,42 @@
  *
  * Usage:
  *   npm run db:recording:mux:inventory
+ *   npx tsx scripts/recording-mux-inventory.ts --env-file /path/to/.env
  *
  * Never mutates Mux or DB. Never prints secrets.
  */
 
-import "dotenv/config";
-import {
-  runRecordingMuxInventory,
-  safeEnvFingerprint,
-} from "../src/lib/recording-mux-inventory";
-import { getMuxReadOnlyCounters } from "../src/lib/mux-read-only";
+import { config as loadEnv } from "dotenv";
 
 async function main() {
-  // Hard-bind this CLI to read-only inventory — never migration apply.
+  const envFileIdx = process.argv.indexOf("--env-file");
+  const envFile =
+    (envFileIdx >= 0 ? process.argv[envFileIdx + 1] : null) ||
+    process.env.ENV_FILE ||
+    undefined;
+
+  // Load env BEFORE importing prisma / inventory (DATABASE_URL captured at init).
+  if (envFile) {
+    loadEnv({ path: envFile, override: true });
+  } else {
+    loadEnv();
+  }
+
   process.env.AUDIT_ONLY = "true";
   process.env.RECORDING_MIGRATION_MODE = "inventory";
+
+  const { runRecordingMuxInventory, safeEnvFingerprint } = await import(
+    "../src/lib/recording-mux-inventory"
+  );
+  const { getMuxReadOnlyCounters } = await import("../src/lib/mux-read-only");
+
+  // Refuse accidental staging DB when claiming production inventory.
+  if (process.env.LEXIFY_ENV === "production" || process.env.PORT === "3100") {
+    const db = process.env.DATABASE_URL || "";
+    if (db.includes("tdyulive_staging")) {
+      throw new Error("REFUSING: production inventory mode with staging DATABASE_URL");
+    }
+  }
 
   const env = safeEnvFingerprint();
   console.log("=== RECORDING MUX INVENTORY (READ-ONLY) ===");
@@ -84,6 +105,10 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    const { prisma } = await import("../src/lib/prisma");
-    await prisma.$disconnect();
+    try {
+      const { prisma } = await import("../src/lib/prisma");
+      await prisma.$disconnect();
+    } catch {
+      /* ignore */
+    }
   });
