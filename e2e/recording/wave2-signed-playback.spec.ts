@@ -29,8 +29,8 @@ function recordingWave2Enabled() {
 }
 
 const LESSON_ID =
-  process.env.E2E_RECORDING_LESSON_ID?.trim() ||
-  STAGING_FIXTURE.recordingLessonId ||
+  process.env.E2E_RECORDING_LESSON_ID_WAVE2?.trim() ||
+  STAGING_FIXTURE.recordingLessonIdWave2 ||
   "";
 
 test.describe("Recording Wave 2 signed playback", () => {
@@ -40,7 +40,7 @@ test.describe("Recording Wave 2 signed playback", () => {
       !recordingWave2Enabled(),
       "Skipped: set E2E_RECORDING_WAVE2=1 and FF_RECORDING_SIGNED_PLAYBACK_V1=true",
     );
-    test.skip(!LESSON_ID, "Missing E2E_RECORDING_LESSON_ID");
+    test.skip(!LESSON_ID, "Missing E2E_RECORDING_LESSON_ID_WAVE2");
   });
 
   test("publish → enrolled token ALLOW; unowned DENY; playbackId rejected; unpublished DENY", async ({

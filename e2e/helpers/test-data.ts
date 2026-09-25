@@ -48,4 +48,7 @@ export const STAGING_FIXTURE = {
   /** Phase 8 Recording Wave 1 — dedicated lesson on Course A. */
   recordingLessonId: "d2500001-0000-4000-8000-000000000047",
   recordingLessonTitle: "Phase 8 Recording Wave 1 lesson",
+  /** Phase 8 Recording Wave 2 — separate so Wave 1 publish does not collide. */
+  recordingLessonIdWave2: "d2500001-0000-4000-8000-000000000048",
+  recordingLessonTitleWave2: "Phase 8 Recording Wave 2 signed playback lesson",
 } as const;
