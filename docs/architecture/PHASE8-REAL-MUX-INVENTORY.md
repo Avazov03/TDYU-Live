@@ -144,13 +144,33 @@ It does **not**:
 
 ---
 
-## 22. How to run
+## 23. Audit run results (executed)
 
-```bash
-# Local / server (forces AUDIT_ONLY internally)
-npm run db:recording:mux:inventory
+### Environment separation
+- Staging vs production `MUX_TOKEN_*` fingerprints: **DIFFERENT**
+- Staging Mux tokens: **absent**
+- Production Mux tokens: **present**
+- Production PID before/after audit: **4704**
+- Production HTTP: **200**
+- Production Recording flags: **none**
+- Production PM2 reload: **none**
 
-# Remote (from Lexify server)
-bash scripts/run-recording-mux-inventory.sh staging
-bash scripts/run-recording-mux-inventory.sh production
-```
+### Staging inventory
+- REAL_MUX_VERIFICATION: **FIXTURE / UNAVAILABLE** (no Mux tokens)
+- Recordings: 3 (2 LOCAL, 1 fixture SIGNED)
+- Orphan lessons: 2
+- Mutations: all Mux/DB write counters **0**
+
+### Production inventory (REAL Mux GET)
+- REAL_MUX_VERIFICATION: **REAL**
+- `recordings` table: **MISSING** (Wave 1 schema not applied on production)
+- Lesson media rows with mux/url: **8**
+- Mux playback policy via GET: **8× public**
+- Signed VOD: **0**
+- Asset id resolved: **0** (playback IDs returned policy=public; no asset id mapped — likely live_stream objects or API shape without asset binding in app columns)
+- SAFE_CANDIDATE: **0** (blocked until recordings table + Wave 1 mapping exist)
+- BLOCKED: **8**
+- MUX_GET: **8** · MUX_POST/PATCH/PUT/DELETE: **0** · DB_WRITE: **0**
+
+### Application security note
+Production Recording/Live flags are OFF, so learn page may still emit public `player.mux.com/{id}` for VOD when a playback id is present. That is expected until cutover; Wave 2/3 flags must be enabled only after schema + migration readiness.
