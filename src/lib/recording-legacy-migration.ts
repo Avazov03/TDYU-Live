@@ -584,6 +584,13 @@ export function assertMigrationApplyAllowed(input: {
   flagEnabled: boolean;
 }): void {
   if (!input.apply) return;
+  // Inventory/audit mode must never reach apply.
+  if (
+    process.env.AUDIT_ONLY === "true" ||
+    process.env.RECORDING_MIGRATION_MODE === "inventory"
+  ) {
+    throw new Error("AUDIT_ONLY/inventory mode forbids migration apply");
+  }
   if (!input.flagEnabled) {
     throw new Error("FF_RECORDING_LEGACY_MIGRATION_V1 must be true to apply");
   }

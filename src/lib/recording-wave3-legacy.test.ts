@@ -217,6 +217,10 @@ describe("Recording Wave 3 apply gates", () => {
   });
 
   it("allows staging apply with flag + confirm", () => {
+    const prevA = process.env.AUDIT_ONLY;
+    const prevM = process.env.RECORDING_MIGRATION_MODE;
+    delete process.env.AUDIT_ONLY;
+    delete process.env.RECORDING_MIGRATION_MODE;
     assert.doesNotThrow(() =>
       assertMigrationApplyAllowed({
         apply: true,
@@ -226,6 +230,8 @@ describe("Recording Wave 3 apply gates", () => {
         flagEnabled: true,
       }),
     );
+    process.env.AUDIT_ONLY = prevA;
+    process.env.RECORDING_MIGRATION_MODE = prevM;
   });
 
   it("dry-run never requires confirm", () => {
