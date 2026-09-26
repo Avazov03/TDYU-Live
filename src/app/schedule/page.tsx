@@ -49,7 +49,7 @@ export default async function SchedulePage() {
           course: lesson.course.titleUz,
           summary: lesson.summaryUz,
           coverUrl: lesson.coverUrl,
-          playbackId: lesson.muxVodPlaybackId || lesson.muxLivePlaybackId,
+          playbackId: lesson.muxVodPlaybackId,
           recordingUrl: lesson.recordingUrl,
           status: lesson.status,
         }))}

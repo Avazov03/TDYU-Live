@@ -68,7 +68,7 @@ export default async function TeacherRejaPage() {
             status: lesson.status,
             courseTitle: lesson.course.titleUz,
             recordingUrl: lesson.recordingUrl,
-            playbackId: lesson.muxVodPlaybackId || lesson.muxLivePlaybackId,
+            playbackId: lesson.muxVodPlaybackId,
             streamKey: lesson.streamKey,
           }))}
         />

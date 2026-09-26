@@ -53,6 +53,19 @@ export function teacherMayPreviewRecording(input: {
   return isTeacherReviewableStatus(input.recordingStatus);
 }
 
+/**
+ * Pure: which Mux playback ID may back a replay on /learn.
+ * Only recording-lifecycle sources — the live stream playback ID is deliberately not an input.
+ */
+export function resolveReplayPlaybackId(input: {
+  lessonStatus: string;
+  recordingPlaybackId: string | null | undefined;
+  lessonVodPlaybackId: string | null | undefined;
+}): string | null {
+  if (input.lessonStatus === "live") return null;
+  return input.recordingPlaybackId || input.lessonVodPlaybackId || null;
+}
+
 export function canPublishRecordingStatus(status: RecordingStatus | string): boolean {
   return status === "ready" || status === "teacher_review";
 }
@@ -163,6 +176,20 @@ export async function startRecordingAfterLiveEnd(input: {
   });
 
   return { recording, lessonStatus, created };
+}
+
+/**
+ * Browser recording uploads arrive every ~20 s while the lesson is still live/waiting.
+ * Those must not move the lesson into review (that would end the live lesson for students and
+ * make /end skip closing the Mux stream, LiveSession and attendance); /end owns that transition.
+ */
+export function shouldMarkRecordingReadyOnUpload(input: {
+  reviewFlagOn: boolean;
+  lessonStatus: string;
+}): boolean {
+  if (!input.reviewFlagOn) return false;
+  const s = input.lessonStatus;
+  return s !== "live" && s !== "lobby" && s !== "waiting_room";
 }
 
 /**

@@ -86,7 +86,7 @@ export default async function TeacherHomePage() {
   const courseCards = teacher.courses.map((course) => {
     const ended = course.lessons.filter((l) => l.status === "ended");
     const withVideo = ended.filter((l) =>
-      hasPlayableRecording(l.recordingUrl, l.muxVodPlaybackId || l.muxLivePlaybackId),
+      hasPlayableRecording(l.recordingUrl, l.muxVodPlaybackId),
     ).length;
     const actionable = course.lessons.filter(
       (l) => l.status === "live" || l.status === "lobby" || l.status === "scheduled",

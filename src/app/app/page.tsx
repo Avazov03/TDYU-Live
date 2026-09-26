@@ -99,7 +99,7 @@ export default async function StudentAppPage() {
             <Link href={`/learn/${lastSeen.lesson.id}`} className="lx-row">
               {lessonCover(
                 lastSeen.lesson.coverUrl,
-                lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId,
+                lastSeen.lesson.muxVodPlaybackId,
                 { id: lastSeen.lesson.id, title: lastSeen.lesson.titleUz },
               ) ? (
                 <img
@@ -108,7 +108,7 @@ export default async function StudentAppPage() {
                   src={
                     lessonCover(
                       lastSeen.lesson.coverUrl,
-                      lastSeen.lesson.muxVodPlaybackId || lastSeen.lesson.muxLivePlaybackId,
+                      lastSeen.lesson.muxVodPlaybackId,
                       { id: lastSeen.lesson.id, title: lastSeen.lesson.titleUz },
                     ) ?? ""
                   }

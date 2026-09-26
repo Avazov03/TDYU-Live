@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { isRecordingMuxIngestV1Enabled, isRecordingReviewV1Enabled } from "@/lib/feature-flags";
-import { markRecordingReady } from "@/lib/recording-lifecycle";
+import { markRecordingReady, shouldMarkRecordingReadyOnUpload } from "@/lib/recording-lifecycle";
 import {
   buildRecordingStorageKey,
   detectRecordingContainer,
@@ -106,7 +106,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   let recording = null;
-  if (isRecordingReviewV1Enabled()) {
+  if (
+    shouldMarkRecordingReadyOnUpload({
+      reviewFlagOn: isRecordingReviewV1Enabled(),
+      lessonStatus: lesson.status,
+    })
+  ) {
     const result = await markRecordingReady({ lessonId: lesson.id, storageKey });
     recording = result.recording;
   }

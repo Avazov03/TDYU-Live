@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { coverUrl } from "@/lib/thumbs";
 
+// Unauthenticated endpoint: never include Mux playback IDs (thumbnail URLs expose them).
+
 export type SearchSuggestItem =
   | { type: "video"; id: string; label: string; sublabel?: string; thumbnail: string }
   | { type: "teacher"; id: string; label: string; sublabel?: string }
@@ -42,7 +44,7 @@ export async function GET(req: Request) {
       id: l.id,
       label: l.titleUz,
       sublabel: l.course.teacher.fullName,
-      thumbnail: coverUrl(l.id, l.titleUz, l.muxVodPlaybackId || l.muxLivePlaybackId),
+      thumbnail: coverUrl(l.id, l.titleUz),
     })),
     ...teachers.map((t) => ({
       type: "teacher" as const,
@@ -63,7 +65,7 @@ export async function GET(req: Request) {
     topVideo: top
       ? {
           id: top.id,
-          thumbnail: coverUrl(top.id, top.titleUz, top.muxVodPlaybackId || top.muxLivePlaybackId),
+          thumbnail: coverUrl(top.id, top.titleUz),
         }
       : null,
   });

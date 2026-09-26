@@ -191,7 +191,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                         {statusLabel(lesson.status, {
                           hasRecording: hasPlayableRecording(
                             lesson.recordingUrl,
-                            lesson.muxVodPlaybackId || lesson.muxLivePlaybackId,
+                            lesson.muxVodPlaybackId,
                           ),
                         })}
                       </p>
