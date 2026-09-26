@@ -1,5 +1,6 @@
 import type { LessonStatus } from "@/generated/prisma/client";
 import { coverUrl as generatedCover } from "@/lib/thumbs";
+import { UZ_MONTHS_LONG, tashkentParts } from "@/lib/utils";
 
 const TZ = "Asia/Tashkent";
 
@@ -21,11 +22,13 @@ export function dayTitle(date: Date) {
   tomorrow.setDate(today.getDate() + 1);
   if (localDayKey(date) === localDayKey(today)) return "Bugun";
   if (localDayKey(date) === localDayKey(tomorrow)) return "Ertaga";
-  return new Intl.DateTimeFormat("uz-UZ", { timeZone: TZ, day: "numeric", month: "long" }).format(date);
+  const p = tashkentParts(date);
+  return `${Number(p.day)}-${UZ_MONTHS_LONG[p.monthIndex]}`;
 }
 
 export function clockLabel(date: Date) {
-  return new Intl.DateTimeFormat("uz-UZ", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(date);
+  const p = tashkentParts(date);
+  return `${p.hour}:${p.minute}`;
 }
 
 /** Banner yoki Mux thumbnail; demo playback uchun SVG placeholder. */

@@ -68,13 +68,38 @@ export function localInputToIso(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toISOString();
 }
 
+// Browsers often ship ICU without `uz` month names ("M09"); spell them out so SSR and CSR agree.
+export const UZ_MONTHS_LONG = [
+  "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+  "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr",
+] as const;
+export const UZ_MONTHS_SHORT = [
+  "yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avg", "sen", "okt", "noy", "dek",
+] as const;
+
+const TASHKENT_PARTS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Tashkent",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+export function tashkentParts(date: Date) {
+  const p = Object.fromEntries(TASHKENT_PARTS.formatToParts(date).map((x) => [x.type, x.value]));
+  return {
+    year: p.year,
+    monthIndex: Number(p.month) - 1,
+    day: p.day,
+    hour: p.hour,
+    minute: p.minute,
+  };
+}
+
+/** "05-okt, 2026, 18:00" in Asia/Tashkent. */
 export function formatDateTime(date: Date) {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    timeZone: "Asia/Tashkent",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  const p = tashkentParts(date);
+  return `${p.day}-${UZ_MONTHS_SHORT[p.monthIndex]}, ${p.year}, ${p.hour}:${p.minute}`;
 }
