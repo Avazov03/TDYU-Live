@@ -8,7 +8,8 @@ import {
   ensureWaitingLiveSession,
   isWaitingLessonStatus,
 } from "@/lib/live-session";
-import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isCourseReviewV1Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 
 /** Kutish xonasini ochadi — yozuv/Mux hali yo‘q. LiveSession WAITING (Wave 1). */
 export async function POST(
@@ -34,6 +35,14 @@ export async function POST(
   }
   if (lesson.status === "ended") {
     return NextResponse.json({ error: "Tugagan darsni qayta ochib bo‘lmaydi" }, { status: 400 });
+  }
+  if (isCourseReviewV1Enabled() && !isLiveAllowedForCourse(lesson.course.lifecycleStatus)) {
+    return NextResponse.json(
+      {
+        error: `Kurs «${lifecycleLabel(lesson.course.lifecycleStatus)}» holatida — efir faqat nashr etilgan kursda`,
+      },
+      { status: 409 },
+    );
   }
 
   if (isWaitingLessonStatus(lesson.status) || lesson.status === "live") {

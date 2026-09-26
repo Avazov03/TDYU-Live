@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { PLATFORM_PRICES } from "@/lib/tariffs";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
 /** O'qituvchida hech bo'lmaganda bitta kurs bo'lsin — Zoom/Classroom kabi birinchi kundan ish joyi. */
 export async function ensureTeacherWorkspace(teacherId: string) {
@@ -22,6 +23,9 @@ export async function ensureTeacherWorkspace(teacherId: string) {
       priceT1: PLATFORM_PRICES.t1,
       priceT2: PLATFORM_PRICES.t2,
       priceT3: PLATFORM_PRICES.t3,
+      ...(isCourseReviewV1Enabled()
+        ? { lifecycleStatus: "draft" as const, isPublished: false, createdByUserId: teacher.userId }
+        : {}),
     },
     select: { id: true },
   });

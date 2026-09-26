@@ -5,7 +5,9 @@ import { createLiveStreamOrDemo } from "@/lib/mux";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 import { canTeacherStartLive, isWaitingLessonStatus, startLiveSession } from "@/lib/live-session";
-import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isCourseReviewV1Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
+import { writeAuditLog } from "@/lib/audit-log";
 
 /** Haqiqiy jonli efir — yozuv shu paytdan. Kutishdan yoki to‘g‘ridan. */
 export async function POST(
@@ -31,6 +33,14 @@ export async function POST(
   }
   if (lesson.status === "ended") {
     return NextResponse.json({ error: "Tugagan darsni qayta boshlab bo‘lmaydi" }, { status: 400 });
+  }
+  if (isCourseReviewV1Enabled() && !isLiveAllowedForCourse(lesson.course.lifecycleStatus)) {
+    return NextResponse.json(
+      {
+        error: `Kurs «${lifecycleLabel(lesson.course.lifecycleStatus)}» holatida — efir faqat nashr etilgan kursda`,
+      },
+      { status: 409 },
+    );
   }
 
   if (lesson.status === "live") {
@@ -71,6 +81,23 @@ export async function POST(
   let liveSession = null;
   if (isLiveWaitingRoomV2Enabled()) {
     liveSession = await startLiveSession(lesson.id);
+  }
+
+  if (
+    isCourseReviewV1Enabled() &&
+    (lesson.course.lifecycleStatus === "published" || lesson.course.lifecycleStatus === "upcoming")
+  ) {
+    await prisma.course.updateMany({
+      where: { id: lesson.courseId, lifecycleStatus: lesson.course.lifecycleStatus },
+      data: { lifecycleStatus: "active" },
+    });
+    await writeAuditLog({
+      actorId: session.user.id,
+      action: "course.activated",
+      entityType: "Course",
+      entityId: lesson.courseId,
+      metadata: { from: lesson.course.lifecycleStatus, to: "active", lessonId: lesson.id },
+    });
   }
 
   await notifyCourseStudents(

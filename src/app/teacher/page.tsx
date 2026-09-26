@@ -9,6 +9,9 @@ import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { formatDateTime } from "@/lib/utils";
 import { hasPlayableRecording, statusLabel, type PlanStatus } from "@/lib/plan";
 import { isSubscriptionActive } from "@/lib/tariffs";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { isLiveAllowedForCourse } from "@/lib/course-review-policy";
+import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -28,20 +31,12 @@ export default async function TeacherHomePage() {
   if (!session?.user?.id) redirect("/login?callbackUrl=/teacher");
   if (session.user.role !== "teacher") redirect("/");
 
-  let teacher = await prisma.teacher.findUnique({
+  const profile = await prisma.teacher.findUnique({
     where: { userId: session.user.id },
-    include: {
-      courses: {
-        include: {
-          lessons: { orderBy: { scheduledAt: "asc" } },
-          subscriptions: { select: { endsAt: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
+    select: { id: true },
   });
 
-  if (!teacher) {
+  if (!profile) {
     return (
       <AppShell active="teacher">
         <div className="lx-board">
@@ -55,14 +50,21 @@ export default async function TeacherHomePage() {
     );
   }
 
-  await ensureTeacherWorkspace(teacher.id);
-  teacher = await prisma.teacher.findUnique({
-    where: { id: teacher.id },
+  await ensureTeacherWorkspace(profile.id);
+  const reviewFlow = isCourseReviewV1Enabled();
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: profile.id },
     include: {
       courses: {
         include: {
           lessons: { orderBy: { scheduledAt: "asc" } },
           subscriptions: { select: { endsAt: true } },
+          reviewEvents: {
+            where: { decision: { in: ["changes_requested", "rejected"] } },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { reason: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -108,6 +110,11 @@ export default async function TeacherHomePage() {
     return {
       id: course.id,
       titleUz: course.titleUz,
+      descriptionUz: course.descriptionUz,
+      topicUz: course.topicUz,
+      lifecycleStatus: course.lifecycleStatus,
+      reviewReason: course.reviewEvents?.[0]?.reason ?? null,
+      inReview: reviewFlow && !isLiveAllowedForCourse(course.lifecycleStatus),
       total,
       withVideo,
       activeStudents,
@@ -207,6 +214,20 @@ export default async function TeacherHomePage() {
                 key={card.id}
                 className={`teacher-course-card${card.phase === "active" ? " is-active" : ""}`}
               >
+                {card.inReview ? (
+                  <TeacherCourseReviewPanel
+                    course={{
+                      id: card.id,
+                      titleUz: card.titleUz,
+                      descriptionUz: card.descriptionUz,
+                      topicUz: card.topicUz,
+                      lifecycleStatus: card.lifecycleStatus,
+                      reviewReason: card.reviewReason,
+                      lessonCount: card.total,
+                    }}
+                  />
+                ) : (
+                <>
                 <p className="lx-kicker">
                   {card.phase === "new"
                     ? "Yangi"
@@ -278,6 +299,8 @@ export default async function TeacherHomePage() {
                     Guruh
                   </Link>
                 </div>
+                </>
+                )}
               </article>
             ))}
           </div>

@@ -1,5 +1,95 @@
+import type { CourseLifecycleStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
+import { formatDateTime } from "@/lib/utils";
+
+export type AdminReviewCourse = {
+  id: string;
+  titleUz: string;
+  descriptionUz: string;
+  topicUz: string | null;
+  teacherName: string;
+  lifecycleStatus: CourseLifecycleStatus;
+  listPrice: number | null;
+  priceT1: number;
+  lessons: { id: string; titleUz: string; whenLabel: string }[];
+  events: {
+    id: string;
+    decision: string;
+    reason: string | null;
+    priceSet: number | null;
+    actorName: string;
+    whenLabel: string;
+  }[];
+};
+
+const REVIEW_QUEUE: CourseLifecycleStatus[] = [
+  "submitted",
+  "in_review",
+  "approved",
+  "changes_requested",
+  "rejected",
+];
+
+export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
+  const rows = await prisma.course.findMany({
+    where: { lifecycleStatus: { in: REVIEW_QUEUE } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      titleUz: true,
+      descriptionUz: true,
+      topicUz: true,
+      lifecycleStatus: true,
+      listPrice: true,
+      priceT1: true,
+      teacher: { select: { fullName: true } },
+      lessons: {
+        where: { status: { not: "cancelled" } },
+        orderBy: { scheduledAt: "asc" },
+        select: { id: true, titleUz: true, scheduledAt: true },
+      },
+      reviewEvents: {
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          decision: true,
+          reason: true,
+          priceSet: true,
+          createdAt: true,
+          actor: { select: { fullName: true, email: true } },
+        },
+      },
+    },
+  });
+  const order = new Map(REVIEW_QUEUE.map((s, i) => [s, i]));
+  return rows
+    .map((c) => ({
+      id: c.id,
+      titleUz: c.titleUz,
+      descriptionUz: c.descriptionUz,
+      topicUz: c.topicUz,
+      teacherName: c.teacher.fullName,
+      lifecycleStatus: c.lifecycleStatus as CourseLifecycleStatus,
+      listPrice: c.listPrice,
+      priceT1: c.priceT1,
+      lessons: c.lessons.map((l) => ({
+        id: l.id,
+        titleUz: l.titleUz,
+        whenLabel: formatDateTime(l.scheduledAt),
+      })),
+      events: c.reviewEvents.map((e) => ({
+        id: e.id,
+        decision: e.decision,
+        reason: e.reason,
+        priceSet: e.priceSet,
+        actorName: e.actor.fullName || e.actor.email,
+        whenLabel: formatDateTime(e.createdAt),
+      })),
+    }))
+    .sort((a, b) => (order.get(a.lifecycleStatus) ?? 9) - (order.get(b.lifecycleStatus) ?? 9));
+}
 
 export type CourseHealth = "empty" | "idle" | "on_track" | "live" | "stale";
 
@@ -17,6 +107,8 @@ export type AdminCourseInsight = {
   priceT2: number;
   priceT3: number;
   isPublished: boolean;
+  lifecycleStatus: CourseLifecycleStatus | null;
+  listPrice: number | null;
   lessonCount: number;
   scheduledCount: number;
   liveCount: number;
@@ -150,6 +242,8 @@ export async function getAdminCourseBoard() {
       priceT2: course.priceT2,
       priceT3: course.priceT3,
       isPublished: course.isPublished,
+      lifecycleStatus: course.lifecycleStatus,
+      listPrice: course.listPrice,
       lessonCount: course.lessons.length,
       scheduledCount: scheduled.length,
       liveCount: live.length,

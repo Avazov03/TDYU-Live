@@ -7,6 +7,7 @@ import { SoftDisclosure, SoftExpand } from "@/components/admin/SoftDisclosure";
 import { AdminDonut, AdminHBar } from "@/components/admin/AdminCharts";
 import type { AdminCourseInsight, AdminTeacherCourseGroup, CourseHealth } from "@/lib/admin-courses";
 import { formatSom } from "@/lib/tariffs";
+import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 import { Icon } from "@/components/ui/Icon";
 
 function healthLabel(h: CourseHealth) {
@@ -45,7 +46,9 @@ export function AdminCoursesBoard({
   faculties,
   subjects,
   summary,
+  reviewFlow = false,
 }: {
+  reviewFlow?: boolean;
   groups: AdminTeacherCourseGroup[];
   courses: AdminCourseInsight[];
   teachers: { id: string; fullName: string }[];
@@ -363,7 +366,11 @@ export function AdminCoursesBoard({
                       <div className="admin-course-title">
                         <h4>
                           {course.titleUz}{" "}
-                          {!course.isPublished ? (
+                          {reviewFlow && course.lifecycleStatus ? (
+                            <span className="badge pending" style={{ marginLeft: 6 }}>
+                              {lifecycleLabel(course.lifecycleStatus)}
+                            </span>
+                          ) : !course.isPublished ? (
                             <span className="badge pending" style={{ marginLeft: 6 }}>Yashirin</span>
                           ) : null}
                         </h4>
@@ -499,7 +506,9 @@ export function AdminCoursesBoard({
                         ) : (
                           <>
                             <p className="small muted" style={{ margin: "0 0 12px" }}>
-                              {course.health === "empty"
+                              {reviewFlow && !isLiveAllowedForCourse(course.lifecycleStatus)
+                                ? "Nashr etilmagan — o'quvchilarga ko'rinmaydi."
+                                : course.health === "empty"
                                 ? "O'qituvchi hali dars rejasiga mavzu qo'ymagan."
                                 : course.health === "on_track"
                                   ? "Reja bor — o'quvchi jadvalda ko'radi."
@@ -517,14 +526,21 @@ export function AdminCoursesBoard({
                               >
                                 Tahrirlash
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                disabled={busyId === course.id}
-                                onClick={() => void togglePublish(course)}
-                              >
-                                {course.isPublished ? "Yashirish" : "Nashr qilish"}
-                              </button>
+                              {reviewFlow && course.lifecycleStatus ? (
+                                <span className="small muted">
+                                  Holat «Tekshiruv» orqali boshqariladi
+                                  {course.listPrice ? ` · narx ${formatSom(course.listPrice)}` : ""}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  disabled={busyId === course.id}
+                                  onClick={() => void togglePublish(course)}
+                                >
+                                  {course.isPublished ? "Yashirish" : "Nashr qilish"}
+                                </button>
+                              )}
                             </div>
                             {error && openCourse === course.id ? (
                               <p className="small" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>

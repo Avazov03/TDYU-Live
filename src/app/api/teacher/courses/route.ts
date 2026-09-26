@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { PLATFORM_PRICES } from "@/lib/tariffs";
 import { notifyCourseStudents } from "@/lib/notify";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { writeAuditLog } from "@/lib/audit-log";
+import { parseClientDateTime } from "@/lib/utils";
 
 const schema = z.object({
   titleUz: z.string().trim().min(2).max(120),
@@ -32,13 +35,17 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });
 
-  const firstAt = new Date(parsed.data.firstAt);
+  const firstAt = parseClientDateTime(parsed.data.firstAt);
   if (Number.isNaN(firstAt.getTime())) {
     return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
   }
 
+  const reviewFlow = isCourseReviewV1Enabled();
   const course = await prisma.course.create({
     data: {
+      ...(reviewFlow
+        ? { lifecycleStatus: "draft" as const, createdByUserId: session.user.id }
+        : {}),
       teacherId: full.id,
       facultyId: full.facultyId,
       subjectId: full.subjectId,
@@ -49,7 +56,7 @@ export async function POST(req: Request) {
       priceT1: PLATFORM_PRICES.t1,
       priceT2: PLATFORM_PRICES.t2,
       priceT3: PLATFORM_PRICES.t3,
-      isPublished: true,
+      isPublished: !reviewFlow,
       lessons: {
         create: Array.from({ length: parsed.data.lessonCount }, (_, i) => {
           const when = new Date(firstAt);
@@ -64,6 +71,17 @@ export async function POST(req: Request) {
     },
     include: { lessons: { select: { id: true } } },
   });
+
+  if (reviewFlow) {
+    await writeAuditLog({
+      actorId: session.user.id,
+      action: "course.draft_created",
+      entityType: "Course",
+      entityId: course.id,
+      metadata: { lessonCount: parsed.data.lessonCount },
+    });
+    return NextResponse.json({ course }, { status: 201 });
+  }
 
   // mavjud obunachilarga (agar bo‘lsa) — yangi kurs odatda bo‘sh
   await notifyCourseStudents(course.id, {

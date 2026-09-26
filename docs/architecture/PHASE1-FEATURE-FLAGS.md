@@ -18,6 +18,7 @@ NEW Enrollment evaluator **must not** deny via `Subscription.endsAt`. Seat uses 
 | `FF_LIVE_MUX_PLAYBACK_V1` | `isLiveMuxPlaybackV1Enabled()` | `false` | Mux live player on `/learn` + `/shorts` for enrolled viewers, opt-in WebRTC room; effective only with `FF_ENROLLMENT_ACCESS_MODE=enrollment` (see `PHASE8.5-LIVE-MUX-PLAYBACK.md`) | Phase 8.5 after staging browser QA | false → WebRTC-only live room |
 | `FF_RECORDING_REVIEW_24H` | `recordingReview24h` | `false` | Teacher review window + auto-publish | Phase 9 | false → legacy URL/Mux only |
 | `FF_REFUNDS_V1` | `refundsV1` | `false` | Refund request/decide APIs | Phase 10 | false → no refund APIs |
+| `FF_COURSE_REVIEW_V1` | `isCourseReviewV1Enabled()` | `false` | Teacher courses start as `draft`; submit → admin review («Tekshiruv» on `/admin/courses`) → approve with `listPrice` → publish (`upcoming`/`published`). Live start/lobby blocked until published; first live start sets `active`. Legacy (`lifecycleStatus` null) courses unchanged | Phase 4 after staging browser QA | false → teacher courses publish immediately |
 
 **Phase 1:** flags module only; **no call sites** change access/payment/live yet (except optional import-safe readiness).
 

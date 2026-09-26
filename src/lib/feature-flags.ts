@@ -200,6 +200,14 @@ export function isLiveMuxPlaybackV1Enabled(): boolean {
 }
 
 /**
+ * Course lifecycle — teacher draft → submit → admin review → approve (price) → publish.
+ * Off: teacher-created courses publish immediately (legacy). Default false.
+ */
+export function isCourseReviewV1Enabled(): boolean {
+  return envFlag("FF_COURSE_REVIEW_V1", false);
+}
+
+/**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */
 export function mustUseSecureMuxPlayback(): boolean {

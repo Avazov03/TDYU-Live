@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { localInputToIso } from "@/lib/utils";
 
 function defaultSlot() {
   const d = new Date();
@@ -21,12 +22,14 @@ export function CreateCoursePlanForm() {
   const [intervalDays, setIntervalDays] = useState(2);
   const [firstTitle, setFirstTitle] = useState("1-dars");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     const res = await fetch("/api/teacher/courses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,7 +37,7 @@ export function CreateCoursePlanForm() {
         titleUz,
         descriptionUz,
         lessonCount,
-        firstAt,
+        firstAt: localInputToIso(firstAt),
         intervalDays,
         firstTitle,
       }),
@@ -48,6 +51,11 @@ export function CreateCoursePlanForm() {
     setTitleUz("");
     setDescriptionUz("");
     setFirstTitle("1-dars");
+    setNotice(
+      data.course?.lifecycleStatus === "draft"
+        ? "Qoralama yaratildi. Tayyor bo‘lgach kartochkada «Tekshiruvga yuborish»ni bosing."
+        : "",
+    );
     router.refresh();
   };
 
@@ -95,6 +103,7 @@ export function CreateCoursePlanForm() {
         <input value={firstTitle} onChange={(e) => setFirstTitle(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {notice ? <p className="small" role="status" style={{ color: "var(--success)" }}>{notice}</p> : null}
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? "Yaratilmoqda..." : "Kursni rejasiga qo‘shish"}
       </button>

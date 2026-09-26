@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth, isAdminRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const patchSchema = z.object({
   titleUz: z.string().trim().min(2).optional(),
@@ -38,9 +40,35 @@ export async function PATCH(
     return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
   }
 
+  if (
+    isCourseReviewV1Enabled() &&
+    existing.lifecycleStatus != null &&
+    parsed.data.isPublished !== undefined
+  ) {
+    return NextResponse.json(
+      { error: "Bu kurs tekshiruv jarayonida boshqariladi — «Tekshiruv» bo‘limidan foydalaning" },
+      { status: 409 },
+    );
+  }
+
   const course = await prisma.course.update({
     where: { id },
     data: parsed.data,
+  });
+
+  await writeAuditLog({
+    actorId: session.user.id,
+    action: "course.admin_update",
+    entityType: "Course",
+    entityId: id,
+    metadata: {
+      changes: Object.fromEntries(
+        Object.entries(parsed.data).map(([key, value]) => [
+          key,
+          { from: (existing as Record<string, unknown>)[key] ?? null, to: value },
+        ]),
+      ),
+    },
   });
 
   return NextResponse.json({ course });
