@@ -135,19 +135,6 @@ export async function readMuxAsset(assetId: string): Promise<MuxAssetSummary | n
   };
 }
 
-export type MuxLiveStreamStatus = "active" | "idle" | "disabled";
-
-/** GET /video/v1/live-streams/{id} — returns only the status (never the stream key). */
-export async function readMuxLiveStreamStatus(liveStreamId: string): Promise<MuxLiveStreamStatus | null> {
-  if (!liveStreamId || liveStreamId.startsWith("demo_")) return null;
-  const res = await muxReadOnlyFetch(`/video/v1/live-streams/${encodeURIComponent(liveStreamId)}`);
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Mux live stream lookup failed: ${res.status}`);
-  const json = (await res.json()) as { data?: { status?: string } };
-  const status = json.data?.status;
-  return status === "active" || status === "idle" || status === "disabled" ? status : null;
-}
-
 /** Assert inventory/audit env before any Mux or DB inventory work. */
 export function assertAuditOnlyInventoryMode(): void {
   if (process.env.AUDIT_ONLY !== "true") {

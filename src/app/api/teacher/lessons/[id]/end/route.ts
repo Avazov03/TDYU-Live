@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { completeLiveStream } from "@/lib/mux";
+import { completeMuxLiveStream } from "@/lib/mux-client";
 import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
@@ -62,7 +62,19 @@ export async function POST(
     clientRecordingUrl && isStorageKeyForLesson(clientRecordingUrl, lesson) ? clientRecordingUrl : undefined;
 
   if (lesson.muxLiveStreamId) {
-    await completeLiveStream(lesson.muxLiveStreamId);
+    const completed = await completeMuxLiveStream(lesson.muxLiveStreamId);
+    if (!completed.ok) {
+      console.warn(
+        JSON.stringify({
+          event: "live_mux.complete_failed",
+          reason: completed.reason,
+          status: completed.status ?? null,
+          lessonId: lesson.id,
+          streamRef: lesson.muxLiveStreamId.slice(0, 6),
+          at: new Date().toISOString(),
+        }),
+      );
+    }
   }
   closeLiveRoom(lesson.id);
 

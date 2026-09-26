@@ -91,16 +91,6 @@ export async function createLiveStream(lessonTitle: string): Promise<LiveStreamR
   };
 }
 
-export async function completeLiveStream(liveStreamId: string) {
-  const auth = muxAuthHeader();
-  if (!auth || liveStreamId.startsWith("demo_")) return;
-
-  await fetch(`https://api.mux.com/video/v1/live-streams/${liveStreamId}/complete`, {
-    method: "PUT",
-    headers: { Authorization: auth },
-  });
-}
-
 export function isMuxConfigured() {
   return Boolean(process.env.MUX_TOKEN_ID && process.env.MUX_TOKEN_SECRET);
 }

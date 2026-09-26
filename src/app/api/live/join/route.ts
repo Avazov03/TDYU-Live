@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { authorizeLiveJoin } from "@/lib/live-auth";
-import { isLiveAttendanceV3Enabled, isLiveAvPolicyV2Enabled } from "@/lib/feature-flags";
+import {
+  isLiveAttendanceV3Enabled,
+  isLiveAvPolicyV2Enabled,
+  isLiveMuxPlaybackV1Enabled,
+} from "@/lib/feature-flags";
 import { openLiveAttendanceInterval } from "@/lib/live-attendance";
+import { prisma } from "@/lib/prisma";
 
 const bodySchema = z.object({
   lessonId: z.string().uuid().or(z.string().trim().min(1)),
@@ -41,6 +46,16 @@ export async function POST(req: Request) {
       { ok: false, error: { code: result.code, message: result.message } },
       { status: result.http },
     );
+  }
+
+  // With the Mux player on, /learn no longer writes history on page load for live lessons:
+  // joining the live room is what counts.
+  if (isLiveMuxPlaybackV1Enabled() && !result.moderator && result.phase === "live") {
+    await prisma.attendance.upsert({
+      where: { userId_lessonId: { userId: session.user.id, lessonId: result.lessonId } },
+      update: {},
+      create: { userId: session.user.id, lessonId: result.lessonId },
+    });
   }
 
   let attendance: { id: string; joinedAt: string; reused: boolean } | null = null;

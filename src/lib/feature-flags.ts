@@ -185,6 +185,20 @@ export function isRecordingMuxIngestV1Enabled(): boolean {
   return envFlag("FF_RECORDING_MUX_INGEST_V1", false);
 }
 
+/** Raw env value of FF_LIVE_MUX_PLAYBACK_V1 (docs / diagnostics). Prefer isLiveMuxPlaybackV1Enabled(). */
+export function isLiveMuxPlaybackV1Requested(): boolean {
+  return envFlag("FF_LIVE_MUX_PLAYBACK_V1", false);
+}
+
+/**
+ * Phase 8.5 — Mux live player inside /learn (+ /shorts) for enrolled students.
+ * Effective only when FF_ENROLLMENT_ACCESS_MODE=enrollment so the player, the WebRTC room,
+ * attendance and recordings all share one access rule. Default false.
+ */
+export function isLiveMuxPlaybackV1Enabled(): boolean {
+  return isLiveMuxPlaybackV1Requested() && getEnrollmentAccessMode() === "enrollment";
+}
+
 /**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */

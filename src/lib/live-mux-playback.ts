@@ -1,11 +1,13 @@
 /**
- * Phase 8.5 — live Mux playback authorization for /learn (enrollment-authoritative).
+ * Phase 8.5 — live Mux playback authorization for /learn and /shorts (Enrollment-authoritative).
  *
- * TEMPORARY: live playback IDs are public until the Mux signing key exists.
- * Live-only — never use this path for recordings / replay (see recording-playback-auth).
+ * Gated by FF_LIVE_MUX_PLAYBACK_V1, which is effective only in FF_ENROLLMENT_ACCESS_MODE=enrollment,
+ * so this path, the WebRTC room (authorizeLiveJoin → getLessonAccess), attendance and recordings
+ * share one rule: enrolled student / owning teacher / admin.
  *
- * Access source: Enrollment (never Subscription / TariffTier).
- * The client receives only the playback ID and a Mux status word.
+ * Live-only — replay comes exclusively from the Recording lifecycle (resolveReplayPlaybackId).
+ * Playback is public until a Mux signing key exists; `resolveLivePlaybackSource` is the only
+ * place that builds the player URL, and it is returned only while the stream is active.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -13,12 +15,18 @@ import {
   getEnrollmentLessonAccess,
   type EnrollmentAccessResult,
 } from "@/lib/enrollment-access";
-import { isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import { isLiveMuxPlaybackV1Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 import { findActiveLiveSession } from "@/lib/live-session";
-import { readMuxLiveStreamStatus, type MuxLiveStreamStatus } from "@/lib/mux-read-only";
+import {
+  fetchMuxLiveStreamStatus,
+  type MuxClientOptions,
+  type MuxLiveStreamStatusResult,
+} from "@/lib/mux-client";
+import { muxPublicPlayerUrl } from "@/lib/mux-signed-playback";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 
 export type LiveMuxDenyReason =
+  | "disabled"
   | "unauthenticated"
   | "not_found"
   | "not_enrolled"
@@ -29,7 +37,7 @@ export type LiveMuxPlaybackDecision =
   | { ok: true; playbackId: string; liveStreamId: string; viewer: "student" | "staff" }
   | { ok: false; reason: LiveMuxDenyReason };
 
-export type LiveMuxStatus = MuxLiveStreamStatus | "unknown";
+export type LiveMuxStatus = MuxLiveStreamStatusResult["status"];
 
 export function isRealMuxId(id: string | null | undefined): id is string {
   return Boolean(id && !id.startsWith("demo_"));
@@ -69,6 +77,7 @@ export async function authorizeLiveMuxPlayback(input: {
   role: string | undefined;
   lessonId: string;
 }): Promise<LiveMuxPlaybackDecision> {
+  if (!isLiveMuxPlaybackV1Enabled()) return { ok: false, reason: "disabled" };
   if (!input.userId) return { ok: false, reason: "unauthenticated" };
   const lesson = await prisma.lesson.findUnique({
     where: { id: input.lessonId },
@@ -107,19 +116,71 @@ export async function authorizeLiveMuxPlayback(input: {
   });
 }
 
-const STATUS_TTL_MS = 5_000;
-const statusCache = new Map<string, { status: LiveMuxStatus; at: number }>();
+export type LivePlaybackSource = { mode: "public"; playerUrl: string };
 
-/** Server-side Mux status (GET only, cached briefly so polling viewers don't fan out to Mux). */
-export async function getLiveMuxStatus(liveStreamId: string): Promise<LiveMuxStatus> {
+/**
+ * Single seam for live player URLs. Signed live playback (once MUX_SIGNING_KEY_ID /
+ * MUX_SIGNING_PRIVATE_KEY exist and new streams use a signed policy) plugs in here.
+ */
+export function resolveLivePlaybackSource(playbackId: string): LivePlaybackSource {
+  return { mode: "public", playerUrl: muxPublicPlayerUrl(playbackId) };
+}
+
+const STATUS_TTL_MS = 10_000;
+const DEGRADED_TTL_MS = 5_000;
+const STATUS_CACHE_MAX = 500;
+
+type CacheEntry = { result: MuxLiveStreamStatusResult; at: number };
+const statusCache = new Map<string, CacheEntry>();
+const inflight = new Map<string, Promise<MuxLiveStreamStatusResult>>();
+
+export function resetLiveMuxStatusCacheForTests(): void {
+  statusCache.clear();
+  inflight.clear();
+}
+
+function logDegraded(result: MuxLiveStreamStatusResult, liveStreamId: string, lessonId?: string) {
+  if (result.degraded === null || result.degraded === "demo") return;
+  console.warn(
+    JSON.stringify({
+      event: "live_mux.status_degraded",
+      reason: result.degraded,
+      lessonId: lessonId ?? null,
+      streamRef: liveStreamId.slice(0, 6),
+      at: new Date().toISOString(),
+    }),
+  );
+}
+
+/**
+ * Server-side Mux status with timeout, short cache and in-flight dedupe so N polling viewers
+ * cause at most one Mux call per stream per TTL. Never throws; failures resolve to "unknown".
+ */
+export async function getLiveMuxStatus(
+  liveStreamId: string,
+  lessonId?: string,
+  opts: MuxClientOptions & { now?: () => number } = {},
+): Promise<MuxLiveStreamStatusResult> {
+  const now = opts.now ?? Date.now;
   const hit = statusCache.get(liveStreamId);
-  if (hit && Date.now() - hit.at < STATUS_TTL_MS) return hit.status;
-  let status: LiveMuxStatus = "unknown";
-  try {
-    status = (await readMuxLiveStreamStatus(liveStreamId)) ?? "unknown";
-  } catch {
-    status = "unknown";
+  if (hit) {
+    const ttl = hit.result.degraded ? DEGRADED_TTL_MS : STATUS_TTL_MS;
+    if (now() - hit.at < ttl) return hit.result;
   }
-  statusCache.set(liveStreamId, { status, at: Date.now() });
-  return status;
+  const pending = inflight.get(liveStreamId);
+  if (pending) return pending;
+
+  const task = fetchMuxLiveStreamStatus(liveStreamId, opts)
+    .then((result) => {
+      if (statusCache.size >= STATUS_CACHE_MAX) {
+        const oldest = statusCache.keys().next().value;
+        if (oldest !== undefined) statusCache.delete(oldest);
+      }
+      statusCache.set(liveStreamId, { result, at: now() });
+      logDegraded(result, liveStreamId, lessonId);
+      return result;
+    })
+    .finally(() => inflight.delete(liveStreamId));
+  inflight.set(liveStreamId, task);
+  return task;
 }

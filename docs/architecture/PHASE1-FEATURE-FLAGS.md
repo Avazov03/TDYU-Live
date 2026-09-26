@@ -15,6 +15,7 @@ NEW Enrollment evaluator **must not** deny via `Subscription.endsAt`. Seat uses 
 | `FF_DISABLE_ONBOARD_ENROLL` | `disableOnboardEnroll` | `false` | Disable `/onboard` + `POST /api/enroll` | After course checkout is sole path | false → restore onboard |
 | `FF_LIVE_WAITING_ROOM_V2` | `liveWaitingRoomV2` | `false` | Waiting room join + target live SM | Phase 7–8 | false → current liveGate |
 | `FF_LIVE_SHARED_ROOMS` | `liveSharedRooms` | `false` | Shared room state vs process memory | Multi-instance ready | false → in-memory Map |
+| `FF_LIVE_MUX_PLAYBACK_V1` | `isLiveMuxPlaybackV1Enabled()` | `false` | Mux live player on `/learn` + `/shorts` for enrolled viewers, opt-in WebRTC room; effective only with `FF_ENROLLMENT_ACCESS_MODE=enrollment` (see `PHASE8.5-LIVE-MUX-PLAYBACK.md`) | Phase 8.5 after staging browser QA | false → WebRTC-only live room |
 | `FF_RECORDING_REVIEW_24H` | `recordingReview24h` | `false` | Teacher review window + auto-publish | Phase 9 | false → legacy URL/Mux only |
 | `FF_REFUNDS_V1` | `refundsV1` | `false` | Refund request/decide APIs | Phase 10 | false → no refund APIs |
 

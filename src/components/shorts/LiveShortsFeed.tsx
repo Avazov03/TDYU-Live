@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { muxPlayerUrl } from "@/lib/mux-player";
 
 export type LiveShort = {
   id: string;
   titleUz: string;
   teacherName: string;
   teacherId: string;
-  playbackId: string | null;
+  /** Server-built after authorization; null when not playable. */
+  playerUrl: string | null;
   viewHint: string;
 };
 
@@ -19,9 +19,7 @@ export function LiveShortsFeed({ shorts }: { shorts: LiveShort[] }) {
   const current = shorts[index];
   if (!current) return null;
 
-  const playback = current.playbackId && !current.playbackId.startsWith("demo_")
-    ? muxPlayerUrl(current.playbackId)
-    : null;
+  const playback = current.playerUrl;
 
   return (
     <div className="shorts-viewport">

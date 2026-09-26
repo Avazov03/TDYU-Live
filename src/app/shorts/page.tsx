@@ -1,13 +1,19 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
-import { LiveShortsFeed } from "@/components/shorts/LiveShortsFeed";
+import { LiveShortsFeed, type LiveShort } from "@/components/shorts/LiveShortsFeed";
 import { prisma } from "@/lib/prisma";
 import {
   getAnyOpenEnrollment,
   getStudentOwnedCourseIds,
   requireAppUser,
 } from "@/lib/access";
-import { getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { getEnrollmentAccessMode, isLiveMuxPlaybackV1Enabled } from "@/lib/feature-flags";
+import {
+  authorizeLiveMuxPlayback,
+  getLiveMuxStatus,
+  resolveLivePlaybackSource,
+} from "@/lib/live-mux-playback";
+import { muxPlayerUrl } from "@/lib/mux-player";
 import { canWatchLive } from "@/lib/tariffs";
 import { isStudentRole } from "@/lib/roles";
 
@@ -63,14 +69,31 @@ export default async function ShortsPage() {
     orderBy: { scheduledAt: "desc" },
   });
 
-  const items = lives.map((l) => ({
-    id: l.id,
-    titleUz: l.titleUz,
-    teacherName: l.course.teacher.fullName,
-    teacherId: l.course.teacher.id,
-    playbackId: l.muxLivePlaybackId,
-    viewHint: l.course.titleUz,
-  }));
+  const liveMuxV1 = isLiveMuxPlaybackV1Enabled();
+  const items: LiveShort[] = [];
+  for (const l of lives) {
+    let playerUrl: string | null = null;
+    if (liveMuxV1) {
+      const decision = await authorizeLiveMuxPlayback({
+        userId: user.id,
+        role: user.role,
+        lessonId: l.id,
+      });
+      if (!decision.ok) continue;
+      const { status } = await getLiveMuxStatus(decision.liveStreamId, l.id);
+      if (status === "active") playerUrl = resolveLivePlaybackSource(decision.playbackId).playerUrl;
+    } else if (l.muxLivePlaybackId && !l.muxLivePlaybackId.startsWith("demo_")) {
+      playerUrl = muxPlayerUrl(l.muxLivePlaybackId);
+    }
+    items.push({
+      id: l.id,
+      titleUz: l.titleUz,
+      teacherName: l.course.teacher.fullName,
+      teacherId: l.course.teacher.id,
+      playerUrl,
+      viewHint: l.course.titleUz,
+    });
+  }
 
   return (
     <AppShell active="shorts" mainClassName={items.length > 0 ? "shorts-main" : undefined}>

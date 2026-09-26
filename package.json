@@ -30,7 +30,7 @@
     "test:catalog": "tsx --test src/lib/student-catalog.test.ts",
     "test:shell": "tsx --test src/lib/student-shell.test.ts",
     "test:checkout-v2": "tsx --test src/lib/checkout-v2/*.test.ts",
-    "test:live": "tsx --test src/lib/live-wave1.test.ts src/lib/live-wave2-av.test.ts src/lib/live-wave3-attendance.test.ts",
+    "test:live": "tsx --test src/lib/live-wave1.test.ts src/lib/live-wave2-av.test.ts src/lib/live-wave3-attendance.test.ts src/lib/live-mux-playback.test.ts src/lib/live-mux-client.test.ts src/lib/recording-replay-source.test.ts",
     "test:recording": "tsx --test src/lib/recording-wave1.test.ts src/lib/recording-wave2-signed.test.ts src/lib/recording-wave3-legacy.test.ts src/lib/recording-mux-inventory.test.ts src/lib/recording-phase81.test.ts",
     "db:recording:legacy-migrate:dry": "tsx scripts/recording-legacy-migrate.ts",
     "db:recording:legacy-migrate:apply": "tsx scripts/recording-legacy-migrate.ts --apply",
