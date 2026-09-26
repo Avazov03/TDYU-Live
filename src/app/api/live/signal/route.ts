@@ -221,5 +221,8 @@ export async function POST(req: Request) {
     }).catch(() => undefined);
   }
 
+  if (isLiveWaitingRoomV2Enabled()) {
+    return NextResponse.json({ ...snap, sessionStatus: active?.status ?? "ended" });
+  }
   return NextResponse.json(snap);
 }

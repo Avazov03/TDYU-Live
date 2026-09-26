@@ -10,6 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 
 type MeetRoomProps = {
@@ -62,7 +63,11 @@ async function api(body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Xona xatosi");
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error || "Xona xatosi"), {
+      code: typeof data.code === "string" ? data.code : undefined,
+    });
+  }
   return data as {
     peers?: PeerInfo[];
     self?: PeerInfo | null;
@@ -77,6 +82,8 @@ async function api(body: Record<string, unknown>) {
     chat?: ChatLine[];
     since?: number;
     peerId?: string;
+    /** Present when the waiting-room flow is on: active LiveSession status or "ended". */
+    sessionStatus?: string;
   };
 }
 
@@ -370,6 +377,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const remoteMedia = useRef(new Map<string, MediaStream>());
   const names = useRef(new Map<string, PeerInfo>());
   const sinceRef = useRef(0);
+  const phaseRefreshRef = useRef(false);
+  const router = useRouter();
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const prevSpeakRef = useRef(Boolean(moderator));
@@ -618,6 +627,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   useEffect(() => {
     let stopped = false;
     let poll = 0;
+    phaseRefreshRef.current = false;
 
     const start = async () => {
       try {
@@ -728,6 +738,13 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           since: sinceRef.current,
         });
         sinceRef.current = snap.since ?? sinceRef.current;
+        const phaseChanged =
+          (phase === "lobby" && snap.sessionStatus === "live") ||
+          (phase === "live" && snap.sessionStatus === "ended");
+        if (phaseChanged && !phaseRefreshRef.current) {
+          phaseRefreshRef.current = true;
+          router.refresh();
+        }
         setPresent(snap.present ?? null);
         if (snap.pointer) setPointer(snap.pointer);
         if (snap.chat) {
@@ -784,8 +801,14 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             }
           }
         }
-      } catch {
-        /* poll retry */
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        const roomClosed =
+          code === "SESSION_ENDED" || code === "NOT_JOINABLE" || code === "LESSON_CANCELLED";
+        if (roomClosed && !phaseRefreshRef.current) {
+          phaseRefreshRef.current = true;
+          router.refresh();
+        }
       }
     };
 
@@ -826,6 +849,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     moderator,
     outgoingStream,
     phase,
+    router,
     sendEvent,
     sendSignal,
     startRecorder,

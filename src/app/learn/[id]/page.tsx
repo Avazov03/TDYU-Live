@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveChat } from "@/components/lesson/LiveChat";
 import { LessonRow } from "@/components/lesson/LessonRow";
+import { ScheduledLessonCard } from "@/components/lesson/ScheduledLessonCard";
 import { WatchShareButton } from "@/components/video/WatchShareButton";
 import { MeetRoom } from "@/components/live/MeetRoom";
 import { LiveMuxStage } from "@/components/live/LiveMuxStage";
@@ -246,6 +247,14 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             </div>
+          ) : lesson.status === "scheduled" &&
+            (canWatchVod || (!access.ok && access.reason === "not_started")) ? (
+            <ScheduledLessonCard
+              lessonId={lesson.id}
+              title={lesson.titleUz}
+              startsAtIso={lesson.scheduledAt.toISOString()}
+              startsAtLabel={formatDateTime(lesson.scheduledAt)}
+            />
           ) : (
             <div className="player-wrap paywall">
               <div>
