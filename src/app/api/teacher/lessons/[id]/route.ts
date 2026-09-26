@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
+import { parseClientDateTime } from "@/lib/utils";
 
 const patchSchema = z.object({
   titleUz: z.string().trim().min(2).optional(),
@@ -44,6 +45,10 @@ export async function PATCH(
   if (parsed.data.scheduledAt && lesson.status !== "scheduled") {
     return NextResponse.json({ error: "Faqat rejadagi dars vaqtini o'zgartirish mumkin" }, { status: 400 });
   }
+  const nextAt = parsed.data.scheduledAt ? parseClientDateTime(parsed.data.scheduledAt) : null;
+  if (nextAt && Number.isNaN(nextAt.getTime())) {
+    return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
+  }
 
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
@@ -51,7 +56,7 @@ export async function PATCH(
       ...(parsed.data.titleUz != null ? { titleUz: parsed.data.titleUz } : {}),
       ...(parsed.data.summaryUz !== undefined ? { summaryUz: parsed.data.summaryUz || null } : {}),
       ...(parsed.data.coverUrl !== undefined ? { coverUrl: parsed.data.coverUrl || null } : {}),
-      ...(parsed.data.scheduledAt ? { scheduledAt: new Date(parsed.data.scheduledAt) } : {}),
+      ...(nextAt ? { scheduledAt: nextAt } : {}),
     },
   });
 

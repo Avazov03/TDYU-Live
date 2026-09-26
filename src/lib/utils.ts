@@ -51,6 +51,23 @@ export function localizedField<T extends Record<string, unknown>>(
   return typeof fallback === "string" ? fallback : "";
 }
 
+const NAIVE_LOCAL_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/;
+
+/**
+ * Parse a schedule time from the client. `datetime-local` values carry no zone; the product
+ * runs on Asia/Tashkent (UTC+5, no DST), so a naive value is Tashkent wall-clock time.
+ */
+export function parseClientDateTime(value: string): Date {
+  const trimmed = value.trim();
+  return new Date(NAIVE_LOCAL_DATETIME.test(trimmed) ? `${trimmed}+05:00` : trimmed);
+}
+
+/** `datetime-local` input value → ISO instant in the browser's own zone. */
+export function localInputToIso(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toISOString();
+}
+
 export function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("uz-UZ", {
     timeZone: "Asia/Tashkent",

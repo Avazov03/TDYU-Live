@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { localInputToIso } from "@/lib/utils";
 
 function toLocalInput(isoOrDate: string | Date) {
   const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
@@ -44,7 +45,7 @@ export function EditLessonPanel({
       summaryUz: summary,
       coverUrl: cover,
     };
-    if (status === "scheduled") body.scheduledAt = when;
+    if (status === "scheduled") body.scheduledAt = localInputToIso(when);
 
     const res = await fetch(`/api/teacher/lessons/${lessonId}`, {
       method: "PATCH",

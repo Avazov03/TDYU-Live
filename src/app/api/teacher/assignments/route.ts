@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
+import { parseClientDateTime } from "@/lib/utils";
 
 const schema = z.object({
   courseId: z.string().uuid(),
@@ -28,12 +29,17 @@ export async function POST(req: Request) {
   });
   if (!course) return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
 
+  const dueAt = parseClientDateTime(parsed.data.dueAt);
+  if (Number.isNaN(dueAt.getTime())) {
+    return NextResponse.json({ error: "Muddat noto‘g‘ri" }, { status: 400 });
+  }
+
   const assignment = await prisma.assignment.create({
     data: {
       courseId: course.id,
       titleUz: parsed.data.titleUz,
       descriptionUz: parsed.data.descriptionUz,
-      dueAt: new Date(parsed.data.dueAt),
+      dueAt,
     },
   });
 

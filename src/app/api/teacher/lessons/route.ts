@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
+import { formatDateTime, parseClientDateTime } from "@/lib/utils";
 
 const schema = z.object({
   courseId: z.string().trim().min(1),
@@ -29,7 +30,10 @@ export async function POST(req: Request) {
   });
   if (!course) return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
 
-  const when = new Date(parsed.data.scheduledAt);
+  const when = parseClientDateTime(parsed.data.scheduledAt);
+  if (Number.isNaN(when.getTime())) {
+    return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
+  }
   const lesson = await prisma.lesson.create({
     data: {
       courseId: course.id,
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
   await notifyTeacherOfCourse(course.id, {
     type: "system",
     titleUz: "Dars saqlandi",
-    messageUz: `${lesson.titleUz} — ${when.toLocaleString("uz-UZ")}`,
+    messageUz: `${lesson.titleUz} — ${formatDateTime(when)}`,
     relatedId: lesson.id,
   }).catch(() => undefined);
 

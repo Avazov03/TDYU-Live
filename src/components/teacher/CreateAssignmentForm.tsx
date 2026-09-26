@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { localInputToIso } from "@/lib/utils";
 
 export function CreateAssignmentForm({ courses }: { courses: { id: string; titleUz: string }[] }) {
   const router = useRouter();
@@ -15,7 +16,7 @@ export function CreateAssignmentForm({ courses }: { courses: { id: string; title
     await fetch("/api/teacher/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, titleUz, descriptionUz, dueAt }),
+      body: JSON.stringify({ courseId, titleUz, descriptionUz, dueAt: localInputToIso(dueAt) }),
     });
     setTitleUz("");
     setDescriptionUz("");

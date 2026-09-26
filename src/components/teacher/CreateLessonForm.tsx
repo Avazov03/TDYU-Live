@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { localInputToIso } from "@/lib/utils";
 
 function defaultSlot() {
   const d = new Date();
@@ -25,7 +26,13 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
     const res = await fetch("/api/teacher/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, titleUz, summaryUz, coverUrl, scheduledAt }),
+      body: JSON.stringify({
+        courseId,
+        titleUz,
+        summaryUz,
+        coverUrl,
+        scheduledAt: localInputToIso(scheduledAt),
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
