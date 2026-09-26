@@ -100,15 +100,21 @@ test.describe("Live Wave 1 waiting room", () => {
     await teacherPage.waitForTimeout(1500);
 
     monitor.noteAction("Student cannot rejoin ended as live room");
-    const joinRes = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch("/api/live/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId }),
-      });
-      return { status: res.status, body: await res.json().catch(() => ({})) };
-    }, LIVE_LESSON_ID);
-    expect(joinRes.status).toBeGreaterThanOrEqual(400);
+    // /end finishes the final recording upload and Mux completion before the lesson leaves "live".
+    await expect
+      .poll(
+        () =>
+          studentPage.evaluate(async (lessonId) => {
+            const res = await fetch("/api/live/join", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lessonId }),
+            });
+            return res.status;
+          }, LIVE_LESSON_ID),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThanOrEqual(400);
 
     await teacherCtx.close();
     await studentCtx.close();

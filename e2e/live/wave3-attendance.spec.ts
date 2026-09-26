@@ -102,14 +102,28 @@ test.describe("Live Wave 3 attendance", () => {
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 20_000 });
 
+    const readAttendance = () =>
+      studentPage.evaluate(async (lessonId) => {
+        const res = await fetch(`/api/live/attendance?lessonId=${encodeURIComponent(lessonId)}`);
+        return { status: res.status, body: await res.json().catch(() => ({})) };
+      }, LIVE_LESSON_ID);
+    // The banner renders before MeetRoom's async POST /api/live/join (after media negotiation) lands.
+    const waitForOpenInterval = () =>
+      expect
+        .poll(
+          async () =>
+            ((await readAttendance()).body.intervals ?? []).filter((i: { open?: boolean }) => i.open)
+              .length,
+          { timeout: 15_000 },
+        )
+        .toBeGreaterThan(0);
+
     monitor.noteAction("Student joins LIVE — open interval");
     await studentPage.reload();
     await expect(studentPage.getByTestId("live-live-banner")).toBeVisible({ timeout: 25_000 });
+    await waitForOpenInterval();
 
-    const liveAtt = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch(`/api/live/attendance?lessonId=${encodeURIComponent(lessonId)}`);
-      return { status: res.status, body: await res.json().catch(() => ({})) };
-    }, LIVE_LESSON_ID);
+    const liveAtt = await readAttendance();
     expect(liveAtt.status).toBe(200);
     const open1 = (liveAtt.body.intervals ?? []).filter((i: { open?: boolean }) => i.open);
     expect(open1.length).toBe(1);
@@ -138,26 +152,25 @@ test.describe("Live Wave 3 attendance", () => {
     monitor.noteAction("Student rejoin creates NEW interval");
     await studentPage.reload();
     await expect(studentPage.getByTestId("live-live-banner")).toBeVisible({ timeout: 25_000 });
-    const afterRejoin = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch(`/api/live/attendance?lessonId=${encodeURIComponent(lessonId)}`);
-      return await res.json().catch(() => ({}));
-    }, LIVE_LESSON_ID);
+    await waitForOpenInterval();
+    const afterRejoin = (await readAttendance()).body;
     const open2 = (afterRejoin.intervals ?? []).filter((i: { open?: boolean }) => i.open);
     expect(open2.length).toBe(1);
     expect(open2[0].id).not.toBe(firstId);
 
     monitor.noteAction("Teacher ends live — no open intervals");
     await teacherPage.getByTestId("live-end").click();
-    await teacherPage.waitForTimeout(1500);
-
-    const afterEnd = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch(`/api/live/attendance?lessonId=${encodeURIComponent(lessonId)}`);
-      return { status: res.status, body: await res.json().catch(() => ({})) };
-    }, LIVE_LESSON_ID);
-    expect(afterEnd.status).toBe(200);
-    expect((afterEnd.body.intervals ?? []).filter((i: { open?: boolean }) => i.open)).toHaveLength(
-      0,
-    );
+    // /end finishes the final recording upload and Mux completion before closing intervals.
+    await expect
+      .poll(
+        async () => {
+          const r = await readAttendance();
+          if (r.status !== 200) return `HTTP ${r.status}`;
+          return (r.body.intervals ?? []).filter((i: { open?: boolean }) => i.open).length;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(0);
 
     monitor.noteAction("Unauthorized deny lesson cannot open attendance via join");
     const denyLesson =

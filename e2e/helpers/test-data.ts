@@ -54,4 +54,7 @@ export const STAGING_FIXTURE = {
   /** Phase 8 Recording Wave 3 — legacy public VOD migration fixture. */
   recordingLessonIdWave3: "d2500001-0000-4000-8000-000000000049",
   recordingLessonTitleWave3: "Phase 8 Recording Wave 3 legacy migration lesson",
+  /** Phase 8.5 — Mux live playback lesson on Course A (title is the Mux passthrough prefix). */
+  liveMuxLessonId: "d2500001-0000-4000-8000-000000000050",
+  liveMuxLessonTitle: "Phase 8.5 Mux live lesson",
 } as const;
