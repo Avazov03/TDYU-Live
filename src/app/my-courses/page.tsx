@@ -47,6 +47,7 @@ export default async function MyCoursesPage() {
 
   const items: BoardItem[] = owned.map((row) => {
     const next = nextByCourse.get(row.courseId);
+    const completed = row.status === "completed" || row.course.lifecycleStatus === "completed";
     return {
       id: row.enrollmentId ?? `legacy-${row.courseId}`,
       courseId: row.courseId,
@@ -54,11 +55,13 @@ export default async function MyCoursesPage() {
       subject: row.course.subject.nameUz,
       teacherId: row.course.teacher.id,
       teacherName: row.course.teacher.fullName,
-      active: true,
+      active: !completed,
       tier: row.tier,
-      nextLabel: next
-        ? `Keyingi: ${next.titleUz} · ${formatDateTime(next.scheduledAt)}`
-        : "Keyingi dars yo'q",
+      nextLabel: completed
+        ? "Kurs yakunlangan — yozuvlar doimiy ochiq"
+        : next
+          ? `Keyingi: ${next.titleUz} · ${formatDateTime(next.scheduledAt)}`
+          : "Keyingi dars yo'q",
     };
   });
 

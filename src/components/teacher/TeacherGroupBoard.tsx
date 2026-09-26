@@ -7,12 +7,13 @@ import { TARIFF_LABELS } from "@/lib/tariffs";
 import type { TariffTier } from "@/generated/prisma/client";
 
 type StudentRow = {
-  subscriptionId: string;
+  rowId: string;
   userId: string;
   fullName: string;
   email: string;
-  tier: TariffTier;
-  endsAt: string;
+  /** null — course purchase (Enrollment), no tariff tier or end date. */
+  tier: TariffTier | null;
+  endsAt: string | null;
   attended: number;
   lessonCount: number;
   pct: number;
@@ -40,7 +41,7 @@ const TIER_NOTES: Record<TariffTier, string> = {
   t1: "Faqat yozuv — guruh chatiga kirmaydi",
 };
 
-const TIERS: TariffTier[] = ["t3", "t2", "t1"];
+const TIERS: (TariffTier | null)[] = [null, "t3", "t2", "t1"];
 
 function formatWhen(iso: string) {
   return new Intl.DateTimeFormat("uz-UZ", {
@@ -51,30 +52,39 @@ function formatWhen(iso: string) {
   }).format(new Date(iso));
 }
 
-function daysLeft(iso: string) {
+function daysLeft(iso: string | null) {
+  if (!iso) return null;
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+}
+
+function isExpiring(s: StudentRow) {
+  const left = daysLeft(s.endsAt);
+  return left != null && left <= 7 && left >= 0;
 }
 
 function matchesFilter(s: StudentRow, filter: Filter) {
   if (filter === "all") return true;
   if (filter === "t3") return s.tier === "t3";
-  if (filter === "expiring") return daysLeft(s.endsAt) <= 7 && daysLeft(s.endsAt) >= 0;
+  if (filter === "expiring") return isExpiring(s);
   if (filter === "silent") return s.attended === 0;
-  // attention: past past or low attendance or expiring
-  const left = daysLeft(s.endsAt);
-  return s.attended === 0 || (s.lessonCount > 0 && s.pct < 50) || (left <= 7 && left >= 0);
+  return s.attended === 0 || (s.lessonCount > 0 && s.pct < 50) || isExpiring(s);
 }
 
 function attentionWhy(s: StudentRow) {
   const reasons: string[] = [];
   if (s.attended === 0) reasons.push("Hali dars ochmagan");
   else if (s.lessonCount > 0 && s.pct < 50) reasons.push("Davomat past");
-  const left = daysLeft(s.endsAt);
-  if (left <= 7 && left >= 0) reasons.push(`${left} kun qoldi`);
+  if (isExpiring(s)) reasons.push(`${daysLeft(s.endsAt)} kun qoldi`);
   return reasons.join(" · ");
 }
 
-export function TeacherGroupBoard({ courses }: { courses: CourseBlock[] }) {
+export function TeacherGroupBoard({
+  courses,
+  showTiers = true,
+}: {
+  courses: CourseBlock[];
+  showTiers?: boolean;
+}) {
   const [filter, setFilter] = useState<Filter>("attention");
   const [courseId, setCourseId] = useState<string>("all");
 
@@ -109,7 +119,9 @@ export function TeacherGroupBoard({ courses }: { courses: CourseBlock[] }) {
       <p className="lx-kicker">Guruh</p>
       <h2>Kimga e’tibor berish kerak</h2>
       <p className="muted small lx-lead">
-        Filtrlar bilan past davomat, tugayotgan obuna va 3-tarifni tez topasiz.
+        {showTiers
+          ? "Filtrlar bilan past davomat, tugayotgan obuna va 3-tarifni tez topasiz."
+          : "Past davomatli va hali darsga kirmagan o‘quvchilarni tez topasiz. Sertifikat shu yerdan beriladi."}
       </p>
 
       <div className="staff-toolbar" style={{ marginBottom: 18 }}>
@@ -124,8 +136,8 @@ export function TeacherGroupBoard({ courses }: { courses: CourseBlock[] }) {
         <select className="staff-filter" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
           <option value="attention">Diqqat ({attentionCount})</option>
           <option value="all">Barchasi</option>
-          <option value="t3">3-tarif</option>
-          <option value="expiring">7 kunda tugaydi</option>
+          {showTiers ? <option value="t3">3-tarif</option> : null}
+          {showTiers ? <option value="expiring">7 kunda tugaydi</option> : null}
           <option value="silent">Hali ochmagan</option>
         </select>
       </div>
@@ -148,12 +160,14 @@ export function TeacherGroupBoard({ courses }: { courses: CourseBlock[] }) {
               <span className="small muted">Ko‘rinayotgan</span>
               <b>{course.students.length}</b>
             </div>
-            <div className="studio-kpi">
-              <span className="small muted">1 / 2 / 3</span>
-              <b>
-                {course.t1} / {course.t2} / {course.t3}
-              </b>
-            </div>
+            {showTiers ? (
+              <div className="studio-kpi">
+                <span className="small muted">1 / 2 / 3</span>
+                <b>
+                  {course.t1} / {course.t2} / {course.t3}
+                </b>
+              </div>
+            ) : null}
             <div className="studio-kpi">
               <span className="small muted">O‘rtacha davomat</span>
               <b>{course.lessonCount ? `${course.attendPct}%` : "—"}</b>
@@ -166,24 +180,26 @@ export function TeacherGroupBoard({ courses }: { courses: CourseBlock[] }) {
             TIERS.map((tier) => {
               const students = course.students.filter((s) => s.tier === tier);
               if (students.length === 0) return null;
+              const label = tier ? TARIFF_LABELS[tier] : "Kurs o‘quvchisi";
               return (
-                <div key={tier} style={{ marginBottom: 16 }}>
+                <div key={tier ?? "course"} style={{ marginBottom: 16 }}>
                   <div className="row gap-8" style={{ marginBottom: 8 }}>
-                    <span className="badge accent">{TARIFF_LABELS[tier]}</span>
+                    <span className="badge accent">{label}</span>
                     <span className="small muted">
-                      {TIER_NOTES[tier]} · {students.length} ta
+                      {tier ? TIER_NOTES[tier] : "Kursni sotib olgan"} · {students.length} ta
                     </span>
                   </div>
                   <div className="lx-stack">
                     {students.map((s) => (
-                      <article key={s.subscriptionId} className="lx-row">
+                      <article key={s.rowId} className="lx-row" data-testid="group-student">
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p className="lx-kicker">
-                            {filter === "attention" ? attentionWhy(s) || TARIFF_LABELS[tier] : TARIFF_LABELS[tier]}
+                            {filter === "attention" ? attentionWhy(s) || label : label}
                           </p>
                           <h3>{s.fullName}</h3>
                           <p className="small muted" style={{ margin: 0 }}>
-                            {s.email} · davomat {s.attended}/{s.lessonCount} ({s.pct}%) · gacha {formatWhen(s.endsAt)}
+                            {s.email} · davomat {s.attended}/{s.lessonCount} ({s.pct}%)
+                            {s.endsAt ? ` · gacha ${formatWhen(s.endsAt)}` : ""}
                           </p>
                           {s.seenTitles.length > 0 ? (
                             <p className="small muted" style={{ margin: "6px 0 0" }}>

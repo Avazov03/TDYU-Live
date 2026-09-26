@@ -96,10 +96,14 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </h3>
             <div className="lx-row">
               <div>
-                <p className="lx-kicker">Faol</p>
+                <p className="lx-kicker">
+                  {enrollment?.status === "completed" || course.lifecycleStatus === "completed"
+                    ? "Tarix"
+                    : "Faol"}
+                </p>
                 <h3>
                   {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment")
-                    ? enrollment.status === "completed"
+                    ? enrollment.status === "completed" || course.lifecycleStatus === "completed"
                       ? "Kurs yakunlangan"
                       : "Kurs ochiq"
                     : sub

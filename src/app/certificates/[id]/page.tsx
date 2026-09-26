@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { PrintButton } from "@/components/certificate/PrintButton";
 import { BRAND } from "@/lib/brand";
+import { isAdminRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,12 @@ export default async function CertificatePrintPage({
     where: { id },
     include: {
       user: { select: { fullName: true, id: true } },
-      course: { include: { teacher: { select: { fullName: true } } } },
+      course: { include: { teacher: { select: { fullName: true, userId: true } } } },
     },
   });
   if (!cert) notFound();
-  if (cert.userId !== session.user.id && session.user.role !== "admin" && session.user.role !== "teacher") {
+  const courseTeacher = cert.course.teacher.userId === session.user.id;
+  if (cert.userId !== session.user.id && !isAdminRole(session.user.role) && !courseTeacher) {
     redirect("/certificates");
   }
 

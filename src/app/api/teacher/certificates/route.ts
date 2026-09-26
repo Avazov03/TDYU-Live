@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { getStudentOwnedCourses } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 
 const schema = z.object({
-  courseId: z.string().uuid(),
-  userId: z.string().uuid(),
+  courseId: z.string().trim().min(1).max(64),
+  userId: z.string().trim().min(1).max(64),
 });
 
 export async function POST(req: Request) {
@@ -25,6 +26,14 @@ export async function POST(req: Request) {
     where: { id: parsed.data.courseId, teacherId: teacher.id },
   });
   if (!course) return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
+
+  const owned = await getStudentOwnedCourses(parsed.data.userId);
+  if (!owned.some((row) => row.courseId === course.id)) {
+    return NextResponse.json(
+      { error: "Bu o‘quvchi kursga yozilmagan", code: "NOT_ENROLLED" },
+      { status: 409 },
+    );
+  }
 
   const cert = await prisma.certificate.upsert({
     where: { userId_courseId: { userId: parsed.data.userId, courseId: course.id } },

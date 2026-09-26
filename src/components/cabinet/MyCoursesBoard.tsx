@@ -71,11 +71,11 @@ export function MyCoursesBoard({
         <FilterChips
           value={activeFilter}
           onChange={setActiveFilter}
-          ariaLabel="Obuna holati"
+          ariaLabel="Kurs holati"
           options={[
             { value: "all", label: "Hammasi", count: counts.all },
             { value: "active", label: "Faol", count: counts.active },
-            { value: "expired", label: "Tugagan", count: counts.expired },
+            { value: "expired", label: "Yakunlangan", count: counts.expired },
           ]}
         />
         {teachers.length > 1 ? (
@@ -130,7 +130,12 @@ export function MyCoursesBoard({
           <h3>{group.name}</h3>
           <div className="lx-stack">
             {group.items.map((sub) => (
-              <Link key={sub.id} href={`/courses/${sub.courseId}`} className={`lx-row${sub.active ? "" : " is-dim"}`}>
+              <Link
+                key={sub.id}
+                href={`/courses/${sub.courseId}`}
+                className="lx-row"
+                data-testid={sub.active ? "my-course-active" : "my-course-completed"}
+              >
                 <div>
                   <p className="lx-kicker">{sub.subject}</p>
                   <h3>{sub.title}</h3>
@@ -142,7 +147,7 @@ export function MyCoursesBoard({
                       ? hideTariffUi
                         ? "Kurs ochiq"
                         : TARIFF_LABELS[sub.tier]
-                      : "Muddati tugagan"}
+                      : "Yakunlangan"}
                   </span>
                 </div>
                 <span className="lx-go">Ochish</span>

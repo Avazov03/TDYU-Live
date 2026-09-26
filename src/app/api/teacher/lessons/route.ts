@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
 import { formatDateTime, parseClientDateTime } from "@/lib/utils";
-import { isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import { isCourseCompletionV1Enabled, isScheduleRulesV1Enabled } from "@/lib/feature-flags";
 import { checkNewLessonTime, lessonEnd } from "@/lib/schedule-policy";
 import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 
@@ -32,6 +32,12 @@ export async function POST(req: Request) {
     where: { id: parsed.data.courseId, teacherId: teacher.id },
   });
   if (!course) return NextResponse.json({ error: "Kurs topilmadi" }, { status: 404 });
+  if (isCourseCompletionV1Enabled() && course.lifecycleStatus === "completed") {
+    return NextResponse.json(
+      { error: "Kurs yakunlangan — yangi dars qo‘shib bo‘lmaydi", code: "COURSE_COMPLETED" },
+      { status: 409 },
+    );
+  }
 
   const when = parseClientDateTime(parsed.data.scheduledAt);
   if (Number.isNaN(when.getTime())) {

@@ -216,6 +216,14 @@ export function isScheduleRulesV1Enabled(): boolean {
 }
 
 /**
+ * Course completion — teacher finishes an active course once no lesson is scheduled/waiting/live;
+ * open seats become completed and stay open (permanent replay). Default false.
+ */
+export function isCourseCompletionV1Enabled(): boolean {
+  return envFlag("FF_COURSE_COMPLETION_V1", false);
+}
+
+/**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */
 export function mustUseSecureMuxPlayback(): boolean {

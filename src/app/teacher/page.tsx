@@ -9,9 +9,15 @@ import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { formatDateTime } from "@/lib/utils";
 import { hasPlayableRecording, statusLabel, type PlanStatus } from "@/lib/plan";
 import { isSubscriptionActive } from "@/lib/tariffs";
-import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import {
+  getEnrollmentAccessMode,
+  isCourseCompletionV1Enabled,
+  isCourseReviewV1Enabled,
+} from "@/lib/feature-flags";
 import { isLiveAllowedForCourse } from "@/lib/course-review-policy";
 import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
+import { CompleteCourseButton } from "@/components/teacher/CompleteCourseButton";
+import { isOpenLessonStatus } from "@/lib/course-completion-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -52,13 +58,19 @@ export default async function TeacherHomePage() {
 
   await ensureTeacherWorkspace(profile.id);
   const reviewFlow = isCourseReviewV1Enabled();
+  const completionFlow = isCourseCompletionV1Enabled();
+  const accessMode = getEnrollmentAccessMode();
   const teacher = await prisma.teacher.findUnique({
     where: { id: profile.id },
     include: {
       courses: {
         include: {
           lessons: { orderBy: { scheduledAt: "asc" } },
-          subscriptions: { select: { endsAt: true } },
+          subscriptions: { select: { endsAt: true, userId: true } },
+          enrollments: {
+            where: { accessOpen: true, status: { in: ["active", "completed"] } },
+            select: { userId: true },
+          },
           reviewEvents: {
             where: { decision: { in: ["changes_requested", "rejected"] } },
             orderBy: { createdAt: "desc" },
@@ -86,7 +98,7 @@ export default async function TeacherHomePage() {
   });
 
   const courseCards = teacher.courses.map((course) => {
-    const ended = course.lessons.filter((l) => l.status === "ended");
+    const ended = course.lessons.filter((l) => l.status !== "cancelled" && !isOpenLessonStatus(l.status));
     const withVideo = ended.filter((l) =>
       hasPlayableRecording(l.recordingUrl, l.muxVodPlaybackId),
     ).length;
@@ -96,7 +108,14 @@ export default async function TeacherHomePage() {
     const next =
       course.lessons.find((l) => l.status === "live" || l.status === "lobby") ??
       course.lessons.find((l) => l.status === "scheduled");
-    const activeStudents = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length;
+    const studentIds = new Set<string>();
+    if (accessMode !== "enrollment") {
+      for (const s of course.subscriptions) if (isSubscriptionActive(s.endsAt)) studentIds.add(s.userId);
+    }
+    if (accessMode === "enrollment" || accessMode === "dual") {
+      for (const e of course.enrollments) studentIds.add(e.userId);
+    }
+    const activeStudents = studentIds.size;
     const total = course.lessons.length;
     const phase =
       course.lessons.some((l) => l.status === "live" || l.status === "lobby")
@@ -114,13 +133,19 @@ export default async function TeacherHomePage() {
       topicUz: course.topicUz,
       lifecycleStatus: course.lifecycleStatus,
       reviewReason: course.reviewEvents?.[0]?.reason ?? null,
-      inReview: reviewFlow && !isLiveAllowedForCourse(course.lifecycleStatus),
+      inReview:
+        reviewFlow &&
+        course.lifecycleStatus !== "completed" &&
+        !isLiveAllowedForCourse(course.lifecycleStatus),
       total,
       withVideo,
       activeStudents,
       next,
       actionable,
       phase,
+      completed: course.lifecycleStatus === "completed",
+      canComplete:
+        completionFlow && course.lifecycleStatus === "active" && actionable.length === 0,
     };
   });
 
@@ -229,7 +254,9 @@ export default async function TeacherHomePage() {
                 ) : (
                 <>
                 <p className="lx-kicker">
-                  {card.phase === "new"
+                  {card.completed
+                    ? "Yakunlangan"
+                    : card.phase === "new"
                     ? "Yangi"
                     : card.phase === "active"
                       ? "Hozir faol"
@@ -255,7 +282,9 @@ export default async function TeacherHomePage() {
                   </div>
                 ) : (
                   <p className="small muted" style={{ margin: "0 0 12px" }}>
-                    Keyingi dars yo‘q — Rejada qo‘shing.
+                    {card.completed
+                      ? "Kurs yakunlangan — yozuvlar o‘quvchilarga doimiy ochiq."
+                      : "Keyingi dars yo‘q — Rejada qo‘shing."}
                   </p>
                 )}
 
@@ -287,7 +316,7 @@ export default async function TeacherHomePage() {
                           ? "Kutishga qaytish"
                           : "Studioga — shu dars"}
                     </Link>
-                  ) : (
+                  ) : card.completed ? null : (
                     <Link href="/teacher/reja" className="btn btn-primary btn-sm">
                       Dars qo‘shish
                     </Link>
@@ -298,6 +327,7 @@ export default async function TeacherHomePage() {
                   <Link href="/teacher/group" className="btn btn-sm">
                     Guruh
                   </Link>
+                  {card.canComplete ? <CompleteCourseButton courseId={card.id} /> : null}
                 </div>
                 </>
                 )}

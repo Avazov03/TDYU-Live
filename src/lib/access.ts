@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import type { LessonStatus, TariffTier } from "@/generated/prisma/client";
+import type { CourseLifecycleStatus, LessonStatus, TariffTier } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import {
   compareAccessOutcomes,
@@ -115,6 +115,7 @@ export async function getActiveSubscriptions(userId: string) {
           titleUz: true,
           descriptionUz: true,
           isPublished: true,
+          lifecycleStatus: true,
           teacherId: true,
           teacher: { select: { id: true, fullName: true } },
           subject: { select: { nameUz: true } },
@@ -187,6 +188,7 @@ const studentCourseSelect = {
   titleUz: true,
   descriptionUz: true,
   isPublished: true,
+  lifecycleStatus: true,
   teacherId: true,
   teacher: { select: { id: true, fullName: true } },
   subject: { select: { nameUz: true } },
@@ -205,6 +207,7 @@ export type StudentOwnedCourse = {
     titleUz: string;
     descriptionUz: string | null;
     isPublished: boolean;
+    lifecycleStatus: CourseLifecycleStatus | null;
     teacherId: string;
     teacher: { id: string; fullName: string };
     subject: { nameUz: string };
