@@ -79,13 +79,25 @@ export function EditLessonPanel({
   if (!open) {
     return (
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-        <button type="button" className="btn btn-sm" onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => {
+            setError("");
+            setOpen(true);
+          }}
+        >
           Tahrirlash
         </button>
         {status === "scheduled" ? (
           <button type="button" className="btn btn-sm btn-danger" disabled={busy} onClick={() => void remove()}>
             O‘chirish
           </button>
+        ) : null}
+        {error ? (
+          <p className="small" role="alert" style={{ color: "var(--danger)", margin: 0, flexBasis: "100%" }}>
+            {error}
+          </p>
         ) : null}
       </div>
     );
@@ -116,7 +128,14 @@ export function EditLessonPanel({
         <button className="btn btn-sm btn-primary" type="submit" disabled={busy}>
           Saqlash
         </button>
-        <button type="button" className="btn btn-sm" onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => {
+            setError("");
+            setOpen(false);
+          }}
+        >
           Bekor
         </button>
       </div>

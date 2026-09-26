@@ -3,7 +3,12 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
-import { parseClientDateTime } from "@/lib/utils";
+import { formatDateTime, parseClientDateTime } from "@/lib/utils";
+import { isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import { checkLessonRemoval, checkReschedule, lessonEnd } from "@/lib/schedule-policy";
+import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
+import { notifyCourseStudents } from "@/lib/notify";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const patchSchema = z.object({
   titleUz: z.string().trim().min(2).optional(),
@@ -17,6 +22,7 @@ async function ownedLesson(userId: string, lessonId: string) {
   if (!teacher) return null;
   return prisma.lesson.findFirst({
     where: { id: lessonId, course: { teacherId: teacher.id } },
+    include: { course: { select: { teacherId: true, titleUz: true } } },
   });
 }
 
@@ -49,6 +55,31 @@ export async function PATCH(
   if (nextAt && Number.isNaN(nextAt.getTime())) {
     return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
   }
+  const scheduleRules = isScheduleRulesV1Enabled();
+  // datetime-local has minute precision; a title-only edit re-sends the same minute.
+  const timeChanged = Boolean(
+    nextAt && Math.abs(nextAt.getTime() - lesson.scheduledAt.getTime()) >= 60_000,
+  );
+  const nextEnd = nextAt
+    ? new Date(nextAt.getTime() + (lessonEnd(lesson).getTime() - lesson.scheduledAt.getTime()))
+    : null;
+  if (scheduleRules && nextAt && nextEnd && timeChanged) {
+    const check = checkReschedule({
+      lessonId: lesson.id,
+      currentStart: lesson.scheduledAt,
+      nextStart: nextAt,
+      nextEnd,
+      now: new Date(),
+      others: await loadTeacherLessonWindows(lesson.course.teacherId),
+      formatWhen: formatDateTime,
+    });
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: check.message, code: check.code },
+        { status: check.code === "INVALID_TIME" ? 400 : 409 },
+      );
+    }
+  }
 
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
@@ -56,9 +87,27 @@ export async function PATCH(
       ...(parsed.data.titleUz != null ? { titleUz: parsed.data.titleUz } : {}),
       ...(parsed.data.summaryUz !== undefined ? { summaryUz: parsed.data.summaryUz || null } : {}),
       ...(parsed.data.coverUrl !== undefined ? { coverUrl: parsed.data.coverUrl || null } : {}),
-      ...(nextAt ? { scheduledAt: nextAt } : {}),
+      ...(nextAt && timeChanged
+        ? { scheduledAt: nextAt, ...(lesson.scheduledEndAt && nextEnd ? { scheduledEndAt: nextEnd } : {}) }
+        : {}),
     },
   });
+
+  if (scheduleRules && nextAt && timeChanged) {
+    await writeAuditLog({
+      actorId: session.user.id,
+      action: "lesson.rescheduled",
+      entityType: "Lesson",
+      entityId: lesson.id,
+      metadata: { from: lesson.scheduledAt.toISOString(), to: nextAt.toISOString() },
+    });
+    await notifyCourseStudents(lesson.courseId, {
+      type: "system",
+      titleUz: "Dars vaqti o‘zgardi",
+      messageUz: `${lesson.course.titleUz}: «${updated.titleUz}» — ${formatDateTime(lesson.scheduledAt)} o‘rniga ${formatDateTime(nextAt)}.`,
+      relatedId: lesson.id,
+    }).catch(() => undefined);
+  }
 
   return NextResponse.json({ lesson: updated });
 }
@@ -77,6 +126,12 @@ export async function DELETE(
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
   if (lesson.status !== "scheduled") {
     return NextResponse.json({ error: "Faqat rejadagi darsni o'chirish mumkin" }, { status: 400 });
+  }
+  if (isScheduleRulesV1Enabled()) {
+    const check = checkLessonRemoval({ currentStart: lesson.scheduledAt, now: new Date() });
+    if (!check.ok) {
+      return NextResponse.json({ error: check.message, code: check.code }, { status: 409 });
+    }
   }
 
   await prisma.lesson.delete({ where: { id: lesson.id } });

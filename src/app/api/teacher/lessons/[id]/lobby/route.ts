@@ -8,7 +8,12 @@ import {
   ensureWaitingLiveSession,
   isWaitingLessonStatus,
 } from "@/lib/live-session";
-import { isCourseReviewV1Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import {
+  isCourseReviewV1Enabled,
+  isLiveWaitingRoomV2Enabled,
+  isScheduleRulesV1Enabled,
+} from "@/lib/feature-flags";
+import { checkTeacherCanOpenNow } from "@/lib/schedule-guard";
 import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 
 /** Kutish xonasini ochadi — yozuv/Mux hali yo‘q. LiveSession WAITING (Wave 1). */
@@ -55,6 +60,12 @@ export async function POST(
 
   if (!canTeacherOpenWaiting(lesson.status) || lesson.status !== "scheduled") {
     return NextResponse.json({ error: "Bu dars kutishga ochilmaydi" }, { status: 400 });
+  }
+  if (isScheduleRulesV1Enabled()) {
+    const check = await checkTeacherCanOpenNow(teacher.id, lesson);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.message, code: check.code }, { status: 409 });
+    }
   }
 
   const updated = await prisma.lesson.update({

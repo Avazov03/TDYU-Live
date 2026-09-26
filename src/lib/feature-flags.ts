@@ -208,6 +208,14 @@ export function isCourseReviewV1Enabled(): boolean {
 }
 
 /**
+ * Schedule rules — no past times, no Teacher overlaps, reschedule/delete only ≥24h ahead,
+ * early start only without conflict, students notified on change. Default false.
+ */
+export function isScheduleRulesV1Enabled(): boolean {
+  return envFlag("FF_SCHEDULE_RULES_V1", false);
+}
+
+/**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */
 export function mustUseSecureMuxPlayback(): boolean {

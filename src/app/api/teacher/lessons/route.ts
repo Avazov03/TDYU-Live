@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
 import { formatDateTime, parseClientDateTime } from "@/lib/utils";
+import { isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import { checkNewLessonTime, lessonEnd } from "@/lib/schedule-policy";
+import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 
 const schema = z.object({
   courseId: z.string().trim().min(1),
@@ -33,6 +36,21 @@ export async function POST(req: Request) {
   const when = parseClientDateTime(parsed.data.scheduledAt);
   if (Number.isNaN(when.getTime())) {
     return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
+  }
+  if (isScheduleRulesV1Enabled()) {
+    const check = checkNewLessonTime({
+      start: when,
+      end: lessonEnd({ scheduledAt: when }),
+      now: new Date(),
+      others: await loadTeacherLessonWindows(teacher.id),
+      formatWhen: formatDateTime,
+    });
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: check.message, code: check.code },
+        { status: check.code === "CONFLICT" ? 409 : 400 },
+      );
+    }
   }
   const lesson = await prisma.lesson.create({
     data: {

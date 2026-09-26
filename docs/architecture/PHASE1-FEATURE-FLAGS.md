@@ -19,6 +19,7 @@ NEW Enrollment evaluator **must not** deny via `Subscription.endsAt`. Seat uses 
 | `FF_RECORDING_REVIEW_24H` | `recordingReview24h` | `false` | Teacher review window + auto-publish | Phase 9 | false → legacy URL/Mux only |
 | `FF_REFUNDS_V1` | `refundsV1` | `false` | Refund request/decide APIs | Phase 10 | false → no refund APIs |
 | `FF_COURSE_REVIEW_V1` | `isCourseReviewV1Enabled()` | `false` | Teacher courses start as `draft`; submit → admin review («Tekshiruv» on `/admin/courses`) → approve with `listPrice` → publish (`upcoming`/`published`). Live start/lobby blocked until published; first live start sets `active`. Legacy (`lifecycleStatus` null) courses unchanged | Phase 4 after staging browser QA | false → teacher courses publish immediately |
+| `FF_SCHEDULE_RULES_V1` | `isScheduleRulesV1Enabled()` | `false` | Lesson/course-plan create: no past time, no overlap with the Teacher's other lessons (default 90 min). Reschedule/delete only if the lesson is ≥24h away and the new time is ≥24h away; students notified + audit `lesson.rescheduled`. Lobby/start blocked while another lesson is live/lobby or would overlap an upcoming one (early start allowed otherwise) | After staging browser QA | false → times unchecked (legacy) |
 
 **Phase 1:** flags module only; **no call sites** change access/payment/live yet (except optional import-safe readiness).
 

@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { PLATFORM_PRICES } from "@/lib/tariffs";
 import { notifyCourseStudents } from "@/lib/notify";
-import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { isCourseReviewV1Enabled, isScheduleRulesV1Enabled } from "@/lib/feature-flags";
 import { writeAuditLog } from "@/lib/audit-log";
-import { parseClientDateTime } from "@/lib/utils";
+import { formatDateTime, parseClientDateTime } from "@/lib/utils";
+import { checkNewLessonTime, lessonEnd } from "@/lib/schedule-policy";
+import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 
 const schema = z.object({
   titleUz: z.string().trim().min(2).max(120),
@@ -40,6 +42,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Vaqt noto‘g‘ri" }, { status: 400 });
   }
 
+  const lessonTimes = Array.from({ length: parsed.data.lessonCount }, (_, i) => {
+    const when = new Date(firstAt);
+    when.setDate(when.getDate() + i * parsed.data.intervalDays);
+    return when;
+  });
+  if (isScheduleRulesV1Enabled()) {
+    const others = await loadTeacherLessonWindows(full.id);
+    const now = new Date();
+    for (const when of lessonTimes) {
+      const check = checkNewLessonTime({
+        start: when,
+        end: lessonEnd({ scheduledAt: when }),
+        now,
+        others,
+        formatWhen: formatDateTime,
+      });
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: check.message, code: check.code },
+          { status: check.code === "CONFLICT" ? 409 : 400 },
+        );
+      }
+    }
+  }
+
   const reviewFlow = isCourseReviewV1Enabled();
   const course = await prisma.course.create({
     data: {
@@ -58,15 +85,11 @@ export async function POST(req: Request) {
       priceT3: PLATFORM_PRICES.t3,
       isPublished: !reviewFlow,
       lessons: {
-        create: Array.from({ length: parsed.data.lessonCount }, (_, i) => {
-          const when = new Date(firstAt);
-          when.setDate(when.getDate() + i * parsed.data.intervalDays);
-          return {
-            titleUz: i === 0 ? parsed.data.firstTitle : `${i + 1}-dars`,
-            scheduledAt: when,
-            status: "scheduled" as const,
-          };
-        }),
+        create: lessonTimes.map((when, i) => ({
+          titleUz: i === 0 ? parsed.data.firstTitle : `${i + 1}-dars`,
+          scheduledAt: when,
+          status: "scheduled" as const,
+        })),
       },
     },
     include: { lessons: { select: { id: true } } },

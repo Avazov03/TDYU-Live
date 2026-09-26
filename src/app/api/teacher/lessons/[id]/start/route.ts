@@ -5,7 +5,12 @@ import { createLiveStreamOrDemo } from "@/lib/mux";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
 import { canTeacherStartLive, isWaitingLessonStatus, startLiveSession } from "@/lib/live-session";
-import { isCourseReviewV1Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
+import {
+  isCourseReviewV1Enabled,
+  isLiveWaitingRoomV2Enabled,
+  isScheduleRulesV1Enabled,
+} from "@/lib/feature-flags";
+import { checkTeacherCanOpenNow } from "@/lib/schedule-guard";
 import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 import { writeAuditLog } from "@/lib/audit-log";
 
@@ -65,6 +70,12 @@ export async function POST(
   }
   if (!canTeacherStartLive(lesson.status)) {
     return NextResponse.json({ error: "Efirni shu holatdan boshlab bo‘lmaydi" }, { status: 400 });
+  }
+  if (isScheduleRulesV1Enabled()) {
+    const check = await checkTeacherCanOpenNow(teacher.id, lesson);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.message, code: check.code }, { status: 409 });
+    }
   }
 
   const stream = await createLiveStreamOrDemo(lesson.titleUz);

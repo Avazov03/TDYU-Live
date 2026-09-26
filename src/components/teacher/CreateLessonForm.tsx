@@ -23,6 +23,7 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     const res = await fetch("/api/teacher/lessons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
