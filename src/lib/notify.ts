@@ -67,13 +67,15 @@ export async function notifyUser(input: NotifyInput) {
   if (email) await sendEmail(email, input.titleUz, input.messageUz);
 }
 
-export async function notifyCourseStudents(
+type CourseRecipient = { id: string; email: string; telegramChatId: string | null };
+
+/** Students of a course under the current access mode (subscriptions and/or open Enrollment seats). */
+export async function courseStudentRecipients(
   courseId: string,
-  payload: Omit<NotifyInput, "userId" | "email" | "telegramChatId">,
   minTier?: "t1" | "t2" | "t3",
-) {
+): Promise<CourseRecipient[]> {
   const mode = getEnrollmentAccessMode();
-  const recipients = new Map<string, { id: string; email: string; telegramChatId: string | null }>();
+  const recipients = new Map<string, CourseRecipient>();
 
   if (mode !== "enrollment") {
     const subs = await prisma.subscription.findMany({
@@ -95,8 +97,15 @@ export async function notifyCourseStudents(
     });
     for (const seat of seats) recipients.set(seat.user.id, seat.user);
   }
+  return [...recipients.values()];
+}
 
-  for (const user of recipients.values()) {
+export async function notifyCourseStudents(
+  courseId: string,
+  payload: Omit<NotifyInput, "userId" | "email" | "telegramChatId">,
+  minTier?: "t1" | "t2" | "t3",
+) {
+  for (const user of await courseStudentRecipients(courseId, minTier)) {
     await notifyUser({
       ...payload,
       userId: user.id,

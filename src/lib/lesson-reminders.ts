@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notify";
+import { courseStudentRecipients, notifyUser } from "@/lib/notify";
+import { getStudentOwnedCourses } from "@/lib/access";
 
 const WINDOW_MS = 15 * 60 * 1000;
 
@@ -11,15 +12,14 @@ export async function maybeSendLessonReminders(userId: string) {
   const now = new Date();
   const until = new Date(now.getTime() + WINDOW_MS);
 
+  const courseIds = (await getStudentOwnedCourses(userId)).map((row) => row.courseId);
+  if (courseIds.length === 0) return 0;
+
   const lessons = await prisma.lesson.findMany({
     where: {
       status: "scheduled",
       scheduledAt: { gte: now, lte: until },
-      course: {
-        subscriptions: {
-          some: { userId, endsAt: { gt: now } },
-        },
-      },
+      courseId: { in: courseIds },
     },
     include: {
       course: { select: { titleUz: true } },
@@ -62,7 +62,7 @@ export async function maybeSendLessonReminders(userId: string) {
   return created;
 }
 
-/** Cron / batch: barcha faol obunalarga yaqinlashayotgan darslar. */
+/** Cron / batch: yaqinlashayotgan darslar — kursning barcha o‘quvchilariga (obuna yoki xarid). */
 export async function sendUpcomingLessonReminders() {
   const now = new Date();
   const until = new Date(now.getTime() + WINDOW_MS);
@@ -73,18 +73,7 @@ export async function sendUpcomingLessonReminders() {
       scheduledAt: { gte: now, lte: until },
     },
     include: {
-      course: {
-        select: {
-          titleUz: true,
-          subscriptions: {
-            where: { endsAt: { gt: now } },
-            select: {
-              userId: true,
-              user: { select: { email: true, telegramChatId: true } },
-            },
-          },
-        },
-      },
+      course: { select: { titleUz: true } },
     },
     take: 40,
   });
@@ -97,10 +86,10 @@ export async function sendUpcomingLessonReminders() {
       1,
       Math.round((lesson.scheduledAt.getTime() - now.getTime()) / 60_000),
     );
-    for (const sub of lesson.course.subscriptions) {
+    for (const student of await courseStudentRecipients(lesson.courseId)) {
       const existing = await prisma.notification.findFirst({
         where: {
-          userId: sub.userId,
+          userId: student.id,
           type: "lesson_starting",
           relatedId: lesson.id,
           createdAt: { gte: dayAgo },
@@ -110,13 +99,13 @@ export async function sendUpcomingLessonReminders() {
       if (existing) continue;
 
       await notifyUser({
-        userId: sub.userId,
+        userId: student.id,
         type: "lesson_starting",
         titleUz: `Dars ${mins} daqiqadan keyin`,
         messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
         relatedId: lesson.id,
-        email: sub.user.email,
-        telegramChatId: sub.user.telegramChatId,
+        email: student.email,
+        telegramChatId: student.telegramChatId,
       });
       created += 1;
     }
