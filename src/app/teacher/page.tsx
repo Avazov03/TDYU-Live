@@ -13,7 +13,10 @@ import {
   getEnrollmentAccessMode,
   isCourseCompletionV1Enabled,
   isCourseReviewV1Enabled,
+  isRefundsV1Enabled,
 } from "@/lib/feature-flags";
+import { hasCourseStarted } from "@/lib/refund-policy";
+import { CancelCourseButton } from "@/components/teacher/CancelCourseButton";
 import { isLiveAllowedForCourse } from "@/lib/course-review-policy";
 import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
 import { CompleteCourseButton } from "@/components/teacher/CompleteCourseButton";
@@ -59,6 +62,7 @@ export default async function TeacherHomePage() {
   await ensureTeacherWorkspace(profile.id);
   const reviewFlow = isCourseReviewV1Enabled();
   const completionFlow = isCourseCompletionV1Enabled();
+  const refundsFlow = isRefundsV1Enabled();
   const accessMode = getEnrollmentAccessMode();
   const teacher = await prisma.teacher.findUnique({
     where: { id: profile.id },
@@ -136,6 +140,7 @@ export default async function TeacherHomePage() {
       inReview:
         reviewFlow &&
         course.lifecycleStatus !== "completed" &&
+        course.lifecycleStatus !== "cancelled" &&
         !isLiveAllowedForCourse(course.lifecycleStatus),
       total,
       withVideo,
@@ -144,8 +149,16 @@ export default async function TeacherHomePage() {
       actionable,
       phase,
       completed: course.lifecycleStatus === "completed",
+      cancelled: course.lifecycleStatus === "cancelled",
       canComplete:
         completionFlow && course.lifecycleStatus === "active" && actionable.length === 0,
+      canCancel:
+        refundsFlow &&
+        (course.lifecycleStatus === "published" || course.lifecycleStatus === "upcoming") &&
+        !hasCourseStarted({
+          lifecycleStatus: course.lifecycleStatus,
+          lessonStatuses: course.lessons.map((l) => l.status),
+        }),
     };
   });
 
@@ -254,7 +267,9 @@ export default async function TeacherHomePage() {
                 ) : (
                 <>
                 <p className="lx-kicker">
-                  {card.completed
+                  {card.cancelled
+                    ? "Bekor qilingan"
+                    : card.completed
                     ? "Yakunlangan"
                     : card.phase === "new"
                     ? "Yangi"
@@ -282,7 +297,9 @@ export default async function TeacherHomePage() {
                   </div>
                 ) : (
                   <p className="small muted" style={{ margin: "0 0 12px" }}>
-                    {card.completed
+                    {card.cancelled
+                      ? "Kurs bekor qilingan — xaridorlarga to‘lov qaytarilgan."
+                      : card.completed
                       ? "Kurs yakunlangan — yozuvlar o‘quvchilarga doimiy ochiq."
                       : "Keyingi dars yo‘q — Rejada qo‘shing."}
                   </p>
@@ -316,7 +333,7 @@ export default async function TeacherHomePage() {
                           ? "Kutishga qaytish"
                           : "Studioga — shu dars"}
                     </Link>
-                  ) : card.completed ? null : (
+                  ) : card.completed || card.cancelled ? null : (
                     <Link href="/teacher/reja" className="btn btn-primary btn-sm">
                       Dars qo‘shish
                     </Link>
@@ -328,6 +345,9 @@ export default async function TeacherHomePage() {
                     Guruh
                   </Link>
                   {card.canComplete ? <CompleteCourseButton courseId={card.id} /> : null}
+                  {card.canCancel ? (
+                    <CancelCourseButton courseId={card.id} buyers={card.activeStudents} />
+                  ) : null}
                 </div>
                 </>
                 )}

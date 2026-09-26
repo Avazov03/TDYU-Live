@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { AdminBarChart, AdminDonut } from "@/components/admin/AdminCharts";
 import { Icon } from "@/components/ui/Icon";
+import { AdminRefundCell, type AdminRefundInfo } from "@/components/admin/AdminRefundCell";
 import { TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import type { PaymentStatus, TariffTier } from "@/generated/prisma/client";
 
@@ -18,6 +19,8 @@ export type AdminPaymentRow = {
   status: PaymentStatus;
   provider: string;
   createdAt: string;
+  /** Set only when FF_REFUNDS_V1 is on and the payment belongs to a course purchase. */
+  refund?: AdminRefundInfo;
 };
 
 function statusLabel(status: PaymentStatus) {
@@ -57,6 +60,7 @@ export function AdminPaymentsBoard({
   chart14: { label: string; value: number }[];
   canSeeSecrets: boolean;
 }) {
+  const showRefunds = payments.some((p) => p.refund);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [tier, setTier] = useState<TierFilter>("all");
@@ -213,6 +217,7 @@ export function AdminPaymentsBoard({
               <th>Summa</th>
               <th>Holat</th>
               <th>Sana</th>
+              {showRefunds ? <th>Qaytarish</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -236,6 +241,7 @@ export function AdminPaymentsBoard({
                   <div className="small muted">{p.provider}</div>
                 </td>
                 <td className="small muted">{formatWhen(p.createdAt)}</td>
+                {showRefunds ? <td>{p.refund ? <AdminRefundCell info={p.refund} /> : null}</td> : null}
               </tr>
             ))}
           </tbody>

@@ -519,6 +519,12 @@ export async function getLessonAccess(
 export function accessMessage(
   reason: "unauthenticated" | "no_subscription" | "expired" | "live_locked" | "not_started",
 ) {
+  if (getEnrollmentAccessMode() === "enrollment") {
+    if (reason === "no_subscription") return "Bu kursga yozilmagansiz. Kurs sahifasida sotib oling.";
+    if (reason === "expired") {
+      return "Bu kursga kirish yopilgan — to‘lov qaytarilgan yoki kurs bekor qilingan.";
+    }
+  }
   switch (reason) {
     case "unauthenticated":
       return "Darsni ko'rish uchun tizimga kiring.";

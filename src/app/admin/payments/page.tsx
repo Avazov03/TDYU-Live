@@ -2,6 +2,13 @@ import { AdminPaymentsBoard, type AdminPaymentRow } from "@/components/admin/Adm
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { viewerCanSeeCredentials } from "@/lib/super-admin";
+import { isRefundsV1Enabled } from "@/lib/feature-flags";
+import {
+  checkSpecialRefundEligibility,
+  courseProgressPercent,
+  hasCourseStarted,
+} from "@/lib/refund-policy";
+import type { AdminRefundInfo } from "@/components/admin/AdminRefundCell";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +34,7 @@ export default async function AdminPaymentsPage() {
   const canSeeSecrets = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
   const now = new Date();
   const days14 = new Date(now.getTime() - 13 * 86_400_000);
+  const refundsOn = isRefundsV1Enabled();
 
   const payments = await prisma.payment.findMany({
     include: {
@@ -36,10 +44,42 @@ export default async function AdminPaymentsPage() {
           : { fullName: true },
       },
       course: { select: { titleUz: true, teacher: { select: { fullName: true } } } },
+      purchase: {
+        select: {
+          id: true,
+          status: true,
+          amountPaid: true,
+          refunds: {
+            where: { status: "refunded" },
+            select: { type: true, amount: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          course: { select: { lifecycleStatus: true, lessons: { select: { status: true } } } },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 300,
   });
+
+  const refundInfo = (p: (typeof payments)[number]): AdminRefundInfo | undefined => {
+    const purchase = p.purchase;
+    if (!refundsOn || !purchase) return undefined;
+    const done = purchase.refunds[0];
+    if (done) return { kind: "refunded", type: done.type, amount: done.amount };
+    const lessonStatuses = purchase.course.lessons.map((l) => l.status);
+    const progressPercent = courseProgressPercent(lessonStatuses);
+    const check = checkSpecialRefundEligibility({
+      purchaseStatus: purchase.status,
+      amountPaid: purchase.amountPaid,
+      courseStarted: hasCourseStarted({ lifecycleStatus: purchase.course.lifecycleStatus, lessonStatuses }),
+      progressPercent,
+    });
+    if (check.ok) return { kind: "eligible", purchaseId: purchase.id, amount: check.amount, progressPercent };
+    if (check.code === "NOT_REFUNDABLE") return undefined;
+    return { kind: "blocked", note: check.message };
+  };
 
   const rows: AdminPaymentRow[] = payments.map((p) => ({
     id: p.id,
@@ -52,6 +92,7 @@ export default async function AdminPaymentsPage() {
     status: p.status,
     provider: p.provider,
     createdAt: p.createdAt.toISOString(),
+    refund: refundInfo(p),
   }));
 
   const buckets = new Map<string, { label: string; value: number }>();

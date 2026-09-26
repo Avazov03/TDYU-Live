@@ -224,6 +224,14 @@ export function isCourseCompletionV1Enabled(): boolean {
 }
 
 /**
+ * Refunds (demo record — no money movement): teacher cancels before start → 100% for every
+ * purchase; after start only admin special 50% while progress < 50% with a reason. Default false.
+ */
+export function isRefundsV1Enabled(): boolean {
+  return envFlag("FF_REFUNDS_V1", false);
+}
+
+/**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */
 export function mustUseSecureMuxPlayback(): boolean {
