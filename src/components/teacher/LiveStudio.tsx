@@ -44,7 +44,7 @@ export function LiveStudio({
     setLoading(true);
     setError("");
     let recordingUrl: string | undefined;
-    if (action === "end") {
+    if (action === "end" && isLive) {
       try {
         recordingUrl = (await meetRef.current?.saveRecording()) ?? undefined;
       } catch (err) {
@@ -64,7 +64,7 @@ export function LiveStudio({
     }
     const nextKey = data.lesson?.streamKey as string | undefined;
     if (nextKey && !nextKey.startsWith("demo_")) setKey(nextKey);
-    if (action === "end") {
+    if (action === "end" && !data.waitingClosed) {
       window.location.href = "/teacher";
       return;
     }

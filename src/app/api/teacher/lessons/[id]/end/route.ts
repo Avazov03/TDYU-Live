@@ -6,7 +6,8 @@ import { completeMuxLiveStream } from "@/lib/mux-client";
 import { closeLiveRoom } from "@/lib/live-rooms";
 import { notifyCourseStudents } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
-import { canTeacherEndLive, endLiveSession } from "@/lib/live-session";
+import { canTeacherEndLive, endLiveSession, isWaitingLessonStatus } from "@/lib/live-session";
+import { formatDateTime } from "@/lib/utils";
 import {
   isLiveAttendanceV3Enabled,
   isLiveWaitingRoomV2Enabled,
@@ -54,6 +55,24 @@ export async function POST(
   }
   if (!canTeacherEndLive(lesson.status) && lesson.status !== "scheduled") {
     return NextResponse.json({ error: "Bu darsni yopib bo‘lmaydi" }, { status: 400 });
+  }
+
+  if (isWaitingLessonStatus(lesson.status)) {
+    // Never aired: no recording, no attendance — the lesson can be reopened later.
+    closeLiveRoom(lesson.id);
+    const liveSession = isLiveWaitingRoomV2Enabled() ? await endLiveSession(lesson.id) : null;
+    await prisma.lesson.updateMany({
+      where: { id: lesson.id, status: lesson.status },
+      data: { status: "scheduled" },
+    });
+    const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+    await notifyCourseStudents(lesson.courseId, {
+      type: "system",
+      titleUz: "Kutish xonasi yopildi",
+      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz} — efir hali boshlanmagan. Dars rejadagi vaqtda (${formatDateTime(lesson.scheduledAt)}) bo‘ladi.`,
+      relatedId: lesson.id,
+    }).catch(() => undefined);
+    return NextResponse.json({ lesson: updated, liveSession, waitingClosed: true });
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
