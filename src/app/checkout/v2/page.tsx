@@ -2,7 +2,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { featureFlags } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
-import { resolveServerListPrice } from "@/lib/checkout-v2/eligibility";
+import {
+  isCapacityAvailable,
+  isCourseLifecyclePurchaseable,
+  resolveServerListPrice,
+} from "@/lib/checkout-v2/eligibility";
+import { countOpenCourseSeats, getOpenEnrollment } from "@/lib/access";
 import { CheckoutV2Client } from "@/components/course/CheckoutV2Client";
 import { isStudentRole } from "@/lib/roles";
 
@@ -44,14 +49,21 @@ export default async function CheckoutV2Page({ searchParams }: Props) {
       listPrice: true,
       isPublished: true,
       lifecycleStatus: true,
+      capacity: true,
     },
   });
-  if (!course) {
+  if (!course || !isCourseLifecyclePurchaseable(course.lifecycleStatus, course.isPublished)) {
     redirect("/search");
   }
 
   const listPrice = resolveServerListPrice(course.listPrice);
   if (listPrice == null) {
+    redirect(`/courses/${courseId}`);
+  }
+  if (await getOpenEnrollment(session.user.id, course.id)) {
+    redirect(`/courses/${courseId}`);
+  }
+  if (!isCapacityAvailable(course.capacity, await countOpenCourseSeats(course.id))) {
     redirect(`/courses/${courseId}`);
   }
 

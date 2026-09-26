@@ -36,6 +36,7 @@ export const COURSE_MIN_DESCRIPTION = 20;
 export const COURSE_MIN_REASON = 5;
 export const COURSE_MIN_PRICE = 1_000;
 export const COURSE_MAX_PRICE = 100_000_000;
+export const COURSE_MAX_CAPACITY = 10_000;
 
 export type ReviewCheck =
   | { ok: true; to: CourseLifecycleStatus }
@@ -47,6 +48,8 @@ export type ReviewCheckInput = {
   current: CourseLifecycleStatus | null;
   reason?: string | null;
   listPrice?: number | null;
+  /** approve only: null/undefined = unlimited seats. */
+  capacity?: number | null;
   course: { titleUz: string; descriptionUz: string; lessonCount: number };
   /** publish only: first scheduled lesson is still ahead. */
   hasFutureLesson?: boolean;
@@ -103,6 +106,17 @@ export function checkCourseReviewAction(input: ReviewCheckInput): ReviewCheck {
           ok: false,
           code: "VALIDATION",
           message: `Narx ${COURSE_MIN_PRICE.toLocaleString("ru-RU")} so‘mdan kam bo‘lmasin`,
+        };
+      }
+      const capacity = input.capacity;
+      if (
+        capacity != null &&
+        (!Number.isInteger(capacity) || capacity < 1 || capacity > COURSE_MAX_CAPACITY)
+      ) {
+        return {
+          ok: false,
+          code: "VALIDATION",
+          message: `Joylar soni 1 dan ${COURSE_MAX_CAPACITY} gacha bo‘lsin (bo‘sh — cheklanmagan)`,
         };
       }
       return { ok: true, to: "approved" };

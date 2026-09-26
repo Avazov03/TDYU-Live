@@ -29,6 +29,7 @@ export function AdminCourseReviewQueue({ courses }: { courses: AdminReviewCourse
   );
   const [reason, setReason] = useState("");
   const [price, setPrice] = useState("");
+  const [capacity, setCapacity] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -47,7 +48,12 @@ export function AdminCourseReviewQueue({ courses }: { courses: AdminReviewCourse
       body: JSON.stringify({
         action,
         ...(action === "request_changes" || action === "reject" ? { reason } : {}),
-        ...(action === "approve" ? { listPrice: Number(price.replace(/\s/g, "")) } : {}),
+        ...(action === "approve"
+          ? {
+              listPrice: Number(price.replace(/\s/g, "")),
+              capacity: capacity.trim() ? Number(capacity.replace(/\s/g, "")) : null,
+            }
+          : {}),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -59,6 +65,7 @@ export function AdminCourseReviewQueue({ courses }: { courses: AdminReviewCourse
     setNotice(`«${course.titleUz}» — ${lifecycleLabel(data.lifecycleStatus)}`);
     setReason("");
     setPrice("");
+    setCapacity("");
     router.refresh();
   };
 
@@ -97,6 +104,7 @@ export function AdminCourseReviewQueue({ courses }: { courses: AdminReviewCourse
                     setError("");
                     setReason("");
                     setPrice(course.listPrice ? String(course.listPrice) : "");
+                    setCapacity(course.capacity ? String(course.capacity) : "");
                   }}
                 >
                   <div className="admin-course-title">
@@ -160,6 +168,16 @@ export function AdminCourseReviewQueue({ courses }: { courses: AdminReviewCourse
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
                             placeholder={String(course.priceT1)}
+                          />
+                        </div>
+                        <div className="field">
+                          <label htmlFor={`capacity-${course.id}`}>Joylar soni — bo‘sh qolsa cheklanmagan</label>
+                          <input
+                            id={`capacity-${course.id}`}
+                            inputMode="numeric"
+                            value={capacity}
+                            onChange={(e) => setCapacity(e.target.value)}
+                            placeholder="Cheklanmagan"
                           />
                         </div>
                         <div className="staff-detail-actions">

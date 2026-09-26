@@ -7,12 +7,18 @@ import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  countOpenCourseSeats,
   getActiveSubscription,
   getOpenEnrollment,
   isStudentCourseOwned,
 } from "@/lib/access";
 import { featureFlags, getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
-import { resolveServerListPrice } from "@/lib/checkout-v2/eligibility";
+import {
+  isCapacityAvailable,
+  isCourseLifecyclePurchaseable,
+  resolveServerListPrice,
+} from "@/lib/checkout-v2/eligibility";
+import { isStudentRole } from "@/lib/roles";
 import { TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
 import { clockLabel, dayTitle, hasPlayableRecording, statusLabel } from "@/lib/plan";
@@ -50,6 +56,11 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const v2Enabled = featureFlags.courseCheckoutV2;
   const hideTariff = shouldHideStudentTariffUi();
   const listPrice = resolveServerListPrice(course.listPrice);
+  const enrollmentMode = getEnrollmentAccessMode() === "enrollment";
+  const openSeats = enrollmentMode || v2Enabled ? await countOpenCourseSeats(course.id) : 0;
+  const seatsLeft = isCapacityAvailable(course.capacity, openSeats);
+  const purchasable = isCourseLifecyclePurchaseable(course.lifecycleStatus, course.isPublished);
+  const staffViewer = Boolean(session?.user) && !isStudentRole(session?.user?.role);
 
   const prices: { tier: TariffTier; price: number }[] = [
     { tier: "t1", price: course.priceT1 },
@@ -65,7 +76,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         </p>
         <h2>{course.titleUz}</h2>
         <p className="muted small lx-lead">
-          {course.teacher.fullName} · {course._count.subscriptions} obunachi
+          {course.teacher.fullName} ·{" "}
+          {enrollmentMode
+            ? `${openSeats} o‘quvchi${course.capacity != null ? ` · ${course.capacity} joy` : ""}`
+            : `${course._count.subscriptions} obunachi`}
         </p>
         {course.descriptionUz ? (
           <p className="muted" style={{ marginTop: -8, maxWidth: 640 }}>
@@ -86,11 +100,11 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                 <h3>
                   {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment")
                     ? enrollment.status === "completed"
-                      ? "Enrollment · yakunlangan"
-                      : "Enrollment"
+                      ? "Kurs yakunlangan"
+                      : "Kurs ochiq"
                     : sub
                       ? TARIFF_LABELS[sub.tier]
-                      : "Enrollment"}
+                      : "Kurs ochiq"}
                 </h3>
                 {enrollment && (!sub || getEnrollmentAccessMode() === "enrollment") ? (
                   <p className="small muted" style={{ margin: 0 }}>
@@ -115,19 +129,33 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           <section className="lx-section" data-testid="course-checkout-v2">
             <h3>Kursni sotib olish</h3>
             <p className="muted small" style={{ margin: "0 0 12px" }}>
-              Checkout V2 · {formatSom(listPrice)}. Demo to‘lov — haqiqiy pul yechilmaydi.
+              Bir martalik to‘lov · {formatSom(listPrice)}. Demo to‘lov — haqiqiy pul yechilmaydi.
             </p>
-            <CheckoutV2Button
-              courseId={course.id}
-              label={session?.user ? `Sotib olish · ${formatSom(listPrice)}` : "Kirib sotib olish"}
-              className="btn btn-primary"
-            />
+            {staffViewer ? (
+              <p className="small muted" data-testid="course-buy-staff" style={{ margin: 0 }}>
+                O‘qituvchi va admin hisoblari kurs sotib olmaydi.
+              </p>
+            ) : !purchasable ? (
+              <p className="small muted" data-testid="course-buy-closed" style={{ margin: 0 }}>
+                Bu kurs hozir sotuvda emas.
+              </p>
+            ) : !seatsLeft ? (
+              <p className="small" data-testid="course-capacity-full" style={{ margin: 0 }}>
+                <strong>Joylar tugagan.</strong> Yangi o‘rin ochilsa, shu yerda sotib olish mumkin bo‘ladi.
+              </p>
+            ) : (
+              <CheckoutV2Button
+                courseId={course.id}
+                label={session?.user ? `Sotib olish · ${formatSom(listPrice)}` : "Kirib sotib olish"}
+                className="btn btn-primary"
+              />
+            )}
           </section>
         ) : hideTariff ? (
           <section className="lx-section" data-testid="course-no-tariff">
             <h3>Kurs xarid</h3>
             <p className="muted small" style={{ margin: "0 0 12px" }}>
-              Tarif paketlar o‘chirilgan. Kursni Checkout V2 orqali olish keyinroq yoqiladi
+              Tarif paketlar o‘chirilgan. Kurs xaridi keyinroq yoqiladi
               {listPrice != null ? ` (narx: ${formatSom(listPrice)})` : ""}.
             </p>
             <Link href="/search" className="btn btn-primary">

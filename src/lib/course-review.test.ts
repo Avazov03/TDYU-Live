@@ -116,6 +116,19 @@ describe("admin decisions", () => {
       to: "approved",
     });
   });
+  it("approve capacity: empty = unlimited, else integer 1..10000", () => {
+    for (const capacity of [null, undefined, 1, 30, 10000]) {
+      assert.deepEqual(
+        check({ ...admin, action: "approve", listPrice: 450000, capacity }),
+        { ok: true, to: "approved" },
+        `capacity ${capacity}`,
+      );
+    }
+    for (const capacity of [0, -3, 2.5, 10001]) {
+      const r = check({ ...admin, action: "approve", listPrice: 450000, capacity });
+      assert.equal(!r.ok && r.code, "VALIDATION", `capacity ${capacity}`);
+    }
+  });
   it("cannot publish before approval", () => {
     const r = check({ ...admin, action: "publish" });
     assert.equal(!r.ok && r.code, "INVALID_TRANSITION");

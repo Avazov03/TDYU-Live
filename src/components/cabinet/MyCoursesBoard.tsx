@@ -100,7 +100,7 @@ export function MyCoursesBoard({
           title="Hali kurs yo‘q"
           text={
             hideTariffUi
-              ? "Kurs sotib oling — My Courses da Enrollment ko‘rinadi."
+              ? "Kurs sotib oling — u shu yerda darhol paydo bo‘ladi."
               : "Tarif to‘lab, onboardingda o‘qituvchi va kursni tanlang."
           }
           href={hideTariffUi ? "/search" : "/#tariflar"}
@@ -140,7 +140,7 @@ export function MyCoursesBoard({
                   <span className={`badge ${sub.active ? "accent" : ""}`}>
                     {sub.active
                       ? hideTariffUi
-                        ? "Enrollment"
+                        ? "Kurs ochiq"
                         : TARIFF_LABELS[sub.tier]
                       : "Muddati tugagan"}
                   </span>

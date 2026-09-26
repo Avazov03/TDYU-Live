@@ -175,6 +175,13 @@ export async function getOpenEnrollment(userId: string, courseId: string) {
   );
 }
 
+/** Seats that count against Course.capacity (same rule as checkout). */
+export async function countOpenCourseSeats(courseId: string): Promise<number> {
+  return prisma.enrollment.count({
+    where: { courseId, accessOpen: true, status: { in: ["active", "completed"] } },
+  });
+}
+
 const studentCourseSelect = {
   id: true,
   titleUz: true,

@@ -32,6 +32,7 @@ export async function applyCourseReviewAction(input: {
   action: CourseReviewAction;
   reason?: string | null;
   listPrice?: number | null;
+  capacity?: number | null;
 }): Promise<CourseReviewResult> {
   const course = await prisma.course.findUnique({
     where: { id: input.courseId },
@@ -63,6 +64,7 @@ export async function applyCourseReviewAction(input: {
     current: course.lifecycleStatus,
     reason: input.reason,
     listPrice: input.listPrice,
+    capacity: input.capacity,
     course: {
       titleUz: course.titleUz,
       descriptionUz: course.descriptionUz,
@@ -81,6 +83,7 @@ export async function applyCourseReviewAction(input: {
   const to = check.to;
   const reason = input.reason?.trim() || null;
   const listPrice = input.action === "approve" ? (input.listPrice as number) : null;
+  const capacity = input.action === "approve" ? (input.capacity ?? null) : null;
 
   const applied = await prisma.$transaction(async (tx) => {
     const updated = await tx.course.updateMany({
@@ -88,7 +91,7 @@ export async function applyCourseReviewAction(input: {
       data: {
         lifecycleStatus: to,
         ...(input.action === "approve"
-          ? { listPrice, approvedByUserId: input.actorUserId }
+          ? { listPrice, capacity, approvedByUserId: input.actorUserId }
           : {}),
         ...(input.action === "publish"
           ? { isPublished: true, publishedByUserId: input.actorUserId }
@@ -115,7 +118,7 @@ export async function applyCourseReviewAction(input: {
         action: `course.${input.action}`,
         entityType: "Course",
         entityId: course.id,
-        metadata: JSON.stringify({ from, to, reason, listPrice }),
+        metadata: JSON.stringify({ from, to, reason, listPrice, capacity }),
       },
     });
     return true;

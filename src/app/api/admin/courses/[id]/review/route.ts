@@ -8,6 +8,7 @@ const schema = z.object({
   action: z.enum(["start_review", "request_changes", "reject", "approve", "publish"]),
   reason: z.string().trim().max(2000).optional(),
   listPrice: z.number().int().optional(),
+  capacity: z.number().int().nullable().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     action: parsed.data.action,
     reason: parsed.data.reason,
     listPrice: parsed.data.listPrice,
+    capacity: parsed.data.capacity,
   });
   if (!result.ok) {
     return NextResponse.json({ error: result.message, code: result.code }, { status: result.status });

@@ -11,6 +11,7 @@ export type AdminReviewCourse = {
   teacherName: string;
   lifecycleStatus: CourseLifecycleStatus;
   listPrice: number | null;
+  capacity: number | null;
   priceT1: number;
   lessons: { id: string; titleUz: string; whenLabel: string }[];
   events: {
@@ -42,6 +43,7 @@ export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
       topicUz: true,
       lifecycleStatus: true,
       listPrice: true,
+      capacity: true,
       priceT1: true,
       teacher: { select: { fullName: true } },
       lessons: {
@@ -73,6 +75,7 @@ export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
       teacherName: c.teacher.fullName,
       lifecycleStatus: c.lifecycleStatus as CourseLifecycleStatus,
       listPrice: c.listPrice,
+      capacity: c.capacity,
       priceT1: c.priceT1,
       lessons: c.lessons.map((l) => ({
         id: l.id,

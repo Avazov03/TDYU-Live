@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { formatSom } from "@/lib/tariffs";
+import { checkoutErrorMessageUz } from "@/lib/checkout-v2/messages";
 
 type Step = "review" | "method" | "processing" | "success";
 
@@ -32,7 +33,7 @@ export function CheckoutV2Client({
   const [step, setStep] = useState<Step>("review");
   const [error, setError] = useState("");
   const [result, setResult] = useState<SuccessPayload | null>(null);
-  const idempotencyKeyRef = useRef(
+  const [idempotencyKey] = useState(() =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `v2-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -48,7 +49,7 @@ export function CheckoutV2Client({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKeyRef.current,
+        "Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({ courseId, provider: "demo" }),
     });
@@ -63,7 +64,7 @@ export function CheckoutV2Client({
     };
 
     if (!res.ok || !data.ok || !data.purchase || !data.payment || !data.enrollment) {
-      setError(data.error?.message || "To‘lov amalga oshmadi");
+      setError(checkoutErrorMessageUz(data.error?.code));
       if (res.status === 401) {
         const cb = `/checkout/v2?courseId=${encodeURIComponent(courseId)}`;
         router.push(`/login?callbackUrl=${encodeURIComponent(cb)}`);
@@ -87,21 +88,21 @@ export function CheckoutV2Client({
     <div className="lx-checkout" data-testid="checkout-v2">
       <div className="lx-checkout-shell">
         <div className="lx-checkout-main">
-          <p className="lx-checkout-kicker">Checkout V2</p>
+          <p className="lx-checkout-kicker">Kurs xaridi</p>
           <h1 className="lx-checkout-title">
             {step === "success" ? "Kurs sotib olindi" : "Kursni sotib olish"}
           </h1>
           <p className="lx-checkout-lead">
             {step === "success"
               ? "To‘lov qabul qilindi. Kurs Mening kurslarimda ochildi."
-              : "Narx serverdan olinadi. Demo to‘lov — haqiqiy pul yechilmaydi."}
+              : "Demo to‘lov — haqiqiy pul yechilmaydi."}
           </p>
 
           {step === "review" && (
             <section className="lx-checkout-panel">
               <h2 className="lx-checkout-panel-title">{courseTitle}</h2>
               <p className="lx-checkout-panel-text">
-                Bir martalik kurs xarid. Obuna tariflari emas — Enrollment o‘rindiq.
+                Bir martalik to‘lov. Kursning barcha darslari va yozuvlari ochiladi.
               </p>
               <button
                 type="button"
@@ -172,7 +173,7 @@ export function CheckoutV2Client({
               <Loader2 className="lx-checkout-spin" aria-hidden />
               <h2 className="lx-checkout-panel-title">To‘lov tekshirilmoqda…</h2>
               <p className="lx-checkout-panel-text">
-                <ShieldCheck size={16} aria-hidden /> Checkout V2 demo so‘rovi yuborildi.
+                <ShieldCheck size={16} aria-hidden /> To‘lov so‘rovi yuborildi.
               </p>
             </section>
           )}
@@ -186,7 +187,7 @@ export function CheckoutV2Client({
               <h2 className="lx-checkout-panel-title">Xarid cheki</h2>
               <dl className="lx-checkout-receipt">
                 <div>
-                  <dt>Purchase</dt>
+                  <dt>Xarid</dt>
                   <dd data-testid="checkout-v2-purchase-id">
                     {result.purchase.id.slice(0, 8).toUpperCase()}
                   </dd>
@@ -198,11 +199,11 @@ export function CheckoutV2Client({
                   </dd>
                 </div>
                 <div>
-                  <dt>Payment</dt>
+                  <dt>To‘lov</dt>
                   <dd>{result.payment.isDemo ? "Demo" : result.payment.provider}</dd>
                 </div>
                 <div>
-                  <dt>Enrollment</dt>
+                  <dt>Yozilish</dt>
                   <dd data-testid="checkout-v2-enrollment-id">
                     {result.enrollment.id.slice(0, 8).toUpperCase()}
                   </dd>
@@ -234,7 +235,7 @@ export function CheckoutV2Client({
             <strong>{priceLabel}</strong>
           </div>
           <p className="lx-checkout-note">
-            Checkout V2: Purchase → Payment → Enrollment. Entitlement/Subscription yaratilmaydi.
+            To‘lovdan so‘ng kurs «Mening kurslarim» bo‘limida darhol ochiladi.
           </p>
         </aside>
       </div>
