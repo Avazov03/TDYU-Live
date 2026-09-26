@@ -87,7 +87,7 @@ export default async function AdminPaymentsPage() {
     studentEmail: "email" in p.user && typeof p.user.email === "string" ? p.user.email : undefined,
     courseTitle: p.course?.titleUz ?? null,
     teacherName: p.course?.teacher.fullName ?? null,
-    tier: p.tier,
+    tier: p.purchase ? null : p.tier,
     amount: p.amount,
     status: p.status,
     provider: p.provider,

@@ -361,7 +361,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <aside className="watch-sidebar">
-          <h3 style={{ fontSize: 15, marginBottom: 12 }}>Keyingi darslar</h3>
+          <h3 style={{ fontSize: 15, marginBottom: 12 }}>Kurs darslari</h3>
           {playlist.map((item) => (
             <LessonRow
               key={item.id}

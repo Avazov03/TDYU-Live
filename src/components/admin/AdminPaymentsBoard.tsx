@@ -6,6 +6,7 @@ import { AdminBarChart, AdminDonut } from "@/components/admin/AdminCharts";
 import { Icon } from "@/components/ui/Icon";
 import { AdminRefundCell, type AdminRefundInfo } from "@/components/admin/AdminRefundCell";
 import { TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
+import { formatDateTime } from "@/lib/utils";
 import type { PaymentStatus, TariffTier } from "@/generated/prisma/client";
 
 export type AdminPaymentRow = {
@@ -14,7 +15,8 @@ export type AdminPaymentRow = {
   studentEmail?: string;
   courseTitle: string | null;
   teacherName: string | null;
-  tier: TariffTier;
+  /** Null for course purchases — their payment row stores only a placeholder tier. */
+  tier: TariffTier | null;
   amount: number;
   status: PaymentStatus;
   provider: string;
@@ -36,19 +38,8 @@ function statusTone(status: PaymentStatus) {
   return "pending";
 }
 
-function formatWhen(iso: string) {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    timeZone: "Asia/Tashkent",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
 type StatusFilter = "all" | PaymentStatus;
-type TierFilter = "all" | TariffTier;
+type TierFilter = "all" | TariffTier | "course";
 type RangeFilter = "14" | "30" | "month" | "all";
 
 export function AdminPaymentsBoard({
@@ -72,7 +63,7 @@ export function AdminPaymentsBoard({
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     return payments.filter((p) => {
       if (status !== "all" && p.status !== status) return false;
-      if (tier !== "all" && p.tier !== tier) return false;
+      if (tier === "course" ? p.tier !== null : tier !== "all" && p.tier !== tier) return false;
       const at = new Date(p.createdAt);
       if (range === "14" && at < new Date(now.getTime() - 14 * 86_400_000)) return false;
       if (range === "30" && at < new Date(now.getTime() - 30 * 86_400_000)) return false;
@@ -87,7 +78,11 @@ export function AdminPaymentsBoard({
   const paid = filtered.filter((p) => p.status === "paid" || p.status === "demo_paid");
   const sum = paid.reduce((n, p) => n + p.amount, 0);
   const byTier = { t1: 0, t2: 0, t3: 0 };
-  for (const p of paid) byTier[p.tier] += p.amount;
+  let byCourse = 0;
+  for (const p of paid) {
+    if (p.tier) byTier[p.tier] += p.amount;
+    else byCourse += p.amount;
+  }
   const failed = filtered.filter((p) => p.status === "failed").length;
   const pending = filtered.filter((p) => p.status === "pending").length;
 
@@ -124,6 +119,7 @@ export function AdminPaymentsBoard({
           <div className="num" style={{ fontSize: 14, marginTop: 8 }}>
             {formatSom(byTier.t1)} · {formatSom(byTier.t2)} · {formatSom(byTier.t3)}
           </div>
+          {byCourse > 0 ? <div className="small muted">Kurs xaridi: {formatSom(byCourse)}</div> : null}
         </div>
         <div className="stat-card">
           <div className="small muted">Kutilmoqda</div>
@@ -152,6 +148,7 @@ export function AdminPaymentsBoard({
               { label: TARIFF_SHORT.t1, value: paid.filter((p) => p.tier === "t1").length, tone: "t1" },
               { label: TARIFF_SHORT.t2, value: paid.filter((p) => p.tier === "t2").length, tone: "t2" },
               { label: TARIFF_SHORT.t3, value: paid.filter((p) => p.tier === "t3").length, tone: "t3" },
+              { label: "Kurs xaridi", value: paid.filter((p) => p.tier === null).length, tone: "muted" },
             ]}
           />
         </section>
@@ -203,6 +200,7 @@ export function AdminPaymentsBoard({
           <option value="t1">{TARIFF_SHORT.t1}</option>
           <option value="t2">{TARIFF_SHORT.t2}</option>
           <option value="t3">{TARIFF_SHORT.t3}</option>
+          <option value="course">Kurs xaridi</option>
         </select>
       </div>
 
@@ -234,13 +232,13 @@ export function AdminPaymentsBoard({
                 </td>
                 <td>{p.courseTitle ?? "Tarif (kurs keyin)"}</td>
                 <td className="small muted">{p.teacherName ?? "—"}</td>
-                <td>{TARIFF_LABELS[p.tier]}</td>
+                <td>{p.tier ? TARIFF_LABELS[p.tier] : "Kurs xaridi"}</td>
                 <td>{formatSom(p.amount)}</td>
                 <td>
                   <span className={`badge ${statusTone(p.status)}`}>{statusLabel(p.status)}</span>
                   <div className="small muted">{p.provider}</div>
                 </td>
-                <td className="small muted">{formatWhen(p.createdAt)}</td>
+                <td className="small muted">{formatDateTime(new Date(p.createdAt))}</td>
                 {showRefunds ? <td>{p.refund ? <AdminRefundCell info={p.refund} /> : null}</td> : null}
               </tr>
             ))}

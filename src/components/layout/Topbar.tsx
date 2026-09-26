@@ -66,7 +66,7 @@ export function Topbar({
             <StopImpersonateButton />
           </>
         ) : (
-          <Link href="/" className="btn btn-sm">
+          <Link href="/" className="btn btn-sm topbar-home">
             Bosh sahifa
           </Link>
         )}
