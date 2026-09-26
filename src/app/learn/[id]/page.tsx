@@ -5,6 +5,7 @@ import { LiveChat } from "@/components/lesson/LiveChat";
 import { LessonRow } from "@/components/lesson/LessonRow";
 import { WatchShareButton } from "@/components/video/WatchShareButton";
 import { MeetRoom } from "@/components/live/MeetRoom";
+import { LiveMuxStage } from "@/components/live/LiveMuxStage";
 import { RecordingPublishButton } from "@/components/teacher/RecordingPublishButton";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,7 @@ import {
   mustUseSecureMuxPlayback,
 } from "@/lib/feature-flags";
 import { isWaitingLessonStatus } from "@/lib/live-session";
+import { authorizeLiveMuxPlayback, getLiveMuxStatus } from "@/lib/live-mux-playback";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
@@ -88,6 +90,15 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const canJoinLive =
     (lesson.status === "live" || waitingLike) && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;
+  const liveMux =
+    lesson.status === "live"
+      ? await authorizeLiveMuxPlayback({
+          userId: session?.user?.id,
+          role: session?.user?.role,
+          lessonId: lesson.id,
+        })
+      : null;
+  const liveMuxStatus = liveMux?.ok ? await getLiveMuxStatus(liveMux.liveStreamId) : null;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 
   const recordingRow = reviewV1 ? await getLatestRecordingForLesson(lesson.id) : null;
@@ -142,7 +153,24 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     <AppShell active="my-courses">
       <div className="watch-layout">
         <div className="watch-main">
-          {canJoinLive ? (
+          {liveMux?.ok ? (
+            <LiveMuxStage
+              lessonId={lesson.id}
+              title={lesson.titleUz}
+              initialPlaybackId={liveMux.playbackId}
+              initialStatus={liveMuxStatus ?? "unknown"}
+            >
+              {canJoinLive ? (
+                <MeetRoom
+                  lessonId={lesson.id}
+                  displayName={displayName}
+                  subject={lesson.titleUz}
+                  moderator={staffJoin}
+                  phase="live"
+                />
+              ) : null}
+            </LiveMuxStage>
+          ) : canJoinLive ? (
             <MeetRoom
               lessonId={lesson.id}
               displayName={displayName}
