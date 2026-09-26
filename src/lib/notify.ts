@@ -1,5 +1,6 @@
 import type { NotificationType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { sendEmail } from "@/lib/email";
 import { sendTelegramMessage, siteBaseUrl, type InlineKeyboard } from "@/lib/telegram/api";
 
@@ -71,23 +72,36 @@ export async function notifyCourseStudents(
   payload: Omit<NotifyInput, "userId" | "email" | "telegramChatId">,
   minTier?: "t1" | "t2" | "t3",
 ) {
-  const now = new Date();
-  const subs = await prisma.subscription.findMany({
-    where: {
-      courseId,
-      endsAt: { gt: now },
-      ...(minTier === "t2" ? { tier: { in: ["t2", "t3"] } } : {}),
-      ...(minTier === "t3" ? { tier: "t3" } : {}),
-    },
-    include: { user: { select: { id: true, email: true, telegramChatId: true } } },
-  });
+  const mode = getEnrollmentAccessMode();
+  const recipients = new Map<string, { id: string; email: string; telegramChatId: string | null }>();
 
-  for (const sub of subs) {
+  if (mode !== "enrollment") {
+    const subs = await prisma.subscription.findMany({
+      where: {
+        courseId,
+        endsAt: { gt: new Date() },
+        ...(minTier === "t2" ? { tier: { in: ["t2", "t3"] } } : {}),
+        ...(minTier === "t3" ? { tier: "t3" } : {}),
+      },
+      include: { user: { select: { id: true, email: true, telegramChatId: true } } },
+    });
+    for (const sub of subs) recipients.set(sub.user.id, sub.user);
+  }
+
+  if (mode === "dual" || mode === "enrollment") {
+    const seats = await prisma.enrollment.findMany({
+      where: { courseId, accessOpen: true, status: { in: ["active", "completed"] } },
+      include: { user: { select: { id: true, email: true, telegramChatId: true } } },
+    });
+    for (const seat of seats) recipients.set(seat.user.id, seat.user);
+  }
+
+  for (const user of recipients.values()) {
     await notifyUser({
       ...payload,
-      userId: sub.user.id,
-      email: sub.user.email,
-      telegramChatId: sub.user.telegramChatId,
+      userId: user.id,
+      email: user.email,
+      telegramChatId: user.telegramChatId,
     });
   }
 }
