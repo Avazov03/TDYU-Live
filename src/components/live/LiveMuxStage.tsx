@@ -1,99 +1,237 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { muxPlayerUrl } from "@/lib/mux-player";
+import { MeetRoom } from "@/components/live/MeetRoom";
+import {
+  isTerminalPollStatus,
+  nextLiveMuxPollDelay,
+  type LiveMuxPollOutcome,
+} from "@/lib/live-mux-poll";
+
+type StageStatus = "active" | "idle" | "disabled" | "unknown";
 
 type Props = {
   lessonId: string;
   title: string;
-  initialPlaybackId: string;
-  initialStatus: string;
-  /** Existing WebRTC room (MeetRoom) — collapsed while the Mux broadcast is active. */
-  children?: ReactNode;
+  initialStatus: StageStatus;
+  /** Server-built player URL; present only while the stream is active. */
+  initialPlayerUrl: string | null;
+  /** WebRTC room (questions, chat, hand raise). Null when the viewer may not join. */
+  room: { displayName: string; subject: string; moderator: boolean } | null;
+  /** Live attendance (AttendanceInterval) is recorded on room join. */
+  attendanceTracked: boolean;
 };
 
-const POLL_MS = 10_000;
+type RoomState = "out" | "open" | "hidden";
+
+function asStatus(v: unknown): StageStatus {
+  return v === "active" || v === "idle" || v === "disabled" ? v : "unknown";
+}
 
 /**
- * TEMPORARY public live playback (Phase 8.5) — server authorizes via Enrollment first.
- * Live-only; recordings keep SecureMuxPlayer / recording playback auth.
+ * Phase 8.5 live stage: Mux broadcast for enrolled viewers + opt-in WebRTC room.
+ * "Yashirish" hides the room but keeps the connection; "Xonadan chiqish" disconnects.
+ * Live-only — replay comes from the Recording lifecycle.
  */
-export function LiveMuxStage({ lessonId, title, initialPlaybackId, initialStatus, children }: Props) {
+export function LiveMuxStage({
+  lessonId,
+  title,
+  initialStatus,
+  initialPlayerUrl,
+  room,
+  attendanceTracked,
+}: Props) {
   const router = useRouter();
-  const [playbackId, setPlaybackId] = useState<string | null>(initialPlaybackId);
-  const [status, setStatus] = useState(initialStatus);
-  const [roomOpen, setRoomOpen] = useState(initialStatus !== "active");
+  const [status, setStatus] = useState<StageStatus>(initialStatus);
+  const [playerUrl, setPlayerUrl] = useState<string | null>(initialPlayerUrl);
+  const [degraded, setDegraded] = useState(initialStatus === "unknown");
+  const [roomState, setRoomState] = useState<RoomState>("out");
+  const refreshedRef = useRef(false);
 
   useEffect(() => {
     let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let errors = 0;
+    let lastStatus: string = initialStatus;
+
+    const schedule = (outcome: LiveMuxPollOutcome) => {
+      const delay = nextLiveMuxPollDelay(outcome);
+      if (stopped || delay === null) return;
+      timer = setTimeout(() => void poll(), delay);
+    };
+
     const poll = async () => {
-      const res = await fetch(`/api/live/mux-playback?lessonId=${encodeURIComponent(lessonId)}`, {
-        cache: "no-store",
-      }).catch(() => null);
-      if (stopped || !res) return;
-      if (res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { playbackId?: string; status?: string };
-        setPlaybackId(typeof data.playbackId === "string" ? data.playbackId : null);
-        setStatus(typeof data.status === "string" ? data.status : "unknown");
+      timer = null;
+      if (stopped || document.visibilityState === "hidden") return;
+      let res: Response | null = null;
+      try {
+        res = await fetch(`/api/live/mux-playback?lessonId=${encodeURIComponent(lessonId)}`, {
+          cache: "no-store",
+        });
+      } catch {
+        res = null;
+      }
+      if (stopped) return;
+      if (!res) {
+        errors += 1;
+        setDegraded(true);
+        schedule({ kind: "error", consecutiveErrors: errors });
         return;
       }
-      setPlaybackId(null);
-      if (res.status === 409) router.refresh();
+      if (res.status === 429) {
+        const retry = Number(res.headers.get("Retry-After"));
+        schedule({ kind: "rate_limited", retryAfterSec: Number.isFinite(retry) ? retry : null });
+        return;
+      }
+      if (isTerminalPollStatus(res.status)) {
+        setPlayerUrl(null);
+        if (!refreshedRef.current) {
+          refreshedRef.current = true;
+          router.refresh();
+        }
+        schedule({ kind: "stop", httpStatus: res.status });
+        return;
+      }
+      if (!res.ok) {
+        errors += 1;
+        setDegraded(true);
+        schedule({ kind: "error", consecutiveErrors: errors });
+        return;
+      }
+      const data = (await res.json().catch(() => null)) as {
+        status?: string;
+        degraded?: boolean;
+        playback?: { playerUrl?: string } | null;
+      } | null;
+      if (stopped) return;
+      errors = 0;
+      const next = asStatus(data?.status);
+      lastStatus = next;
+      setStatus(next);
+      setDegraded(Boolean(data?.degraded) || next === "unknown");
+      const url = typeof data?.playback?.playerUrl === "string" ? data.playback.playerUrl : null;
+      setPlayerUrl((prev) => (prev === url ? prev : url));
+      schedule({ kind: "ok", status: next });
     };
-    const timer = setInterval(() => void poll(), POLL_MS);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        if (timer) clearTimeout(timer);
+        timer = null;
+      } else if (!timer && !stopped) {
+        void poll();
+      }
+    };
+
+    schedule({ kind: "ok", status: lastStatus });
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       stopped = true;
-      clearInterval(timer);
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [lessonId, router]);
+  }, [lessonId, initialStatus, router]);
 
-  const showMux = Boolean(playbackId) && status === "active";
+  const showPlayer = status === "active" && Boolean(playerUrl);
+  const idleMessage =
+    status === "unknown" || degraded
+      ? "Efir holatini hozir tekshirib bo‘lmadi — qayta urinilmoqda. Jonli xona ishlashda davom etadi."
+      : status === "disabled"
+        ? "Efir hozir to‘xtatilgan."
+        : "Efir hali boshlanmagan — o‘qituvchi translyatsiyani boshlashi bilan shu yerda ochiladi.";
 
   return (
-    <>
-      {showMux ? (
-        <div className="player-wrap">
+    <section className="live-mux" data-testid="live-mux-stage" data-status={status}>
+      <div className="player-wrap">
+        {showPlayer ? (
           <iframe
-            src={muxPlayerUrl(playbackId!)}
+            src={playerUrl!}
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
             title={title}
             data-testid="live-mux-player"
           />
-        </div>
-      ) : children ? (
-        <p className="muted small" data-testid="live-mux-idle" style={{ margin: "0 0 8px" }}>
-          Efir (OBS) hali boshlanmagan — jonli xona ochiq.
-        </p>
-      ) : (
-        <div className="player-wrap" data-testid="live-mux-idle">
-          <div className={`player-demo course-thumb tone-${(lessonId.charCodeAt(0) % 6) + 1}`}>
+        ) : (
+          <div
+            className={`player-demo course-thumb tone-${(lessonId.charCodeAt(0) % 6) + 1}`}
+            data-testid={degraded ? "live-mux-degraded" : "live-mux-idle"}
+          >
             <div>
               <div className="badge pending" style={{ marginBottom: 8 }}>
                 JONLI EFIR
               </div>
               <h3>{title}</h3>
-              <p className="muted small">Efir hali boshlanmagan — boshlanishi bilan shu yerda ochiladi.</p>
+              <p className="muted small">{idleMessage}</p>
             </div>
           </div>
-        </div>
-      )}
-      {children ? (
-        <div className={showMux ? "live-room-fold" : undefined}>
-          {showMux ? (
-            <button
-              type="button"
-              className="btn btn-sm"
-              aria-expanded={roomOpen}
-              onClick={() => setRoomOpen((open) => !open)}
-            >
-              {roomOpen ? "Jonli xonani yopish" : "Jonli xonaga qo‘shilish"}
-            </button>
+        )}
+      </div>
+
+      {room ? (
+        <div className="live-room-panel" data-testid="live-room-panel" data-room={roomState}>
+          <div className="live-room-bar">
+            <div className="live-room-copy">
+              <strong>Jonli xona</strong>
+              <p className="muted small" data-testid="live-room-note">
+                {roomState === "out"
+                  ? "Savol berish, chat va qo‘l ko‘tarish uchun qo‘shiling."
+                  : roomState === "hidden"
+                    ? "Xona yashirilgan — ulanish saqlanib qoldi."
+                    : "Siz jonli xonadasiz."}
+                {attendanceTracked && !room.moderator
+                  ? " Davomat jonli xonaga qo‘shilganda hisoblanadi."
+                  : null}
+              </p>
+            </div>
+            <div className="live-room-actions">
+              {roomState === "out" ? (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  data-testid="live-room-join"
+                  onClick={() => setRoomState("open")}
+                >
+                  Jonli xonaga qo‘shilish
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    data-testid="live-room-toggle"
+                    aria-expanded={roomState === "open"}
+                    aria-controls="live-room-body"
+                    onClick={() => setRoomState((s) => (s === "open" ? "hidden" : "open"))}
+                  >
+                    {roomState === "open" ? "Yashirish" : "Ko‘rsatish"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    data-testid="live-room-leave"
+                    onClick={() => setRoomState("out")}
+                  >
+                    Xonadan chiqish
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          {roomState !== "out" ? (
+            <div id="live-room-body" hidden={roomState === "hidden"} data-testid="live-room-body">
+              <MeetRoom
+                lessonId={lessonId}
+                displayName={room.displayName}
+                subject={room.subject}
+                moderator={room.moderator}
+                phase="live"
+                suppressTeacherAudio={showPlayer}
+              />
+            </div>
           ) : null}
-          {roomOpen || !showMux ? children : null}
         </div>
       ) : null}
-    </>
+    </section>
   );
 }

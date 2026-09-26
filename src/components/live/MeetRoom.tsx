@@ -19,6 +19,8 @@ type MeetRoomProps = {
   moderator?: boolean;
   /** lobby = kutish (yozuv yo‘q); live = efir + REC */
   phase?: "lobby" | "live";
+  /** Mux player is carrying the broadcast audio — keep the teacher's WebRTC tile silent. */
+  suppressTeacherAudio?: boolean;
 };
 
 export type MeetRoomHandle = {
@@ -357,7 +359,7 @@ function useSpeaking(stream: MediaStream | null, enabled: boolean) {
 }
 
 export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetRoom(
-  { lessonId, displayName, moderator, phase = "live" },
+  { lessonId, displayName, moderator, phase = "live", suppressTeacherAudio = false },
   ref,
 ) {
   const peerIdRef = useRef(`p_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`);
@@ -1157,6 +1159,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const teacherRemote = remotes.find((p) => p.info.role === "moderator");
   const teacherStream = moderator ? localStream : teacherRemote?.stream ?? null;
   const teacherName = moderator ? displayName : teacherRemote?.info.name || "Ustoz";
+  const teacherPaneMuted = Boolean(moderator || suppressTeacherAudio);
   const sharing = Boolean(screenStream);
   const hasContent = Boolean(present) || sharing;
   const stageKind =
@@ -1222,7 +1225,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             <VideoPane
               stream={teacherStream}
               name={teacherName}
-              muted={moderator}
+              muted={teacherPaneMuted}
               you={moderator}
               speaking={moderator ? localSpeaking : teacherRemote?.info.micOn}
               micOff={moderator ? !micOn : teacherRemote ? !teacherRemote.info.micOn : false}
@@ -1259,7 +1262,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
               <VideoPane
                 stream={teacherStream}
                 name={teacherName}
-                muted={moderator}
+                muted={teacherPaneMuted}
                 you={moderator}
                 compact
                 camOff={moderator ? !camOn : teacherRemote ? !teacherRemote.info.camOn : false}
@@ -1280,7 +1283,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             <VideoPane
               stream={teacherStream}
               name={teacherName}
-              muted={moderator}
+              muted={teacherPaneMuted}
               you={moderator}
               compact
               speaking={moderator ? localSpeaking : undefined}

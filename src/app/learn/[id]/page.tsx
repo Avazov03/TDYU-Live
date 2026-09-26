@@ -12,12 +12,19 @@ import { prisma } from "@/lib/prisma";
 import { accessMessage, getLessonAccess } from "@/lib/access";
 import {
   shouldHideStudentTariffUi,
+  getEnrollmentAccessMode,
+  isLiveAttendanceV3Enabled,
+  isLiveMuxPlaybackV1Enabled,
   isLiveWaitingRoomV2Enabled,
   isRecordingReviewV1Enabled,
   mustUseSecureMuxPlayback,
 } from "@/lib/feature-flags";
 import { isWaitingLessonStatus } from "@/lib/live-session";
-import { authorizeLiveMuxPlayback, getLiveMuxStatus } from "@/lib/live-mux-playback";
+import {
+  authorizeLiveMuxPlayback,
+  getLiveMuxStatus,
+  resolveLivePlaybackSource,
+} from "@/lib/live-mux-playback";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
 import { formatDateTime, initials } from "@/lib/utils";
@@ -25,6 +32,7 @@ import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import { hasPlayableRecording, statusLabel } from "@/lib/plan";
 import {
   getLatestRecordingForLesson,
+  resolveReplayPlaybackId,
   studentMayPlayRecording,
   teacherMayPreviewRecording,
 } from "@/lib/recording-lifecycle";
@@ -50,7 +58,6 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               scheduledAt: true,
               recordingUrl: true,
               muxVodPlaybackId: true,
-              muxLivePlaybackId: true,
             },
           },
         },
@@ -65,10 +72,13 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const reviewV1 = isRecordingReviewV1Enabled();
   const forceSecureMux = mustUseSecureMuxPlayback();
   const waitingLike = isWaitingLessonStatus(lesson.status);
+  const liveMuxV1 = isLiveMuxPlaybackV1Enabled();
 
   // Waiting-room presence is NOT attendance (Wave 1). Legacy path kept when flag off.
+  // Mux path: watching the broadcast is not attendance — /api/live/join records it.
   const shouldMarkAttendance =
     access.ok &&
+    !(liveMuxV1 && lesson.status === "live") &&
     Boolean(session?.user?.id) &&
     (liveV2
       ? lesson.status === "live" || lesson.status === "ended" || lesson.status === "published"
@@ -91,23 +101,28 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
     (lesson.status === "live" || waitingLike) && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;
   const liveMux =
-    lesson.status === "live"
+    liveMuxV1 && lesson.status === "live"
       ? await authorizeLiveMuxPlayback({
           userId: session?.user?.id,
           role: session?.user?.role,
           lessonId: lesson.id,
         })
       : null;
-  const liveMuxStatus = liveMux?.ok ? await getLiveMuxStatus(liveMux.liveStreamId) : null;
+  const liveMuxStatus = liveMux?.ok ? await getLiveMuxStatus(liveMux.liveStreamId, lesson.id) : null;
+  const livePlayback =
+    liveMux?.ok && liveMuxStatus?.status === "active"
+      ? resolveLivePlaybackSource(liveMux.playbackId)
+      : null;
   const displayName = session?.user?.name?.trim() || (staffJoin ? lesson.course.teacher.fullName : "Talaba");
 
   const recordingRow = reviewV1 ? await getLatestRecordingForLesson(lesson.id) : null;
   const recordingStatus = recordingRow?.status ?? null;
 
-  const playbackId =
-    lesson.status === "live"
-      ? lesson.muxLivePlaybackId
-      : recordingRow?.muxPlaybackId || lesson.muxVodPlaybackId || lesson.muxLivePlaybackId;
+  const playbackId = resolveReplayPlaybackId({
+    lessonStatus: lesson.status,
+    recordingPlaybackId: recordingRow?.muxPlaybackId,
+    lessonVodPlaybackId: lesson.muxVodPlaybackId,
+  });
 
   const localRecordingUrl = recordingRow?.storageKey || lesson.recordingUrl;
 
@@ -145,7 +160,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   const doneCount = playlist.filter(
     (item) =>
       (item.status === "ended" || item.status === "published") &&
-      hasPlayableRecording(item.recordingUrl, item.muxVodPlaybackId || item.muxLivePlaybackId),
+      hasPlayableRecording(item.recordingUrl, item.muxVodPlaybackId),
   ).length;
   const progressPct = playlist.length ? Math.round((doneCount / playlist.length) * 100) : 0;
 
@@ -157,19 +172,15 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             <LiveMuxStage
               lessonId={lesson.id}
               title={lesson.titleUz}
-              initialPlaybackId={liveMux.playbackId}
-              initialStatus={liveMuxStatus ?? "unknown"}
-            >
-              {canJoinLive ? (
-                <MeetRoom
-                  lessonId={lesson.id}
-                  displayName={displayName}
-                  subject={lesson.titleUz}
-                  moderator={staffJoin}
-                  phase="live"
-                />
-              ) : null}
-            </LiveMuxStage>
+              initialStatus={liveMuxStatus?.status ?? "unknown"}
+              initialPlayerUrl={livePlayback?.playerUrl ?? null}
+              room={
+                canJoinLive
+                  ? { displayName, subject: lesson.titleUz, moderator: staffJoin }
+                  : null
+              }
+              attendanceTracked={isLiveAttendanceV3Enabled()}
+            />
           ) : canJoinLive ? (
             <MeetRoom
               lessonId={lesson.id}
@@ -331,7 +342,11 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
           {lesson.status === "ended" ? (
             <LiveChat
               lessonId={lesson.id}
-              canSend={(access.ok && canUseLiveChat(access.tier)) || staffJoin}
+              canSend={
+                (access.ok &&
+                  (getEnrollmentAccessMode() === "enrollment" || canUseLiveChat(access.tier))) ||
+                staffJoin
+              }
             />
           ) : null}
         </div>
@@ -348,7 +363,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               compact
               active={item.id === lesson.id}
               recordingUrl={item.recordingUrl}
-              playbackId={item.muxVodPlaybackId || item.muxLivePlaybackId}
+              playbackId={item.muxVodPlaybackId}
             />
           ))}
         </aside>

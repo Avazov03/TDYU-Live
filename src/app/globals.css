@@ -476,6 +476,7 @@ html {
 .watch-rec-card:hover .vinfo h3 { color: var(--accent); }
 @media (max-width: 960px) {
   .watch-layout { flex-direction: column; max-width: 1100px; }
+  .watch-main { width: 100%; }
   .watch-sidebar {
     width: 100%;
     position: static;
@@ -2188,8 +2189,24 @@ html[data-theme="dark"] .acet-pane {
 .live-error a { color: inherit; text-decoration: underline; display: inline-block; margin-top: 8px; }
 .live-obs { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .live-meet { margin-top: 16px; }
-.live-room-fold { margin-top: 12px; display: grid; gap: 12px; justify-items: start; }
-.live-room-fold > :not(button) { justify-self: stretch; }
+.live-room-panel { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.live-room-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.live-room-copy { min-width: 0; flex: 1 1 260px; }
+.live-room-copy p { margin: 2px 0 0; }
+.live-room-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 560px) {
+  .live-room-actions { width: 100%; }
+  .live-room-actions .btn { flex: 1 1 0; }
+}
 .live-obs-extra {
   margin-top: 16px;
   padding-top: 12px;
