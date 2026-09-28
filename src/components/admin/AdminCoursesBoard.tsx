@@ -7,6 +7,7 @@ import { SoftDisclosure, SoftExpand } from "@/components/admin/SoftDisclosure";
 import { AdminDonut, AdminHBar } from "@/components/admin/AdminCharts";
 import type { AdminCourseInsight, AdminTeacherCourseGroup, CourseHealth } from "@/lib/admin-courses";
 import { formatSom } from "@/lib/tariffs";
+import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
 import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 import { Icon } from "@/components/ui/Icon";
 
@@ -28,13 +29,8 @@ function healthTone(h: CourseHealth) {
 
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("uz-UZ", {
-    timeZone: "Asia/Tashkent",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const p = tashkentParts(new Date(iso));
+  return `${p.day}-${UZ_MONTHS_SHORT[p.monthIndex]}, ${p.hour}:${p.minute}`;
 }
 
 type HealthFilter = "all" | CourseHealth;

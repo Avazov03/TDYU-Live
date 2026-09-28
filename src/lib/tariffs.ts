@@ -54,8 +54,10 @@ export function isPriorityTier(tier: TariffTier | null | undefined) {
   return tier === "t3";
 }
 
+/** Not toLocaleString: Node ICU groups uz-UZ with NBSP but browsers use commas, breaking hydration. */
 export function formatSom(amount: number) {
-  return `${amount.toLocaleString("uz-UZ")} so'm`;
+  const grouped = String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+  return `${grouped} so'm`;
 }
 
 export function isSubscriptionActive(endsAt: Date, now = new Date()) {
