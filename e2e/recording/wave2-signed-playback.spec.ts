@@ -151,14 +151,16 @@ test.describe("Recording Wave 2 signed playback", () => {
     const denyLesson =
       process.env.E2E_DENY_LESSON_ID?.trim() || STAGING_FIXTURE.denyLessonId;
     const deny = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch("/api/recording/playback-token", {
+      const token = await fetch("/api/recording/playback-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId }),
       });
-      return res.status;
+      const media = await fetch(`/api/media/recording/${lessonId}`);
+      return { token: token.status, media: media.status };
     }, denyLesson);
-    expect(deny).toBeGreaterThanOrEqual(400);
+    // 403 whether or not the lesson has a recording: 404 would leak its existence.
+    expect(deny).toEqual({ token: 403, media: 403 });
 
     monitor.noteAction("Teacher preview token ALLOW");
     const teacherTok = await teacherPage.evaluate(async (lessonId) => {

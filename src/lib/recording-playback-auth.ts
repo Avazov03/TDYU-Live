@@ -62,6 +62,36 @@ export function legacyStudentMayPlay(rec: {
   return Boolean(rec.muxPlaybackId || rec.storageKey);
 }
 
+function accessDenied(reason: string): PlaybackAuthFail {
+  return {
+    ok: false,
+    status: reason === "unauthenticated" ? 401 : 403,
+    code:
+      reason === "unauthenticated"
+        ? "UNAUTHENTICATED"
+        : reason === "expired" || reason === "no_subscription"
+          ? "NOT_ENROLLED"
+          : "RECORDING_ACCESS_DENIED",
+  };
+}
+
+/** Outsiders must not learn whether a lesson has a recording. */
+async function deniedBeforeRecordingLookup(
+  userId: string,
+  userRole: string,
+  lessonId: string,
+): Promise<PlaybackAuthFail | null> {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { course: { include: { teacher: true } } },
+  });
+  if (!lesson) return null;
+  if (isAdminRole(userRole)) return null;
+  if (isTeacherRole(userRole) && lesson.course.teacher.userId === userId) return null;
+  const access = await getLessonAccess(userId, lesson.courseId, lesson.status);
+  return access.ok ? null : accessDenied(access.reason);
+}
+
 /**
  * Authorize playback for a recording identified by recordingId XOR lessonId.
  * Rejects any attempt to pass an arbitrary playbackId (callers must not forward one).
@@ -87,7 +117,10 @@ export async function authorizeRecordingPlayback(input: {
     lessonId = recording.lessonId;
   } else if (lessonId) {
     recording = await getLatestRecordingForLesson(lessonId);
-    if (!recording) return { ok: false, status: 404, code: "RECORDING_NOT_FOUND" };
+    if (!recording) {
+      const denied = await deniedBeforeRecordingLookup(input.userId, input.userRole, lessonId);
+      return denied ?? { ok: false, status: 404, code: "RECORDING_NOT_FOUND" };
+    }
   } else {
     return { ok: false, status: 400, code: "RECORDING_ID_REQUIRED" };
   }
@@ -124,20 +157,7 @@ export async function authorizeRecordingPlayback(input: {
 
   // Students
   const access = await getLessonAccess(input.userId, lesson.courseId, lesson.status);
-  if (!access.ok) {
-    return {
-      ok: false,
-      status: access.reason === "unauthenticated" ? 401 : 403,
-      code:
-        access.reason === "unauthenticated"
-          ? "UNAUTHENTICATED"
-          : access.reason === "expired"
-            ? "NOT_ENROLLED"
-            : access.reason === "no_subscription"
-              ? "NOT_ENROLLED"
-              : "RECORDING_ACCESS_DENIED",
-    };
-  }
+  if (!access.ok) return accessDenied(access.reason);
 
   const reviewV1 = isRecordingReviewV1Enabled();
   if (reviewV1) {

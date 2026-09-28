@@ -37,6 +37,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     isAdminRole(session.user.role) ||
     (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id);
 
+  if (!staff) {
+    const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
+    if (!access.ok) {
+      return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+    }
+  }
+
   const reviewV1 = isRecordingReviewV1Enabled();
   const recording = reviewV1 ? await getLatestRecordingForLesson(lesson.id) : null;
 
@@ -49,10 +56,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ error: "Yozuv tayyor emas", code: "NOT_READY" }, { status: 403 });
       }
     } else {
-      const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
-      if (!access.ok) {
-        return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
-      }
       if (!studentMayPlayRecording({ flagOn: true, recordingStatus: recording.status })) {
         return NextResponse.json(
           { error: "Yozuv hali chop etilmagan", code: "NOT_PUBLISHED" },
@@ -63,12 +66,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   } else {
     if (!lesson.recordingUrl) {
       return NextResponse.json({ error: "Yozuv yo'q" }, { status: 404 });
-    }
-    if (!staff) {
-      const access = await getLessonAccess(session.user.id, lesson.courseId, lesson.status);
-      if (!access.ok) {
-        return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
-      }
     }
   }
 
