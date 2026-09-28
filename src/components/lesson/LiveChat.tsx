@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { initials } from "@/lib/utils";
 
+const COMMENTS_POLL_MS = 15_000;
+
 type Message = {
   id: string;
   text: string;
@@ -18,37 +20,49 @@ export function LiveChat({ lessonId, canSend }: { lessonId: string; canSend: boo
 
   useEffect(() => {
     let cancelled = false;
+    let denied = false;
     const tick = () => {
+      if (denied || document.hidden) return;
       fetch(`/api/lessons/${lessonId}/chat`)
-        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((r) => {
+          if (r.status === 401 || r.status === 403 || r.status === 404) denied = true;
+          return r.ok ? r.json() : { items: [] };
+        })
         .then((data) => {
           if (!cancelled) setItems(data.items ?? []);
         })
         .catch(() => undefined);
     };
-    const t = setInterval(tick, 4000);
+    const t = setInterval(tick, COMMENTS_POLL_MS);
     const start = setTimeout(tick, 0);
+    document.addEventListener("visibilitychange", tick);
     return () => {
       cancelled = true;
       clearInterval(t);
       clearTimeout(start);
+      document.removeEventListener("visibilitychange", tick);
     };
   }, [lessonId]);
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() || sending) return;
     setSending(true);
-    const res = await fetch(`/api/lessons/${lessonId}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    const data = await res.json();
-    setText("");
-    setSending(false);
-    if (res.ok && data.item) {
-      setItems((prev) => [...prev, data.item]);
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.item) {
+        setText("");
+        setItems((prev) => [...prev, data.item]);
+      }
+    } catch {
+      // keep the typed text so the user can retry
+    } finally {
+      setSending(false);
     }
   };
 

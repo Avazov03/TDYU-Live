@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
@@ -12,6 +12,7 @@ import {
   TARIFF_SHORT,
   formatSom,
 } from "@/lib/tariffs";
+import { tashkentParts, UZ_MONTHS_LONG } from "@/lib/utils";
 
 type Method = "payme" | "click" | "card";
 type Step = "review" | "method" | "processing" | "success";
@@ -29,10 +30,15 @@ const METHODS: {
   title: string;
   hint: string;
 }[] = [
-  { id: "payme", title: "Payme", hint: "Uzbekiston bo‘ylab keng tarqalgan" },
+  { id: "payme", title: "Payme", hint: "O‘zbekiston bo‘ylab keng tarqalgan" },
   { id: "click", title: "Click", hint: "Mobil ilova orqali tez to‘lov" },
   { id: "card", title: "Demo karta", hint: "Sinov uchun — haqiqiy pul yechilmaydi" },
 ];
+
+function formatLongDate(date: Date) {
+  const p = tashkentParts(date);
+  return `${p.day} ${UZ_MONTHS_LONG[p.monthIndex]} ${p.year}`;
+}
 
 function providerLabel(p: string) {
   if (p === "payme") return "Payme";
@@ -56,15 +62,7 @@ export function CheckoutClient({
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [nextPath, setNextPath] = useState("/onboard");
 
-  const endsHint = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toLocaleDateString("uz-UZ", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  }, []);
+  const [endsHint] = useState(() => formatLongDate(new Date(Date.now() + 30 * 86400000)));
 
   async function confirmPay() {
     setError("");
@@ -249,11 +247,7 @@ export function CheckoutClient({
                 <div>
                   <dt>Amal qiladi</dt>
                   <dd>
-                    {new Date(receipt.endsAt).toLocaleDateString("uz-UZ", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    {formatLongDate(new Date(receipt.endsAt))}
                   </dd>
                 </div>
               </dl>

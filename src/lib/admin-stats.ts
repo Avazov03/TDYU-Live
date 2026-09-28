@@ -52,6 +52,7 @@ export async function getAdminDashboard() {
     openInvites,
     liveNow,
     topCoursesRaw,
+    recentRefunds,
   ] = await Promise.all([
     prisma.user.count({ where: { role: "student" } }),
     prisma.teacher.count(),
@@ -128,6 +129,10 @@ export async function getAdminDashboard() {
       take: 40,
       orderBy: { createdAt: "desc" },
     }),
+    prisma.refund.findMany({
+      where: { status: "refunded", completedAt: { gte: days30 < monthStart ? days30 : monthStart } },
+      select: { amount: true, completedAt: true },
+    }),
   ]);
 
   const activeTier = { t1: 0, t2: 0, t3: 0 };
@@ -136,7 +141,14 @@ export async function getAdminDashboard() {
   }
 
   const registrationsByDay = buildDaySeries(29, recentStudents.map((u) => u.createdAt));
-  const revenueByDay = buildDaySeriesSum(29, recentPayments.map((p) => ({ at: p.createdAt, amount: p.amount })));
+  // Refunds reduce revenue on the day they were paid out (payments themselves are not rewritten).
+  const refundEntries = recentRefunds
+    .filter((r): r is { amount: number; completedAt: Date } => r.completedAt !== null)
+    .map((r) => ({ at: r.completedAt, amount: -r.amount }));
+  const revenueByDay = buildDaySeriesSum(29, [
+    ...recentPayments.map((p) => ({ at: p.createdAt, amount: p.amount })),
+    ...refundEntries.filter((r) => r.at >= days30),
+  ]);
 
   const lessonStatus: Record<string, number> = {
     live: 0,
@@ -159,7 +171,9 @@ export async function getAdminDashboard() {
     .sort((a, b) => b.activeStudents - a.activeStudents)
     .slice(0, 5);
 
-  const monthRevenue = monthPayments.reduce((n, p) => n + p.amount, 0);
+  const monthRevenue =
+    monthPayments.reduce((n, p) => n + p.amount, 0) +
+    refundEntries.filter((r) => r.at >= monthStart).reduce((n, r) => n + r.amount, 0);
 
   return {
     kpis: {

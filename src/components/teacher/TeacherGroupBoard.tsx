@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { IssueCertificateButton } from "@/components/teacher/IssueCertificateButton";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { TARIFF_LABELS } from "@/lib/tariffs";
+import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
 import type { TariffTier } from "@/generated/prisma/client";
 
 type StudentRow = {
@@ -44,12 +45,8 @@ const TIER_NOTES: Record<TariffTier, string> = {
 const TIERS: (TariffTier | null)[] = [null, "t3", "t2", "t1"];
 
 function formatWhen(iso: string) {
-  return new Intl.DateTimeFormat("uz-UZ", {
-    timeZone: "Asia/Tashkent",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
+  const p = tashkentParts(new Date(iso));
+  return `${p.day}-${UZ_MONTHS_SHORT[p.monthIndex]}, ${p.year}`;
 }
 
 function daysLeft(iso: string | null) {

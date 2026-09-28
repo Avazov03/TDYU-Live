@@ -2,15 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { localInputToIso } from "@/lib/utils";
+import { localInputToIso, nextTashkentHourInput } from "@/lib/utils";
 
-function defaultSlot() {
-  const d = new Date();
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 1);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:00`;
-}
+const defaultSlot = () => nextTashkentHourInput();
 
 /** Yangi kurs (umumiy mavzu) + birinchi dars yoki N ta dars shabloni. */
 export function CreateCoursePlanForm() {

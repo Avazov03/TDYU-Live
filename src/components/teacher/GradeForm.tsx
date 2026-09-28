@@ -15,15 +15,31 @@ export function GradeForm({
   const router = useRouter();
   const [grade, setGrade] = useState(initialGrade?.toString() ?? "");
   const [note, setNote] = useState(initialNote ?? "");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch("/api/teacher/grades", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ submissionId, grade: Number(grade), teacherNote: note }),
-    });
-    router.refresh();
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/teacher/grades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId, grade: Number(grade), teacherNote: note }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(data.error || "Baho saqlanmadi");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -43,7 +59,10 @@ export function GradeForm({
         placeholder="Izoh"
         style={{ flex: 1, minWidth: 160 }}
       />
-      <button className="btn btn-sm" type="submit">Saqlash</button>
+      <button className="btn btn-sm" type="submit" disabled={busy}>
+        {busy ? "Saqlanmoqda..." : "Saqlash"}
+      </button>
+      {error ? <p className="small" style={{ color: "var(--danger)", width: "100%", margin: 0 }}>{error}</p> : null}
     </form>
   );
 }

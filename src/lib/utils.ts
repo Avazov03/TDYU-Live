@@ -98,6 +98,12 @@ export function tashkentParts(date: Date) {
   };
 }
 
+/** `YYYY-MM-DDTHH:00` for the next full hour in Asia/Tashkent — identical on server and client. */
+export function nextTashkentHourInput(now = new Date()): string {
+  const p = tashkentParts(new Date(now.getTime() + 60 * 60 * 1000));
+  return `${p.year}-${String(p.monthIndex + 1).padStart(2, "0")}-${p.day}T${p.hour}:00`;
+}
+
 /** "05-okt, 2026, 18:00" in Asia/Tashkent. */
 export function formatDateTime(date: Date) {
   const p = tashkentParts(date);

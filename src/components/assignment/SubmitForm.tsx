@@ -18,14 +18,19 @@ export function SubmitForm({ assignmentId }: { assignmentId: string }) {
     body.set("assignmentId", assignmentId);
     body.set("text", text);
     if (file) body.set("file", file);
-    const res = await fetch("/api/assignments/submit", { method: "POST", body });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "Yuborilmadi");
-      return;
+    try {
+      const res = await fetch("/api/assignments/submit", { method: "POST", body });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(data.error || (res.status === 413 ? "Fayl juda katta" : "Yuborilmadi"));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+    } finally {
+      setLoading(false);
     }
-    router.refresh();
   };
 
   return (

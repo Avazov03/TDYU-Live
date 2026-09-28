@@ -2,15 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { localInputToIso } from "@/lib/utils";
+import { localInputToIso, nextTashkentHourInput } from "@/lib/utils";
 
-function defaultSlot() {
-  const d = new Date();
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 1);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
-}
+const defaultSlot = () => nextTashkentHourInput();
 
 export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: string }[] }) {
   const router = useRouter();
@@ -20,22 +14,34 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
   const [coverUrl, setCoverUrl] = useState("");
   const [scheduledAt, setScheduledAt] = useState(defaultSlot);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setError("");
-    const res = await fetch("/api/teacher/lessons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        courseId,
-        titleUz,
-        summaryUz,
-        coverUrl,
-        scheduledAt: localInputToIso(scheduledAt),
-      }),
-    });
-    const data = await res.json();
+    setBusy(true);
+    let res: Response;
+    let data: { error?: string };
+    try {
+      res = await fetch("/api/teacher/lessons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          titleUz,
+          summaryUz,
+          coverUrl,
+          scheduledAt: localInputToIso(scheduledAt),
+        }),
+      });
+      data = await res.json().catch(() => ({}));
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+      return;
+    } finally {
+      setBusy(false);
+    }
     if (!res.ok) {
       setError(data.error || "Saqlanmadi");
       return;
@@ -79,7 +85,9 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
         <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
-      <button className="btn btn-primary" type="submit">Jadvalga qo&apos;shish</button>
+      <button className="btn btn-primary" type="submit" disabled={busy}>
+        {busy ? "Saqlanmoqda..." : "Jadvalga qo\u2018shish"}
+      </button>
     </form>
   );
 }

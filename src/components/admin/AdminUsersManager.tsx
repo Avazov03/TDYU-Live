@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
+import { tashkentParts } from "@/lib/utils";
+
+const RESET_PASSWORD_CONFIRM =
+  "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Yangi parol yaratilsinmi? Eski parol darhol ishlamay qoladi.";
 
 type UserRole = "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
@@ -48,14 +52,8 @@ export type AdminUserRow = {
 
 function formatWhen(iso: string | null) {
   if (!iso) return "Hali kirmagan";
-  return new Intl.DateTimeFormat("uz-UZ", {
-    timeZone: "Asia/Tashkent",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const p = tashkentParts(new Date(iso));
+  return `${p.day}.${String(p.monthIndex + 1).padStart(2, "0")}.${p.year}, ${p.hour}:${p.minute}`;
 }
 
 async function copyText(value: string) {
@@ -118,6 +116,7 @@ export function AdminUsersManager({
   };
 
   const resetPassword = async (userId: string) => {
+    if (!window.confirm(RESET_PASSWORD_CONFIRM)) return "";
     setBusyId(userId);
     setError("");
     setOpenId(userId);

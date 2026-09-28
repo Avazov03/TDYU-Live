@@ -11,7 +11,7 @@ import {
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
 import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
-import { studioAction } from "../helpers/live-studio";
+import { acceptNextConfirm, studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 8.5 — Mux live playback with Enrollment access (staging only).
@@ -173,6 +173,7 @@ test.describe("Phase 8.5 live Mux playback", () => {
     expect((await api(adminPage, playbackPath(LESSON_ID))).status).toBe(200);
 
     monitor.noteAction("Teacher ends — live source disappears for the student");
+    acceptNextConfirm(teacherPage, /Efirni tugatasizmi/);
     await teacherPage.getByTestId("live-end").click();
     // End saves the browser recording first, then closes the stream.
     await expect

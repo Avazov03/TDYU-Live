@@ -6,6 +6,10 @@ import { ImpersonateTeacherButton } from "@/components/admin/ImpersonateTeacherB
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
 import { Icon } from "@/components/ui/Icon";
+import { tashkentParts } from "@/lib/utils";
+
+const RESET_PASSWORD_CONFIRM =
+  "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Yangi parol yaratilsinmi? Eski parol darhol ishlamay qoladi.";
 
 export type TeacherRow = {
   id: string;
@@ -35,13 +39,8 @@ type StatusFilter = "all" | TeacherRow["status"];
 
 function formatLoginAt(iso: string | null) {
   if (!iso) return "Hali kirmagan";
-  return new Intl.DateTimeFormat("uz-UZ", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const p = tashkentParts(new Date(iso));
+  return `${p.day}.${String(p.monthIndex + 1).padStart(2, "0")}.${p.year}, ${p.hour}:${p.minute}`;
 }
 
 function statusLabel(status: TeacherRow["status"]) {
@@ -146,6 +145,7 @@ export function AdminTeachersManager({
   };
 
   const resetPassword = async (teacherId: string) => {
+    if (!window.confirm(RESET_PASSWORD_CONFIRM)) return "";
     setBusyId(teacherId);
     setError("");
     setOpenId(teacherId);

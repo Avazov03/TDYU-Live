@@ -10,17 +10,33 @@ export function CreateAssignmentForm({ courses }: { courses: { id: string; title
   const [titleUz, setTitleUz] = useState("");
   const [descriptionUz, setDescriptionUz] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch("/api/teacher/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, titleUz, descriptionUz, dueAt: localInputToIso(dueAt) }),
-    });
-    setTitleUz("");
-    setDescriptionUz("");
-    router.refresh();
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/teacher/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, titleUz, descriptionUz, dueAt: localInputToIso(dueAt) }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(data.error || "Topshiriq saqlanmadi");
+        return;
+      }
+      setTitleUz("");
+      setDescriptionUz("");
+      router.refresh();
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!courses.length) return null;
@@ -47,7 +63,10 @@ export function CreateAssignmentForm({ courses }: { courses: { id: string; title
         <label>Muddat</label>
         <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required />
       </div>
-      <button className="btn btn-primary" type="submit">Qo&apos;shish</button>
+      {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
+      <button className="btn btn-primary" type="submit" disabled={busy}>
+        {busy ? "Saqlanmoqda..." : "Qo\u2018shish"}
+      </button>
     </form>
   );
 }

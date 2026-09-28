@@ -41,6 +41,16 @@ export function LiveStudio({
   const inRoom = isLive || isLobby;
 
   const act = async (action: "lobby" | "start" | "end") => {
+    if (
+      action === "end" &&
+      !window.confirm(
+        isLive
+          ? "Efirni tugatasizmi? Dars talabalar uchun yakunlanadi va qayta ochilmaydi."
+          : "Kutish xonasini yopasizmi? Talabalar xonadan chiqariladi.",
+      )
+    ) {
+      return;
+    }
     setLoading(true);
     setError("");
     let recordingUrl: string | undefined;
@@ -51,11 +61,18 @@ export function LiveStudio({
         setError(err instanceof Error ? err.message : "Yozuv yuklanmadi, dars yopiladi.");
       }
     }
-    const res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, {
-      method: "POST",
-      headers: action === "end" ? { "Content-Type": "application/json" } : undefined,
-      body: action === "end" ? JSON.stringify({ recordingUrl }) : undefined,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/teacher/lessons/${lessonId}/${action}`, {
+        method: "POST",
+        headers: action === "end" ? { "Content-Type": "application/json" } : undefined,
+        body: action === "end" ? JSON.stringify({ recordingUrl }) : undefined,
+      });
+    } catch {
+      setLoading(false);
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+      return;
+    }
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
