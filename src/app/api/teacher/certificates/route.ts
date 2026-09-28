@@ -5,6 +5,7 @@ import { getStudentOwnedCourses } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notify";
 import { getTeacherForUser } from "@/lib/teacher";
+import { isUniqueConstraint } from "@/lib/prisma-error";
 
 const schema = z.object({
   courseId: z.string().trim().min(1).max(64),
@@ -35,15 +36,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const cert = await prisma.certificate.upsert({
-    where: { userId_courseId: { userId: parsed.data.userId, courseId: course.id } },
-    update: { issuedAt: new Date(), issuedBy: session.user.id },
-    create: {
-      userId: parsed.data.userId,
-      courseId: course.id,
-      issuedBy: session.user.id,
-    },
-  });
+  const where = { userId_courseId: { userId: parsed.data.userId, courseId: course.id } };
+  const existing = await prisma.certificate.findUnique({ where });
+  if (existing) return NextResponse.json({ certificate: existing, already: true });
+
+  let cert;
+  try {
+    cert = await prisma.certificate.create({
+      data: { userId: parsed.data.userId, courseId: course.id, issuedBy: session.user.id },
+    });
+  } catch (err) {
+    if (!isUniqueConstraint(err)) throw err;
+    const raced = await prisma.certificate.findUniqueOrThrow({ where });
+    return NextResponse.json({ certificate: raced, already: true });
+  }
 
   const user = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
   if (user) {

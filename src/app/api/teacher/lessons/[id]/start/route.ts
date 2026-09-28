@@ -78,11 +78,51 @@ export async function POST(
     }
   }
 
-  const stream = await createLiveStreamOrDemo(lesson.titleUz);
+  // Claim the transition first so a double click / second tab cannot create a second
+  // stream, resurrect a lesson that was just ended, or notify students twice.
+  const claimed = await prisma.lesson.updateMany({
+    where: { id: lesson.id, status: lesson.status },
+    data: { status: "live" },
+  });
+  if (claimed.count !== 1) {
+    const current = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+    if (current.status !== "live") {
+      return NextResponse.json(
+        { error: "Dars holati hozirgina o‘zgardi — sahifani yangilang" },
+        { status: 409 },
+      );
+    }
+    const demo = Boolean(current.streamKey?.startsWith("demo_"));
+    return NextResponse.json({
+      lesson: current,
+      demo,
+      rtmpUrl: demo ? null : "rtmps://global-live.mux.com:443/app",
+      liveSession: isLiveWaitingRoomV2Enabled() ? await startLiveSession(lesson.id) : null,
+    });
+  }
+
+  let stream: Awaited<ReturnType<typeof createLiveStreamOrDemo>>;
+  if (lesson.muxLiveStreamId && lesson.muxLivePlaybackId && lesson.streamKey) {
+    stream = {
+      liveStreamId: lesson.muxLiveStreamId,
+      livePlaybackId: lesson.muxLivePlaybackId,
+      streamKey: lesson.streamKey,
+      demo: lesson.streamKey.startsWith("demo_"),
+    };
+  } else {
+    try {
+      stream = await createLiveStreamOrDemo(lesson.titleUz);
+    } catch (err) {
+      await prisma.lesson.updateMany({
+        where: { id: lesson.id, status: "live" },
+        data: { status: lesson.status },
+      });
+      throw err;
+    }
+  }
   const updated = await prisma.lesson.update({
     where: { id: lesson.id },
     data: {
-      status: "live",
       muxLiveStreamId: stream.liveStreamId,
       muxLivePlaybackId: stream.livePlaybackId,
       streamKey: stream.streamKey,

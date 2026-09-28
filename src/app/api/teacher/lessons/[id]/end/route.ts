@@ -53,7 +53,13 @@ export async function POST(
   ) {
     return NextResponse.json({ lesson });
   }
-  if (!canTeacherEndLive(lesson.status) && lesson.status !== "scheduled") {
+  if (lesson.status === "scheduled") {
+    return NextResponse.json(
+      { error: "Dars hali boshlanmagan — yopadigan narsa yo‘q", code: "NOT_STARTED" },
+      { status: 409 },
+    );
+  }
+  if (!canTeacherEndLive(lesson.status)) {
     return NextResponse.json({ error: "Bu darsni yopib bo‘lmaydi" }, { status: 400 });
   }
 
@@ -61,11 +67,14 @@ export async function POST(
     // Never aired: no recording, no attendance — the lesson can be reopened later.
     closeLiveRoom(lesson.id);
     const liveSession = isLiveWaitingRoomV2Enabled() ? await endLiveSession(lesson.id) : null;
-    await prisma.lesson.updateMany({
+    const closed = await prisma.lesson.updateMany({
       where: { id: lesson.id, status: lesson.status },
       data: { status: "scheduled" },
     });
     const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+    if (closed.count !== 1) {
+      return NextResponse.json({ lesson: updated, liveSession, waitingClosed: true });
+    }
     await notifyCourseStudents(lesson.courseId, {
       type: "system",
       titleUz: "Kutish xonasi yopildi",
@@ -79,6 +88,17 @@ export async function POST(
   const clientRecordingUrl = parsed.success ? parsed.data?.recordingUrl : undefined;
   const recordingUrl =
     clientRecordingUrl && isStorageKeyForLesson(clientRecordingUrl, lesson) ? clientRecordingUrl : undefined;
+
+  // Only the request that wins this transition closes the stream, creates the recording
+  // and notifies students; parallel ends (double click, second tab) just read the result.
+  const claimed = await prisma.lesson.updateMany({
+    where: { id: lesson.id, status: lesson.status },
+    data: { status: "ended" },
+  });
+  if (claimed.count !== 1) {
+    const current = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+    return NextResponse.json({ lesson: current });
+  }
 
   if (lesson.muxLiveStreamId) {
     const completed = await completeMuxLiveStream(lesson.muxLiveStreamId);

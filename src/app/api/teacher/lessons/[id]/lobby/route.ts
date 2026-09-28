@@ -68,10 +68,24 @@ export async function POST(
     }
   }
 
-  const updated = await prisma.lesson.update({
-    where: { id: lesson.id },
+  const claimed = await prisma.lesson.updateMany({
+    where: { id: lesson.id, status: "scheduled" },
     data: { status: "lobby" },
   });
+  if (claimed.count !== 1) {
+    const current = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
+    if (!isWaitingLessonStatus(current.status) && current.status !== "live") {
+      return NextResponse.json(
+        { error: "Dars holati hozirgina o‘zgardi — sahifani yangilang" },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({
+      lesson: current,
+      liveSession: isLiveWaitingRoomV2Enabled() ? await ensureWaitingLiveSession(lesson.id) : null,
+    });
+  }
+  const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
 
   let liveSession = null;
   if (isLiveWaitingRoomV2Enabled()) {

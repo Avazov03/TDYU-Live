@@ -5,6 +5,9 @@ import { getTeacherForUser } from "@/lib/teacher";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
+const QUICK_TITLE = "Jonli dars";
+const QUICK_REUSE_MS = 30 * 60 * 1000;
+
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "teacher") {
@@ -44,12 +47,25 @@ export async function POST() {
   });
   if (live) return NextResponse.json({ lesson: live, alreadyLive: true });
 
-  const lesson = await prisma.lesson.create({
-    data: {
-      courseId,
-      titleUz: "Jonli dars",
-      scheduledAt: new Date(),
-    },
+  // Double click / second tab: reuse the quick lesson that has not started yet.
+  // The per-teacher advisory lock makes parallel clicks see each other's insert.
+  const targetCourseId = courseId;
+  const { lesson, reused } = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtext(${`quick-live:${teacher.id}`}))`;
+    const pending = await tx.lesson.findFirst({
+      where: {
+        courseId: targetCourseId,
+        titleUz: QUICK_TITLE,
+        status: { in: ["scheduled", "lobby", "waiting_room"] },
+        createdAt: { gte: new Date(Date.now() - QUICK_REUSE_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (pending) return { lesson: pending, reused: true };
+    const created = await tx.lesson.create({
+      data: { courseId: targetCourseId, titleUz: QUICK_TITLE, scheduledAt: new Date() },
+    });
+    return { lesson: created, reused: false };
   });
-  return NextResponse.json({ lesson }, { status: 201 });
+  return reused ? NextResponse.json({ lesson, reused: true }) : NextResponse.json({ lesson }, { status: 201 });
 }

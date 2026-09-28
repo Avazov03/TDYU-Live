@@ -119,6 +119,16 @@ export async function openLiveAttendanceInterval(input: {
         source: ATTENDANCE_SOURCE_LIVE,
       },
     });
+    // /end may have closed every interval between the gate check and this insert.
+    const sessionNow = await prisma.liveSession.findUnique({
+      where: { id: input.liveSessionId },
+      select: { status: true, endedAt: true },
+    });
+    if (sessionNow?.status !== "live") {
+      const leftAt = sessionNow?.endedAt && sessionNow.endedAt > created.joinedAt ? sessionNow.endedAt : created.joinedAt;
+      await prisma.attendanceInterval.update({ where: { id: created.id }, data: { leftAt } });
+      return { ok: false, code: "SESSION_ENDED" };
+    }
     return {
       ok: true,
       interval: { id: created.id, joinedAt: created.joinedAt, leftAt: created.leftAt },

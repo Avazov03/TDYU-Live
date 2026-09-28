@@ -9,6 +9,7 @@
 
 import type { LiveSession, LiveSessionStatus, PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isUniqueConstraint } from "@/lib/prisma-error";
 
 export type LiveDb = PrismaClient | Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -36,7 +37,21 @@ export async function findActiveLiveSession(
  * Open or reuse Waiting LiveSession for a lesson.
  * Does not change Lesson.status — caller updates Lesson (lobby).
  */
+/** A parallel request may insert the active session between our find and create. */
+async function retryOnActiveSessionRace<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    if (!isUniqueConstraint(err)) throw err;
+    return run();
+  }
+}
+
 export async function ensureWaitingLiveSession(lessonId: string): Promise<LiveSession> {
+  return retryOnActiveSessionRace(() => ensureWaitingLiveSessionOnce(lessonId));
+}
+
+async function ensureWaitingLiveSessionOnce(lessonId: string): Promise<LiveSession> {
   return prisma.$transaction(async (tx) => {
     const existing = await findActiveLiveSession(lessonId, tx);
     if (existing) {
@@ -63,6 +78,10 @@ export async function ensureWaitingLiveSession(lessonId: string): Promise<LiveSe
 
 /** WAITING → LIVE (idempotent if already live). */
 export async function startLiveSession(lessonId: string): Promise<LiveSession> {
+  return retryOnActiveSessionRace(() => startLiveSessionOnce(lessonId));
+}
+
+async function startLiveSessionOnce(lessonId: string): Promise<LiveSession> {
   return prisma.$transaction(async (tx) => {
     const existing = await findActiveLiveSession(lessonId, tx);
     if (existing?.status === "live") return existing;
