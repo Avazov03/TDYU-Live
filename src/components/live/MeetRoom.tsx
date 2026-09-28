@@ -87,11 +87,11 @@ async function api(body: Record<string, unknown>) {
   };
 }
 
-async function authorizeJoin(lessonId: string) {
+async function authorizeJoin(lessonId: string, instance: string) {
   const res = await fetch("/api/live/join", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lessonId }),
+    body: JSON.stringify({ lessonId, instance }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -371,6 +371,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 ) {
   const peerIdRef = useRef(`p_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`);
   const joinTokenRef = useRef<string>("");
+  /** New per mount: the server ignores a leave from an older instance (reload / second tab). */
+  const instanceRef = useRef<string>("");
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
@@ -631,7 +633,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
 
     const start = async () => {
       try {
-        const authz = await authorizeJoin(lessonId);
+        instanceRef.current = crypto.randomUUID();
+        const authz = await authorizeJoin(lessonId, instanceRef.current);
         if (stopped) return;
         peerIdRef.current = authz.peerId;
         joinTokenRef.current = authz.joinToken || "";
@@ -829,6 +832,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           lessonId,
           peerId: peerIdRef.current,
           joinToken: joinTokenRef.current || undefined,
+          instance: instanceRef.current || undefined,
           action: "leave",
         }),
         keepalive: true,
@@ -851,6 +855,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         lessonId,
         peerId: peerIdRef.current,
         joinToken: joinTokenRef.current || undefined,
+        instance: instanceRef.current || undefined,
         action: "leave",
       }).catch(() => undefined);
       connections.forEach((pc) => pc.close());

@@ -15,6 +15,7 @@ import {
 import { authorizeLiveJoin } from "@/lib/live-auth";
 import { isLiveAvPolicyV2Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 import { livePeerIdForUser, verifyLiveJoinToken } from "@/lib/live-join-token";
+import { isStaleLiveLeave } from "@/lib/live-join-instance";
 import { findActiveLiveSession, isJoinableLiveLessonStatus } from "@/lib/live-session";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 import {
@@ -50,6 +51,7 @@ const postSchema = z.object({
   since: z.number().int().nonnegative().optional(),
   to: z.string().trim().min(1).optional(),
   joinToken: z.string().trim().min(1).optional(),
+  instance: z.string().trim().min(8).max(64).optional(),
   data: z
     .object({
       kind: eventKind,
@@ -102,7 +104,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });
   }
 
-  const { lessonId, name, action, since, to, data, joinToken } = parsed.data;
+  const { lessonId, name, action, since, to, data, joinToken, instance } = parsed.data;
   const v2 = isLiveWaitingRoomV2Enabled();
   const boundPeerId = livePeerIdForUser(session.user.id);
 
@@ -152,6 +154,9 @@ export async function POST(req: Request) {
   const role = moderator ? "moderator" : "student";
 
   if (action === "leave") {
+    if (isStaleLiveLeave(lessonId, session.user.id, instance)) {
+      return NextResponse.json({ ok: true, stale: true });
+    }
     leaveLivePeer(lessonId, peerId);
     const active = await findActiveLiveSession(lessonId);
     if (active && !moderator) {

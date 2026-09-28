@@ -8,10 +8,13 @@ import {
   isLiveMuxPlaybackV1Enabled,
 } from "@/lib/feature-flags";
 import { openLiveAttendanceInterval } from "@/lib/live-attendance";
+import { markLiveJoinInstance } from "@/lib/live-join-instance";
 import { prisma } from "@/lib/prisma";
 
 const bodySchema = z.object({
   lessonId: z.string().uuid().or(z.string().trim().min(1)),
+  /** Per-page room instance; lets a stale page's leave be ignored after a reload. */
+  instance: z.string().trim().min(8).max(64).optional(),
 });
 
 /**
@@ -46,6 +49,10 @@ export async function POST(req: Request) {
       { ok: false, error: { code: result.code, message: result.message } },
       { status: result.http },
     );
+  }
+
+  if (parsed.data.instance) {
+    markLiveJoinInstance(result.lessonId, session.user.id, parsed.data.instance);
   }
 
   // With the Mux player on, /learn no longer writes history on page load for live lessons:
