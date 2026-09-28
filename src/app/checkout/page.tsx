@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { CheckoutClient } from "@/components/course/CheckoutClient";
 import { PLATFORM_PRICES } from "@/lib/tariffs";
 import { prisma } from "@/lib/prisma";
+import { featureFlags } from "@/lib/feature-flags";
 import type { TariffTier } from "@/generated/prisma/client";
 
 function isTier(v: string | undefined): v is TariffTier {
@@ -18,6 +19,10 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const sp = await searchParams;
   const tier = isTier(sp.tier) ? sp.tier : "t2";
   const courseId = sp.courseId?.trim() || undefined;
+
+  if (featureFlags.courseCheckoutV2) {
+    redirect(courseId ? `/checkout/v2?courseId=${encodeURIComponent(courseId)}` : "/");
+  }
 
   const callback = `/checkout?tier=${tier}${courseId ? `&courseId=${courseId}` : ""}`;
   if (!session?.user?.id) {

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
+import { safeUploadExtension, UNSAFE_UPLOAD_MESSAGE } from "@/lib/upload-policy";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -61,8 +62,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Fayl 20 MB dan oshmasin" }, { status: 400 });
   }
   const mime = file.type || "application/octet-stream";
-  if (!allowedMime(mime)) {
-    return NextResponse.json({ error: "Bu fayl turiga ruxsat yo'q" }, { status: 400 });
+  if (!allowedMime(mime) || !safeUploadExtension(file.name)) {
+    return NextResponse.json({ error: UNSAFE_UPLOAD_MESSAGE }, { status: 400 });
   }
 
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");

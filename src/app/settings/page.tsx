@@ -3,6 +3,7 @@ import { AppShellNarrow } from "@/components/layout/AppShell";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { telegramLinkPayload } from "@/lib/telegram/link-token";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function SettingsPage() {
         <h2 style={{ marginBottom: 16 }}>Sozlamalar</h2>
         <SettingsForm
           initial={{
-            userId: user.id,
+            telegramLinkPayload: telegramLinkPayload(user.id),
             fullName: user.fullName,
             email: user.email,
             language: user.language,

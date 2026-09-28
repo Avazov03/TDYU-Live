@@ -12,6 +12,7 @@ import {
   loadBotContext,
   mainMenuKeyboard,
 } from "@/lib/telegram/context";
+import { verifyTelegramLinkPayload } from "@/lib/telegram/link-token";
 
 async function linkUser(chatId: string, userId: string) {
   const user = await prisma.user.findUnique({
@@ -127,8 +128,8 @@ export async function handleTelegramUpdate(update: TgUpdate) {
 
   if (cmd === "/start") {
     if (arg.startsWith("link_")) {
-      const userId = arg.slice(5);
-      const user = await linkUser(String(chatId), userId);
+      const userId = verifyTelegramLinkPayload(arg);
+      const user = userId ? await linkUser(String(chatId), userId) : null;
       if (user) {
         await sendTelegramMessage(
           chatId,

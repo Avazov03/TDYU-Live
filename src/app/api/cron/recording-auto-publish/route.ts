@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cronAuthError } from "@/lib/cron-auth";
 import { autoPublishDueRecordings } from "@/lib/recording-lifecycle";
 import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
 
@@ -10,18 +11,8 @@ export const dynamic = "force-dynamic";
  * Auto-publishes READY/TEACHER_REVIEW past reviewDeadlineAt (24h from readyAt).
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "CRON_SECRET yo‘q" }, { status: 503 });
-  }
-
-  const auth = req.headers.get("authorization") ?? "";
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const url = new URL(req.url);
-  const querySecret = url.searchParams.get("secret") ?? "";
-  if (bearer !== secret && querySecret !== secret) {
-    return NextResponse.json({ error: "Ruxsat yo‘q" }, { status: 401 });
-  }
+  const denied = cronAuthError(req);
+  if (denied) return denied;
 
   if (!isRecordingReviewV1Enabled()) {
     return NextResponse.json({ ok: true, published: 0, skipped: "flag_off" });

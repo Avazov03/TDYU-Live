@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { authError, authLog } from "@/lib/auth-log";
 import { readTicket, resolveLoginId } from "@/lib/impersonate";
+import { isRateLimited, rateLimit } from "@/lib/rate-limit";
 
 export const isGoogleAuthEnabled = Boolean(
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET,
@@ -70,6 +71,11 @@ async function syncGoogleUser(
   }
 }
 
+const SESSION_RECHECK_MS = 60_000;
+/** Per account, not per IP: students on the campus network share one address. */
+const LOGIN_FAIL_LIMIT = 10;
+const LOGIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
+
 const providers: NextAuthConfig["providers"] = [];
 
 if (isGoogleAuthEnabled) {
@@ -127,9 +133,16 @@ providers.push(
         return null;
       }
 
+      const failKey = `login-fail:${email}`;
+      if (isRateLimited(failKey, LOGIN_FAIL_LIMIT)) {
+        authLog("credentials_sign_in_failed", { email, reason: "rate_limited" });
+        return null;
+      }
+
       try {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.passwordHash) {
+          rateLimit(failKey, LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW_MS);
           authLog("credentials_sign_in_failed", { email, reason: "not_found" });
           return null;
         }
@@ -140,6 +153,7 @@ providers.push(
 
         const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) {
+          rateLimit(failKey, LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW_MS);
           authLog("credentials_sign_in_failed", { email, reason: "invalid_password" });
           return null;
         }
@@ -182,11 +196,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        token.checkedAt = Date.now();
         if (user.impersonatorId) {
           token.impersonatorId = user.impersonatorId;
         } else {
           delete token.impersonatorId;
         }
+        return token;
+      }
+      // Blocking or changing a role must take effect on existing sessions, not only on next login.
+      const checkedAt = typeof token.checkedAt === "number" ? token.checkedAt : 0;
+      if (typeof token.id === "string" && Date.now() - checkedAt > SESSION_RECHECK_MS) {
+        const row = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { role: true, isBlocked: true },
+        });
+        if (!row || row.isBlocked) return null;
+        token.role = row.role;
+        token.checkedAt = Date.now();
       }
       return token;
     },

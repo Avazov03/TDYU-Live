@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { authError, authLog } from "@/lib/auth-log";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   fullName: z.string().trim().min(2, "Ism kamida 2 belgi").max(100),
@@ -12,6 +13,13 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   let normalizedEmail = "";
+
+  if (!rateLimit(`register:${getClientIp(req)}`, 30, 15 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Juda ko‘p urinish. 15 daqiqadan keyin qayta urinib ko‘ring." },
+      { status: 429 },
+    );
+  }
 
   try {
     const body = await req.json();

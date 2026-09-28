@@ -18,8 +18,22 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return true;
 }
 
+/** True when the bucket is already exhausted; does not consume a slot. */
+export function isRateLimited(key: string, limit: number): boolean {
+  const entry = buckets.get(key);
+  return Boolean(entry && Date.now() < entry.resetAt && entry.count >= limit);
+}
+
+/**
+ * nginx sets X-Real-IP to $remote_addr and *appends* to X-Forwarded-For, so only X-Real-IP
+ * or the last X-Forwarded-For hop is trustworthy; the first hop is client-controlled.
+ */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
-  return req.headers.get("x-real-ip")?.trim() || "unknown";
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const hops = (req.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  return hops.at(-1) || "unknown";
 }

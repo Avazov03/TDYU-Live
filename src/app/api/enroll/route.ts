@@ -55,8 +55,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Kurs ochilmadi" }, { status: 500 });
   }
 
-  await prisma.course.update({
-    where: { id: courseId },
+  // Legacy workspace courses only; reviewed courses are published solely by admin approval.
+  await prisma.course.updateMany({
+    where: { id: courseId, lifecycleStatus: null },
     data: { isPublished: true },
   });
 

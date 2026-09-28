@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasCourseContentAccess } from "@/lib/access";
+import { safeUploadExtension, UNSAFE_UPLOAD_MESSAGE } from "@/lib/upload-policy";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
   if (file instanceof File && file.size > 0) {
     if (file.size > 8 * 1024 * 1024) {
       return NextResponse.json({ error: "Fayl 8 MB dan oshmasin" }, { status: 400 });
+    }
+    if (!safeUploadExtension(file.name)) {
+      return NextResponse.json({ error: UNSAFE_UPLOAD_MESSAGE }, { status: 400 });
     }
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const destName = `${session.user.id}-${Date.now()}-${safe}`;

@@ -11,7 +11,7 @@ type SettingsData = {
   theme: string;
   role: string;
   telegramChatId?: string | null;
-  userId: string;
+  telegramLinkPayload: string | null;
 };
 
 export function SettingsForm({ initial }: { initial: SettingsData }) {
@@ -21,7 +21,10 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
   const [busy, setBusy] = useState(false);
 
   const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.replace(/^@/, "") ?? "";
-  const deepLink = bot ? `https://t.me/${bot}?start=link_${initial.userId}` : null;
+  const deepLink =
+    bot && initial.telegramLinkPayload
+      ? `https://t.me/${bot}?start=${initial.telegramLinkPayload}`
+      : null;
 
   const saveTelegram = async () => {
     setBusy(true);

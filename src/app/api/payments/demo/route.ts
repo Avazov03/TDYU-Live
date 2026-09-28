@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { featureFlags } from "@/lib/feature-flags";
 import { PLATFORM_PRICES, addDays } from "@/lib/tariffs";
 
 const schema = z.object({
@@ -11,6 +12,12 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  if (featureFlags.courseCheckoutV2) {
+    return NextResponse.json(
+      { error: "Demo to‘lov o‘chirilgan. Kursni Checkout orqali oling." },
+      { status: 403 },
+    );
+  }
   try {
     const session = await auth();
     if (!session?.user?.id) {

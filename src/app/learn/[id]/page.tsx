@@ -98,6 +98,8 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
       (isAdminRole(session.user.role) ||
         (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id)),
   );
+  // The paywall preview is marketing for published courses only; drafts and withdrawn courses do not exist to outsiders.
+  if (!access.ok && !staffJoin && !lesson.course.isPublished) notFound();
   const canJoinLive =
     (lesson.status === "live" || waitingLike) && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;

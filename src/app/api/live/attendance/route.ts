@@ -6,6 +6,7 @@ import { isLiveAttendanceV3Enabled } from "@/lib/feature-flags";
 import { attendanceDurationSeconds } from "@/lib/live-attendance";
 import { findActiveLiveSession } from "@/lib/live-session";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import { hasCourseContentAccess } from "@/lib/access";
 
 const querySchema = z.object({
   lessonId: z.string().trim().min(1),
@@ -46,6 +47,9 @@ export async function GET(req: Request) {
   const isModerator =
     isAdminRole(session.user.role) ||
     (isTeacherRole(session.user.role) && lesson.course.teacher.userId === session.user.id);
+  if (!isModerator && !(await hasCourseContentAccess(session.user.id, lesson.courseId))) {
+    return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
+  }
 
   let liveSessionId = parsed.data.liveSessionId;
   if (!liveSessionId) {
