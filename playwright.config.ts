@@ -13,6 +13,8 @@ const externalServer = !!(process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BA
 
 export default defineConfig({
   testDir: "./e2e",
+  // `*.test.ts` under e2e/ are node:test unit files (npm run test:e2e:env), not browser specs.
+  testMatch: "**/*.spec.ts",
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,

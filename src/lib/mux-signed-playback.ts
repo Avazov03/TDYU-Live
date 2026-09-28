@@ -11,6 +11,10 @@
 
 import { createSign, createPrivateKey, createHmac, timingSafeEqual } from "crypto";
 
+if (typeof window !== "undefined") {
+  throw new Error("mux-signed-playback is server-only");
+}
+
 export const MUX_PLAYBACK_TOKEN_TTL_SEC = 10 * 60; // 10 minutes (5–15 target)
 
 export function isMuxSigningConfigured(): boolean {
