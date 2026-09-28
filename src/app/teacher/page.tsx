@@ -109,6 +109,9 @@ export default async function TeacherHomePage() {
     const actionable = course.lessons.filter(
       (l) => l.status === "live" || l.status === "lobby" || l.status === "scheduled",
     );
+    const toReview = course.lessons.filter(
+      (l) => l.status === "teacher_review" || l.status === "recording_ready",
+    );
     const next =
       course.lessons.find((l) => l.status === "live" || l.status === "lobby") ??
       course.lessons.find((l) => l.status === "scheduled");
@@ -147,6 +150,7 @@ export default async function TeacherHomePage() {
       activeStudents,
       next,
       actionable,
+      toReview,
       phase,
       completed: course.lifecycleStatus === "completed",
       cancelled: course.lifecycleStatus === "cancelled",
@@ -283,6 +287,17 @@ export default async function TeacherHomePage() {
                 <p className="small muted" style={{ margin: "0 0 10px" }}>
                   {card.withVideo}/{card.total} yozuv · {card.activeStudents} o‘quvchi
                 </p>
+
+                {card.toReview.length > 0 ? (
+                  <div className="teacher-course-next" data-testid="recording-review-due" style={{ marginBottom: 10 }}>
+                    <p className="lx-kicker">Yozuv tekshiruvingizni kutmoqda</p>
+                    {card.toReview.map((l) => (
+                      <p key={l.id} className="small" style={{ margin: "0 0 4px" }}>
+                        <Link href={`/learn/${l.id}`}>{l.titleUz} — ko‘rib, chop etish</Link>
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
 
                 {card.next ? (
                   <div className="teacher-course-next">

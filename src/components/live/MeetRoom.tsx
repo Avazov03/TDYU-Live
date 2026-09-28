@@ -820,10 +820,32 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       }, 800);
     });
 
+    // Full navigation / tab close never runs the effect cleanup, so leave must be sent on pagehide.
+    const leaveOnPageHide = () => {
+      void fetch("/api/live/signal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId,
+          peerId: peerIdRef.current,
+          joinToken: joinTokenRef.current || undefined,
+          action: "leave",
+        }),
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+    const rejoinFromBfcache = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pagehide", leaveOnPageHide);
+    window.addEventListener("pageshow", rejoinFromBfcache);
+
     const connections = pcs.current;
     const remotesMap = remoteMedia.current;
     return () => {
       stopped = true;
+      window.removeEventListener("pagehide", leaveOnPageHide);
+      window.removeEventListener("pageshow", rejoinFromBfcache);
       window.clearInterval(poll);
       void api({
         lessonId,
