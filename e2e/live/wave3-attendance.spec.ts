@@ -9,6 +9,8 @@ import {
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 7 Live Wave 3 — AttendanceInterval against staging.
@@ -31,13 +33,20 @@ const LIVE_LESSON_ID =
   "";
 
 test.describe("Live Wave 3 attendance", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(
       !liveWave3Enabled(),
       "Skipped: set E2E_LIVE_WAVE3=1 and FF_LIVE_ATTENDANCE_V3=true on staging",
     );
     test.skip(!LIVE_LESSON_ID, "Missing E2E_LIVE_LESSON_ID_WAVE3");
+    await resetE2EFixtures([LIVE_LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && liveWave3Enabled() && LIVE_LESSON_ID) {
+      await teardownE2EFixtures([LIVE_LESSON_ID]);
+    }
   });
 
   test("Waiting ≠ attendance; LIVE join/leave/rejoin; end closes opens", async ({
@@ -59,24 +68,8 @@ test.describe("Live Wave 3 attendance", () => {
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
 
-    // Ended lessons cannot reopen via UI — staging fixture must be reset to scheduled.
-    if (await teacherPage.getByTestId("live-end").count()) {
-      await teacherPage.getByTestId("live-end").click();
-      await teacherPage.waitForTimeout(1000);
-      await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
-    }
-    const openBtn = teacherPage.getByTestId("live-open-waiting");
-    const startBtn = teacherPage.getByTestId("live-start");
-    if ((await openBtn.count()) === 0 && (await startBtn.count()) === 0) {
-      throw new Error(
-        `Wave3 fixture lesson ${LIVE_LESSON_ID} is not reopenable (likely status=ended). Reset lessons.status to scheduled on staging before E2E.`,
-      );
-    }
-    if (await openBtn.count()) {
-      await openBtn.click();
-      await teacherPage.waitForTimeout(800);
-      await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
-    }
+    await studioAction(teacherPage, LIVE_LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-start")).toBeVisible({ timeout: 15_000 });
 
     monitor.noteAction("Student joins waiting — no attendance interval");
@@ -97,8 +90,7 @@ test.describe("Live Wave 3 attendance", () => {
     }
 
     monitor.noteAction("Teacher starts LIVE");
-    await teacherPage.getByTestId("live-start").click();
-    await teacherPage.waitForTimeout(1200);
+    await studioAction(teacherPage, LIVE_LESSON_ID, "start");
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 20_000 });
 
@@ -132,19 +124,17 @@ test.describe("Live Wave 3 attendance", () => {
     const firstId = open1[0].id as string;
 
     monitor.noteAction("Student leave closes interval");
-    await studentPage.evaluate(async (lessonId) => {
-      await fetch("/api/live/signal", {
+    const leaveStatus = await studentPage.evaluate(async (lessonId) => {
+      const res = await fetch("/api/live/signal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, action: "leave" }),
       });
+      return res.status;
     }, LIVE_LESSON_ID);
-    await studentPage.waitForTimeout(500);
+    expect(leaveStatus).toBe(200);
 
-    const afterLeave = await studentPage.evaluate(async (lessonId) => {
-      const res = await fetch(`/api/live/attendance?lessonId=${encodeURIComponent(lessonId)}`);
-      return await res.json().catch(() => ({}));
-    }, LIVE_LESSON_ID);
+    const afterLeave = (await readAttendance()).body;
     const closed = (afterLeave.intervals ?? []).find((i: { id: string }) => i.id === firstId);
     expect(closed?.leftAt).toBeTruthy();
     expect((afterLeave.intervals ?? []).filter((i: { open?: boolean }) => i.open)).toHaveLength(0);

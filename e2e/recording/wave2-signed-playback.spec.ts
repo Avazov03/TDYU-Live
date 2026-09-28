@@ -9,6 +9,8 @@ import {
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 8 Recording Wave 2 — signed playback authorization against staging.
@@ -34,13 +36,20 @@ const LESSON_ID =
   "";
 
 test.describe("Recording Wave 2 signed playback", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(
       !recordingWave2Enabled(),
       "Skipped: set E2E_RECORDING_WAVE2=1 and FF_RECORDING_SIGNED_PLAYBACK_V1=true",
     );
     test.skip(!LESSON_ID, "Missing E2E_RECORDING_LESSON_ID_WAVE2");
+    await resetE2EFixtures([LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && recordingWave2Enabled() && LESSON_ID) {
+      await teardownE2EFixtures([LESSON_ID]);
+    }
   });
 
   test("publish → enrolled token ALLOW; unowned DENY; playbackId rejected; unpublished DENY", async ({
@@ -60,26 +69,13 @@ test.describe("Recording Wave 2 signed playback", () => {
     monitor.noteAction("Teacher ensures recording READY then publish");
     await loginAs(teacherPage, teacher!, { monitor });
 
-    // Reset path: open/start/end if scheduled, else simulate_ready + publish.
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
-
-    if (await teacherPage.getByTestId("live-end").count()) {
-      await teacherPage.getByTestId("live-end").click();
-      await teacherPage.waitForTimeout(1000);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-    }
-    const openBtn = teacherPage.getByTestId("live-open-waiting");
-    if (await openBtn.count()) {
-      await openBtn.click();
-      await teacherPage.waitForTimeout(800);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-      await teacherPage.getByTestId("live-start").click();
-      await teacherPage.waitForTimeout(1000);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-      await teacherPage.getByTestId("live-end").click();
-      await teacherPage.waitForTimeout(1200);
-    }
+    await studioAction(teacherPage, LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await studioAction(teacherPage, LESSON_ID, "start");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await studioAction(teacherPage, LESSON_ID, "end");
 
     const ready = await teacherPage.evaluate(async (lessonId) => {
       const res = await fetch(`/api/teacher/lessons/${lessonId}/recording/publish`, {

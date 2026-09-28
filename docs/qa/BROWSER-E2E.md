@@ -57,6 +57,18 @@ npm run test:e2e:report
 | `E2E_LESSON_ID` | Optional lesson UUID |
 | `E2E_CHECKOUT_V2_ENABLED` | Opt-in gate for future Checkout V2 browser tests |
 | `E2E_DB_READY` | Opt-in for role/course/lesson smokes when DB schema matches Prisma |
+| `E2E_FIXTURE_RESET_TOKEN` | Required by live/recording suites; must equal the target server's `E2E_FIXTURE_RESET_TOKEN` |
+
+### Stateful suites: fixture reset (`e2e/live`, `e2e/recording`)
+
+Live and recording specs start, end and publish shared fixture lessons (`d2500001-…-045`…`050`). Each spec resets its own lesson through `POST /api/e2e/fixture-reset` before every test and again in `afterAll`, so reruns and runs after a crash start from the same state:
+
+- the E2E-owned lesson returns to `scheduled` (start 5 minutes ago), its recordings, recording files, live sessions, attendance intervals and legacy-migration audit rows are removed;
+- any other fixture-teacher lesson still in lobby/live/paused is ended, open live sessions are ended and open attendance intervals are closed.
+
+The endpoint answers 404 unless the server has `E2E_FIXTURE_RESET_TOKEN` (24+ chars) and is not production-like (`isProductionLikeEnv`). It only touches the fixture teacher (`a3333333-…-301`) and the owned lesson ids. Never set the token on production.
+
+These specs run in the `live-serial` Playwright project with one worker: schedule rules allow one running lesson per teacher, and every spec uses the same fixture teacher.
 
 `playwright.config.ts` loads `.env` via `dotenv`.
 

@@ -10,6 +10,8 @@ import {
   teacherCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 8.5 — Mux live playback with Enrollment access (staging only).
@@ -19,7 +21,7 @@ import { STAGING_FIXTURE } from "../helpers/test-data";
  * - FF_ENROLLMENT_ACCESS_MODE=enrollment, FF_LIVE_MUX_PLAYBACK_V1=true,
  *   FF_LIVE_WAITING_ROOM_V2 + FF_LIVE_ATTENDANCE_V3 on the target
  * - Real MUX_TOKEN_ID / MUX_TOKEN_SECRET on the target (creates ONE test stream; delete it after)
- * - Lesson STAGING_FIXTURE.liveMuxLessonId reset to status=scheduled
+ * - E2E_FIXTURE_RESET_TOKEN (lesson STAGING_FIXTURE.liveMuxLessonId is reset before/after)
  */
 
 function liveMuxEnabled() {
@@ -59,9 +61,14 @@ const playbackPath = (lessonId: string) =>
   `/api/live/mux-playback?lessonId=${encodeURIComponent(lessonId)}`;
 
 test.describe("Phase 8.5 live Mux playback", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(!liveMuxEnabled(), "Skipped: set E2E_LIVE_MUX=1 against a staging target with the flag on");
+    await resetE2EFixtures([LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && liveMuxEnabled()) await teardownE2EFixtures([LESSON_ID]);
   });
 
   test("enrollment-gated player, opt-in room, hide keeps connection, end removes live source", async ({
@@ -93,17 +100,9 @@ test.describe("Phase 8.5 live Mux playback", () => {
     await loginAs(teacherPage, teacher!, { monitor });
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
-    const openBtn = teacherPage.getByTestId("live-open-waiting");
-    const startBtn = teacherPage.getByTestId("live-start");
-    if ((await openBtn.count()) === 0 && (await startBtn.count()) === 0) {
-      throw new Error(`Fixture lesson ${LESSON_ID} is not reopenable — reset status to scheduled.`);
-    }
-    if (await openBtn.count()) {
-      await openBtn.click();
-      await teacherPage.waitForTimeout(800);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-    }
-    await teacherPage.getByTestId("live-start").click();
+    await studioAction(teacherPage, LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await studioAction(teacherPage, LESSON_ID, "start");
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 30_000 });
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     // Stream key lives in the collapsed OBS <details>; textContent reads it without opening.
@@ -145,7 +144,13 @@ test.describe("Phase 8.5 live Mux playback", () => {
     await studentPage.getByTestId("live-room-toggle").click();
     await expect(studentPage.getByTestId("live-room-body")).toBeHidden();
     await expect(studentPage.getByTestId("live-room-toggle")).toHaveText("Ko‘rsatish");
-    await studentPage.waitForTimeout(4_000);
+    // The hidden room must keep signalling; wait for real polls instead of a fixed delay.
+    for (let i = 0; i < 2; i++) {
+      await studentPage.waitForRequest(
+        (r) => r.method() === "POST" && new URL(r.url()).pathname === "/api/live/signal",
+        { timeout: 15_000 },
+      );
+    }
     const stillOpen = await openIntervals(studentPage);
     expect(stillOpen).toHaveLength(1);
     expect(stillOpen[0]!.id).toBe(joined!.id);

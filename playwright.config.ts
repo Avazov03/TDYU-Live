@@ -37,7 +37,21 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      testIgnore: ["**/live/**", "**/recording/**"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Live/recording specs share the one fixture teacher; schedule rules allow one running lesson per teacher.
+      name: "live-serial",
+      testMatch: ["**/live/**/*.spec.ts", "**/recording/**/*.spec.ts"],
+      workers: 1,
+      fullyParallel: false,
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
   webServer: externalServer
     ? undefined
     : {

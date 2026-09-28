@@ -10,6 +10,7 @@ import {
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
 
 /**
  * Phase 8 Recording Wave 3 — legacy VOD migration + security completion.
@@ -37,13 +38,21 @@ const PUBLIC_ID = "legacy_public_wave3_fixture";
 const SIGNED_ID = "legacy_signed_wave3_fixture";
 
 test.describe("Recording Wave 3 legacy migration", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(
       !recordingWave3Enabled(),
       "Skipped: set E2E_RECORDING_WAVE3=1 and FF_RECORDING_LEGACY_MIGRATION_V1=true",
     );
     test.skip(!LESSON_ID, "Missing E2E_RECORDING_LESSON_ID_WAVE3");
+    // Apply migrates the public fixture for good; every run needs a fresh one.
+    await resetE2EFixtures([LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && recordingWave3Enabled() && LESSON_ID) {
+      await teardownE2EFixtures([LESSON_ID]);
+    }
   });
 
   test("dry-run detects public fixture; apply migrates once; authz holds", async ({
@@ -97,6 +106,10 @@ test.describe("Recording Wave 3 legacy migration", () => {
     expect(seed.readyStatus).toBe(200);
     expect(seed.pubStatus).toBe(200);
     expect(seed.recordingId).toBeTruthy();
+    expect(
+      (seed.pubBody as { recording?: { muxPlaybackId?: string } }).recording?.muxPlaybackId,
+      "published recording carries the fresh legacy public fixture id",
+    ).toBe(PUBLIC_ID);
 
     monitor.noteAction("Dry-run via admin API — no mutation");
     // Teacher is not admin — use student token endpoint checks + migration dry-run

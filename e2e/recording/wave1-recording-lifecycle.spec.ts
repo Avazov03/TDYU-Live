@@ -9,6 +9,8 @@ import {
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 8 Recording Wave 1 — lifecycle against staging.
@@ -31,13 +33,20 @@ const LESSON_ID =
   "";
 
 test.describe("Recording Wave 1 lifecycle", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(
       !recordingWave1Enabled(),
       "Skipped: set E2E_RECORDING_WAVE1=1 and FF_RECORDING_REVIEW_V1=true on staging",
     );
     test.skip(!LESSON_ID, "Missing E2E_RECORDING_LESSON_ID");
+    await resetE2EFixtures([LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && recordingWave1Enabled() && LESSON_ID) {
+      await teardownE2EFixtures([LESSON_ID]);
+    }
   });
 
   test("End → ready (simulate) → student denied → publish → student allowed", async ({
@@ -59,30 +68,13 @@ test.describe("Recording Wave 1 lifecycle", () => {
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
 
-    if (await teacherPage.getByTestId("live-end").count()) {
-      await teacherPage.getByTestId("live-end").click();
-      await teacherPage.waitForTimeout(1000);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-    }
-    const openBtn = teacherPage.getByTestId("live-open-waiting");
-    const startBtn = teacherPage.getByTestId("live-start");
-    if ((await openBtn.count()) === 0 && (await startBtn.count()) === 0) {
-      throw new Error(
-        `Recording fixture lesson ${LESSON_ID} not reopenable — reset lessons.status to scheduled`,
-      );
-    }
-    if (await openBtn.count()) {
-      await openBtn.click();
-      await teacherPage.waitForTimeout(800);
-      await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
-    }
+    await studioAction(teacherPage, LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-start")).toBeVisible({ timeout: 15_000 });
-    await teacherPage.getByTestId("live-start").click();
-    await teacherPage.waitForTimeout(1200);
+    await studioAction(teacherPage, LESSON_ID, "start");
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 20_000 });
-    await teacherPage.getByTestId("live-end").click();
-    await teacherPage.waitForTimeout(1500);
+    await studioAction(teacherPage, LESSON_ID, "end");
 
     monitor.noteAction("Simulate READY via teacher hook");
     await teacherPage.goto(`/teacher/live/${LESSON_ID}`);

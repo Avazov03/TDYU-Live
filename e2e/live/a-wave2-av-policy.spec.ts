@@ -9,6 +9,8 @@ import {
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
+import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 7 Live Wave 2 — A/V permission policy against staging.
@@ -36,13 +38,20 @@ const LIVE_LESSON_ID =
   "";
 
 test.describe("Live Wave 2 A/V policy", () => {
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     test.skip(
       !liveWave2Enabled(),
       "Skipped: set E2E_LIVE_WAVE2=1 and FF_LIVE_AV_POLICY_V2=true on staging",
     );
     test.skip(!LIVE_LESSON_ID, "Missing E2E_LIVE_LESSON_ID / STAGING_FIXTURE.liveLessonId");
+    await resetE2EFixtures([LIVE_LESSON_ID]);
+  });
+
+  test.afterAll(async () => {
+    if (isE2EDbReady() && liveWave2Enabled() && LIVE_LESSON_ID) {
+      await teardownE2EFixtures([LIVE_LESSON_ID]);
+    }
   });
 
   test("Raise hand → grant → revoke; unauthorized student denied", async ({
@@ -64,21 +73,10 @@ test.describe("Live Wave 2 A/V policy", () => {
     await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
 
-    // If a prior run left the fixture LIVE, reuse it; otherwise open waiting → start.
-    if (!(await teacherPage.getByTestId("live-end").count())) {
-      const openBtn = teacherPage.getByTestId("live-open-waiting");
-      if (await openBtn.count()) {
-        await openBtn.click();
-        await teacherPage.waitForTimeout(800);
-        await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
-      }
-      const startBtn = teacherPage.getByTestId("live-start");
-      if (await startBtn.count()) {
-        await startBtn.click();
-        await teacherPage.waitForTimeout(1200);
-        await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
-      }
-    }
+    await studioAction(teacherPage, LIVE_LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
+    await studioAction(teacherPage, LIVE_LESSON_ID, "start");
+    await teacherPage.goto(`/teacher/live/${LIVE_LESSON_ID}`);
     await expect(teacherPage.getByTestId("live-end")).toBeVisible({ timeout: 20_000 });
 
     monitor.noteAction("Student joins — camera/mic OFF by default");
@@ -151,8 +149,6 @@ test.describe("Live Wave 2 A/V policy", () => {
       return { status: res.status, body: await res.json().catch(() => ({})) };
     }, denyLesson);
     expect(denyAv.status).toBeGreaterThanOrEqual(400);
-
-    // Leave session LIVE for Wave 1 suite ordering (same fixture). Do not end here.
 
     await teacherCtx.close();
     await studentCtx.close();
