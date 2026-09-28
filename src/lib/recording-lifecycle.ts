@@ -192,6 +192,21 @@ export function shouldMarkRecordingReadyOnUpload(input: {
   return s !== "live" && s !== "lobby" && s !== "waiting_room";
 }
 
+/** Live-recorder uploads: never for a lesson that has not started, was cancelled, or is already published. */
+export function acceptsRecordingUpload(lessonStatus: string): boolean {
+  return lessonStatus !== "scheduled" && lessonStatus !== "cancelled" && lessonStatus !== "published";
+}
+
+/** Only a finished lesson may move into review; live/waiting/scheduled/cancelled keep their status. */
+export function lessonMayEnterReview(lessonStatus: string | null | undefined): boolean {
+  return (
+    lessonStatus === "ended" ||
+    lessonStatus === "recording_processing" ||
+    lessonStatus === "recording_ready" ||
+    lessonStatus === "teacher_review"
+  );
+}
+
 /**
  * Mux / processing finished → READY (stored as teacher_review for review UX).
  * Idempotent. Does not publish. Does not notify students.
@@ -204,6 +219,11 @@ export async function markRecordingReady(input: {
   now?: Date;
 }): Promise<{ recording: Awaited<ReturnType<typeof prisma.recording.findFirst>>; advanced: boolean }> {
   const now = input.now ?? new Date();
+  const lessonRow = await prisma.lesson.findUnique({
+    where: { id: input.lessonId },
+    select: { status: true },
+  });
+  const reviewStatus = lessonMayEnterReview(lessonRow?.status) ? { status: "teacher_review" as const } : {};
 
   let recording = await prisma.recording.findFirst({
     where: {
@@ -228,7 +248,7 @@ export async function markRecordingReady(input: {
     await prisma.lesson.update({
       where: { id: input.lessonId },
       data: {
-        status: "teacher_review",
+        ...reviewStatus,
         ...(input.muxPlaybackId ? { muxVodPlaybackId: input.muxPlaybackId } : {}),
         ...(input.storageKey ? { recordingUrl: input.storageKey } : {}),
       },
@@ -281,7 +301,7 @@ export async function markRecordingReady(input: {
   await prisma.lesson.update({
     where: { id: input.lessonId },
     data: {
-      status: "teacher_review",
+      ...reviewStatus,
       ...(input.muxPlaybackId ? { muxVodPlaybackId: input.muxPlaybackId } : {}),
       ...(input.storageKey ? { recordingUrl: input.storageKey } : {}),
     },
@@ -345,6 +365,8 @@ export async function failRecording(input: {
  */
 export async function publishRecording(input: {
   lessonId: string;
+  /** Publish exactly this row (cron); defaults to the lesson's latest recording. */
+  recordingId?: string;
   actorId?: string | null;
   autoPublished?: boolean;
   now?: Date;
@@ -355,7 +377,7 @@ export async function publishRecording(input: {
 } | { ok: false; code: string }> {
   const now = input.now ?? new Date();
   const recording = await prisma.recording.findFirst({
-    where: { lessonId: input.lessonId },
+    where: { lessonId: input.lessonId, ...(input.recordingId ? { id: input.recordingId } : {}) },
     orderBy: { createdAt: "desc" },
   });
   if (!recording) return { ok: false, code: "NO_RECORDING" };
@@ -370,14 +392,29 @@ export async function publishRecording(input: {
     return { ok: false, code: "NOT_READY" };
   }
 
-  const updated = await prisma.recording.update({
-    where: { id: recording.id },
+  const lessonNow = await prisma.lesson.findUnique({
+    where: { id: input.lessonId },
+    select: { status: true },
+  });
+  if (!lessonMayEnterReview(lessonNow?.status)) {
+    return { ok: false, code: "LESSON_NOT_FINISHED" };
+  }
+
+  // Manual publish and the auto-publish cron can race: only the claimant notifies students.
+  const claim = await prisma.recording.updateMany({
+    where: { id: recording.id, status: recording.status },
     data: {
       status: "published",
       publishedAt: now,
       autoPublished: Boolean(input.autoPublished),
     },
   });
+  const updated = await prisma.recording.findUniqueOrThrow({ where: { id: recording.id } });
+  if (claim.count !== 1) {
+    return updated.status === "published"
+      ? { ok: true, recording: updated, already: true }
+      : { ok: false, code: "NOT_READY" };
+  }
 
   const lesson = await prisma.lesson.update({
     where: { id: input.lessonId },
@@ -430,6 +467,7 @@ export async function autoPublishDueRecordings(now = new Date()): Promise<number
   for (const row of due) {
     const res = await publishRecording({
       lessonId: row.lessonId,
+      recordingId: row.id,
       actorId: null,
       autoPublished: true,
       now,

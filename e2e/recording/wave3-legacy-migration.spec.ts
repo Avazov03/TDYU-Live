@@ -11,6 +11,7 @@ import {
 } from "../helpers/env";
 import { STAGING_FIXTURE } from "../helpers/test-data";
 import { resetE2EFixtures, teardownE2EFixtures } from "../helpers/fixture-reset";
+import { studioAction } from "../helpers/live-studio";
 
 /**
  * Phase 8 Recording Wave 3 — legacy VOD migration + security completion.
@@ -71,6 +72,15 @@ test.describe("Recording Wave 3 legacy migration", () => {
 
     monitor.noteAction("Seed Wave 3 public fixture via teacher simulate + DB-shaped publish");
     await loginAs(teacherPage, teacher!, { monitor });
+
+    // A recording can only be reviewed/published for a lesson that actually aired and ended.
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await expect(teacherPage.locator(".live-studio")).toBeVisible({ timeout: 15_000 });
+    await studioAction(teacherPage, LESSON_ID, "lobby");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await studioAction(teacherPage, LESSON_ID, "start");
+    await teacherPage.goto(`/teacher/live/${LESSON_ID}`);
+    await studioAction(teacherPage, LESSON_ID, "end");
 
     // Ensure a published recording with legacy public fixture playback id.
     const seed = await teacherPage.evaluate(

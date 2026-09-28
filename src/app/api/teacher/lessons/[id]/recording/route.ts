@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { isRecordingMuxIngestV1Enabled, isRecordingReviewV1Enabled } from "@/lib/feature-flags";
-import { markRecordingReady, shouldMarkRecordingReadyOnUpload } from "@/lib/recording-lifecycle";
+import {
+  acceptsRecordingUpload,
+  markRecordingReady,
+  shouldMarkRecordingReadyOnUpload,
+} from "@/lib/recording-lifecycle";
 import {
   buildRecordingStorageKey,
   detectRecordingContainer,
@@ -50,6 +54,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     where: { id, course: { teacherId: teacher.id } },
   });
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
+  if (!acceptsRecordingUpload(lesson.status)) {
+    return NextResponse.json(
+      { error: "Bu dars holatida yozuv qabul qilinmaydi", code: "LESSON_STATE" },
+      { status: 409 },
+    );
+  }
 
   const form = await req.formData();
   const file = form.get("file");

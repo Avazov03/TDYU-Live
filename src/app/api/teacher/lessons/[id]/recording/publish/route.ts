@@ -10,6 +10,13 @@ import {
 } from "@/lib/recording-lifecycle";
 import { isStorageKeyForLesson } from "@/lib/recording-storage";
 
+const PUBLISH_ERRORS: Record<string, string> = {
+  NO_RECORDING: "Bu dars uchun yozuv yo‘q",
+  NOT_READY: "Yozuv hali tayyor emas",
+  FAILED: "Yozuvni qayta ishlash muvaffaqiyatsiz tugadi",
+  LESSON_NOT_FINISHED: "Dars hali tugamagan",
+};
+
 /** Teacher: recording status for lesson. */
 export async function GET(
   _req: Request,
@@ -58,7 +65,7 @@ export async function POST(
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
 
   if (!isRecordingReviewV1Enabled()) {
-    return NextResponse.json({ error: "Recording review o‘chirilgan" }, { status: 503 });
+    return NextResponse.json({ error: "Yozuvni ko‘rib chiqish o‘chirilgan" }, { status: 503 });
   }
 
   const body = (await req.json().catch(() => ({}))) as {
@@ -77,6 +84,9 @@ export async function POST(
     if (!allowHook) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    if (body.muxPlaybackId && body.muxPlaybackId === lesson.muxLivePlaybackId) {
+      return NextResponse.json({ error: "Jonli efir ID si yozuv bo‘la olmaydi", code: "LIVE_PLAYBACK_ID" }, { status: 400 });
+    }
     if (body.recordingUrl && !isStorageKeyForLesson(body.recordingUrl, lesson)) {
       return NextResponse.json({ error: "Noto'g'ri yozuv kaliti", code: "INVALID_STORAGE_KEY" }, { status: 400 });
     }
@@ -89,7 +99,7 @@ export async function POST(
   }
 
   if (action !== "publish") {
-    return NextResponse.json({ error: "Noma'lum action" }, { status: 400 });
+    return NextResponse.json({ error: "Noma’lum amal" }, { status: 400 });
   }
 
   const result = await publishRecording({
@@ -98,7 +108,10 @@ export async function POST(
     autoPublished: false,
   });
   if (!result.ok) {
-    return NextResponse.json({ error: result.code }, { status: 400 });
+    return NextResponse.json(
+      { error: PUBLISH_ERRORS[result.code] ?? "Yozuvni chop etib bo‘lmadi", code: result.code },
+      { status: result.code === "LESSON_NOT_FINISHED" ? 409 : 400 },
+    );
   }
   return NextResponse.json({
     ok: true,
