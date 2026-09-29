@@ -1613,16 +1613,6 @@ tr:last-child td { border-bottom: none; }
   .search-meta h3 { font-size: 14px; }
 }
 .active-lesson { border-color: var(--accent); }
-.certificate {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 48px 32px;
-  border: 2px solid var(--accent);
-  border-radius: 16px;
-  text-align: center;
-  background: var(--surface);
-}
-.certificate h1 { font-size: 36px; margin: 12px 0 20px; }
 /* Aceternity sidebar — site .sidebar rules must not restyle it */
 .acet-timeline h2,
 .acet-timeline h3 {
@@ -2036,7 +2026,6 @@ html[data-theme="dark"] .acet-pane {
   .shell { display: block; }
   .main { padding: 0; }
   .main-inner { max-width: none; }
-  .certificate { border-color: #000; }
 }
 
 .navitem.locked { opacity: .45; }
@@ -4941,6 +4930,40 @@ html[data-theme="dark"] .acet-pane {
 }
 .lx-cert-date { font-size: 13px; color: var(--text-3); }
 .lx-cert .lx-ccard-body { padding-top: 14px; }
+.lx-cert-view { max-width: 920px; margin: 0 auto; }
+.lx-cert-frame {
+  display: block;
+  width: 100%;
+  height: min(78vh, 900px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.lx-cert-frame.is-img { height: auto; max-height: 78vh; object-fit: contain; }
+.lx-cert-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.lx-cert-revoked {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* Teacher: issue / revoke certificate dialog */
+.lx-cert-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.lx-cert-facts div { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.lx-cert-facts dt { font-size: 12px; color: var(--text-3); }
+.lx-cert-facts dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.lx-cert-warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.lx-grp-certs { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 
 /* —— Student home (/app) —— */
 .lx-today {

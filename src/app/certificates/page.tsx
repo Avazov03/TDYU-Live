@@ -16,7 +16,7 @@ export default async function CertificatesPage() {
   const { user } = await requireStudentCabinet("/certificates");
 
   const items = await prisma.certificate.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, revokedAt: null },
     include: {
       course: {
         include: { teacher: { select: { fullName: true } }, subject: { select: { nameUz: true } } },
@@ -33,7 +33,7 @@ export default async function CertificatesPage() {
             <p className="lx-kicker">Sertifikatlar</p>
             <h1 className="lx-mc-title">Sertifikatlar</h1>
             {items.length > 0 ? (
-              <p className="lx-mc-sub">{items.length} ta sertifikat · chop etish yoki saqlash uchun oching</p>
+              <p className="lx-mc-sub">{items.length} ta sertifikat · ko‘rish yoki yuklab olish uchun oching</p>
             ) : null}
           </div>
         </header>
@@ -74,7 +74,7 @@ export default async function CertificatesPage() {
                 <div className="lx-ccard-foot">
                   <span />
                   <span className="lx-ccard-go">
-                    Ko‘rish va chop etish <span aria-hidden>→</span>
+                    Ko‘rish va yuklab olish <span aria-hidden>→</span>
                   </span>
                 </div>
               </Link>

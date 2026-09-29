@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FilterChips } from "@/components/cabinet/FilterChips";
 import { IssueCertificateButton } from "@/components/teacher/IssueCertificateButton";
+import { RevokeCertificateButton } from "@/components/teacher/RevokeCertificateButton";
 import { TARIFF_LABELS } from "@/lib/tariffs";
 import { UZ_MONTHS_SHORT, initials, tashkentParts } from "@/lib/utils";
 import type { TariffTier } from "@/generated/prisma/client";
@@ -19,13 +20,16 @@ type StudentRow = {
   attended: number;
   lessonCount: number;
   pct: number;
-  hasCert: boolean;
+  cert: { id: string; revoked: boolean; hasFile: boolean } | null;
+  assignmentsDone: number;
+  assignmentsTotal: number;
   seenTitles: string[];
 };
 
 type CourseBlock = {
   id: string;
   titleUz: string;
+  finished: boolean;
   activeCount: number;
   t1: number;
   t2: number;
@@ -70,7 +74,7 @@ function matchesFilter(s: StudentRow, filter: Filter) {
 
 function attentionWhy(s: StudentRow) {
   const reasons: string[] = [];
-  if (s.attended === 0) reasons.push("Hali dars ochmagan");
+  if (s.attended === 0) reasons.push("Darsga qatnashmagan");
   else if (s.lessonCount > 0 && s.pct < 50) reasons.push("Davomat past");
   if (isExpiring(s)) reasons.push(`${daysLeft(s.endsAt)} kun qoldi`);
   return reasons.join(" · ");
@@ -113,7 +117,7 @@ export function TeacherGroupBoard({
   const filterOptions: { value: Filter; label: string; count: number }[] = [
     { value: "attention", label: "Diqqat", count: attentionCount },
     { value: "all", label: "Barchasi", count: allCount },
-    { value: "silent", label: "Hali ochmagan", count: silentCount },
+    { value: "silent", label: "Qatnashmagan", count: silentCount },
     ...(showTiers
       ? [
           { value: "t3" as const, label: "3-tarif", count: t3Count },
@@ -236,10 +240,35 @@ export function TeacherGroupBoard({
                               <div className="lx-grp-action">
                                 {s.tier === "t1" ? (
                                   <span className="lx-grp-muted">Yozuv tarifi</span>
-                                ) : s.hasCert ? (
-                                  <span className="lx-as-state is-done">Sertifikat berilgan</span>
+                                ) : s.cert && !s.cert.revoked ? (
+                                  <div className="lx-grp-certs">
+                                    <Link
+                                      className="lx-as-state is-done"
+                                      href={`/certificates/${s.cert.id}`}
+                                      data-testid="certificate-issued"
+                                    >
+                                      {s.cert.hasFile ? "Sertifikat berilgan" : "Berilgan · fayl yo‘q"}
+                                    </Link>
+                                    <RevokeCertificateButton certificateId={s.cert.id} studentName={s.fullName} />
+                                  </div>
+                                ) : !course.finished ? (
+                                  <span className="lx-grp-muted" data-testid="certificate-locked">
+                                    Kurs yakunlangach
+                                  </span>
                                 ) : (
-                                  <IssueCertificateButton courseId={course.id} userId={s.userId} />
+                                  <div className="lx-grp-certs">
+                                    {s.cert?.revoked ? <span className="lx-grp-muted">Bekor qilingan</span> : null}
+                                    <IssueCertificateButton
+                                      courseId={course.id}
+                                      userId={s.userId}
+                                      studentName={s.fullName}
+                                      attended={s.attended}
+                                      lessonCount={s.lessonCount}
+                                      assignmentsDone={s.assignmentsDone}
+                                      assignmentsTotal={s.assignmentsTotal}
+                                      reissue={Boolean(s.cert?.revoked)}
+                                    />
+                                  </div>
                                 )}
                               </div>
                             </article>

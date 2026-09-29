@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BRAND } from "@/lib/brand";
 import {
+  Award,
   BookOpen,
   ClipboardCheck,
   GraduationCap,
@@ -34,6 +35,7 @@ const NAV: NavItem[] = [
   { href: "/admin/teachers", label: "O‘qituvchilar", hint: "Taklif · blok", icon: Presentation },
   { href: "/admin/courses", label: "Kurslar", hint: "Ro‘yxat · tahrir", icon: BookOpen },
   { href: "/admin/payments", label: "To‘lovlar", hint: "Kirim · qaytarish", icon: Wallet },
+  { href: "/admin/certificates", label: "Sertifikatlar", hint: "Berilgan · bekor", icon: Award },
 ];
 
 function isActive(pathname: string, item: { href: string; exact?: boolean }) {

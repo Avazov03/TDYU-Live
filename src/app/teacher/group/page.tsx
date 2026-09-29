@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { TeacherGroupBoard } from "@/components/teacher/TeacherGroupBoard";
 import { auth } from "@/lib/auth";
+import { isCourseFinishedForCertificate } from "@/lib/certificate-policy";
 import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
@@ -52,6 +53,7 @@ export default async function TeacherGroupPage() {
           lessons: {
             include: { attendance: true },
           },
+          assignments: { select: { submissions: { select: { userId: true } } } },
         },
       },
     },
@@ -98,6 +100,10 @@ export default async function TeacherGroupPage() {
     return {
       id: course.id,
       titleUz: course.titleUz,
+      finished: isCourseFinishedForCertificate({
+        lifecycleStatus: course.lifecycleStatus,
+        lessonStatuses: course.lessons.map((l) => l.status),
+      }),
       activeCount: active.length,
       t1: active.filter((s) => s.tier === "t1").length,
       t2: active.filter((s) => s.tier === "t2").length,
@@ -108,12 +114,15 @@ export default async function TeacherGroupPage() {
         const seen = course.lessons.filter((l) => l.attendance.some((a) => a.userId === s.userId));
         const attended = seen.length;
         const pct = course.lessons.length ? Math.round((attended / course.lessons.length) * 100) : 0;
+        const cert = course.certificates.find((c) => c.userId === s.userId);
         return {
           ...s,
           attended,
           lessonCount: course.lessons.length,
           pct,
-          hasCert: course.certificates.some((c) => c.userId === s.userId),
+          cert: cert ? { id: cert.id, revoked: Boolean(cert.revokedAt), hasFile: Boolean(cert.fileKey) } : null,
+          assignmentsTotal: course.assignments.length,
+          assignmentsDone: course.assignments.filter((a) => a.submissions.some((x) => x.userId === s.userId)).length,
           seenTitles: seen.map((l) => l.titleUz),
         };
       }),

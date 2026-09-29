@@ -473,6 +473,14 @@ model Certificate {
   courseId  String   @map("course_id")
   issuedAt  DateTime @default(now()) @map("issued_at")
   issuedBy  String?  @map("issued_by")
+  /// Teacher-uploaded file (no auto generation). Key under RECORDING_STORAGE_ROOT: certificates/<courseId>/<id>-<ts>.<ext>
+  fileKey      String?   @map("file_key")
+  fileName     String?   @map("file_name")
+  fileMime     String?   @map("file_mime")
+  fileSize     Int?      @map("file_size")
+  revokedAt    DateTime? @map("revoked_at")
+  revokedBy    String?   @map("revoked_by")
+  revokeReason String?   @map("revoke_reason") @db.Text
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)

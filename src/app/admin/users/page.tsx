@@ -45,7 +45,7 @@ export default async function AdminStudentsPage() {
         },
         orderBy: { createdAt: "desc" },
       },
-      certificates: { select: { id: true } },
+      certificates: { where: { revokedAt: null }, select: { id: true } },
       payments: { select: { id: true } },
       _count: { select: { attendance: true } },
     },
