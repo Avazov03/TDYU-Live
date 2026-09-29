@@ -67,7 +67,10 @@ export function AdminDonut({
 }) {
   const totalValue = segments.reduce((n, s) => n + s.value, 0);
   const total = totalValue || 1;
-  let offset = 0;
+  const starts = segments.reduce<number[]>((acc, seg, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + (segments[i - 1].value / total) * 97.4);
+    return acc;
+  }, []);
   const colors: Record<string, string> = {
     t1: "var(--text-3)",
     t2: "var(--accent)",
@@ -83,10 +86,9 @@ export function AdminDonut({
       <div className="admin-donut-stage">
         <svg viewBox="0 0 42 42" className="admin-donut" aria-hidden>
           <circle cx="21" cy="21" r="15.5" fill="transparent" stroke="var(--border)" strokeWidth="5" />
-          {segments.map((seg) => {
+          {segments.map((seg, i) => {
             const len = (seg.value / total) * 97.4;
-            const start = offset;
-            offset += len;
+            const start = starts[i];
             if (seg.value <= 0) return null;
             const text = `${seg.label}: ${seg.value} (${Math.round((seg.value / total) * 100)}%)`;
             return (

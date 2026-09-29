@@ -14,7 +14,6 @@ function tariffLabel(tier: TariffTier) {
 export default async function AdminStudentsPage() {
   const session = await auth();
   const canSeeSecrets = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
-  const now = new Date();
 
   const users = await prisma.user.findMany({
     where: { role: "student" },

@@ -19,8 +19,6 @@ import {
   listMuxAssetPlaybackIds,
   type MuxPlaybackPolicy,
 } from "@/lib/mux";
-import { isRecordingLegacyMigrationV1Enabled } from "@/lib/feature-flags";
-
 export const RECORDING_MIGRATE_AUDIT_ACTION = "recording.legacy_migrate_v1";
 
 export type VodClass = "PUBLIC_VOD" | "SIGNED_VOD" | "LOCAL_ONLY" | "MISSING_ASSET" | "UNKNOWN";

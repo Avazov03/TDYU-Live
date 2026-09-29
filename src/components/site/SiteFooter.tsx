@@ -193,15 +193,15 @@ export function SiteFooter() {
             <a className="lx-footer-social-btn" href={ctaHref} aria-label={hideTariff ? "Kurslar" : "Telegram / tariflar"}>
               <IconTelegram />
             </a>
-            <a className="lx-footer-social-btn" href="/#haqida" aria-label="Loyiha haqida">
+            <Link className="lx-footer-social-btn" href="/#haqida" aria-label="Loyiha haqida">
               <IconInstagram />
-            </a>
-            <a className="lx-footer-social-btn" href="/#qanday" aria-label="Qanday ishlaydi">
+            </Link>
+            <Link className="lx-footer-social-btn" href="/#qanday" aria-label="Qanday ishlaydi">
               <IconLinkedin />
-            </a>
-            <a className="lx-footer-social-btn" href="/" aria-label="Bosh sahifa">
+            </Link>
+            <Link className="lx-footer-social-btn" href="/" aria-label="Bosh sahifa">
               <IconYoutube />
-            </a>
+            </Link>
           </div>
         </div>
       </div>

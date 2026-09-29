@@ -81,7 +81,7 @@ export async function authorizeLiveJoin(input: {
     }
   }
 
-  let session = await findActiveLiveSession(lesson.id);
+  const session = await findActiveLiveSession(lesson.id);
   if (!session) {
     // Legacy path (flag off / live without LiveSession row): allow signal-only with synthetic id.
     if (!v2 && lesson.status === "live") {

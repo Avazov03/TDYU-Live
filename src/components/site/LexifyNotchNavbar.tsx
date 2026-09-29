@@ -155,7 +155,6 @@ export function LexifyNotchNavbar({ cabinetHref, user, hideTariffNav = false }: 
   const active = useActiveSection();
   const pathname = usePathname();
   const navItems = hideTariffNav ? NAV.filter((item) => item.id !== "tariflar") : NAV;
-  const guestCtaHref = hideTariffNav ? "/#kurslar" : "/#tariflar";
   const guestCtaLabel = hideTariffNav ? (cabinetHref ? "Kabinet" : "Kurslar") : cabinetHref ? "Kabinet" : "Tarif";
   const userFallbackHref = cabinetHref || (hideTariffNav ? "/#kurslar" : "/#tariflar");
 

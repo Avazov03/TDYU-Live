@@ -216,10 +216,11 @@ function StudentSidebarNav({
   const { open, setOpen } = useSidebar();
   const moreActive = more.some((item) => item.current);
   const [moreOpen, setMoreOpen] = useState(moreActive);
-
-  useEffect(() => {
+  const [prevMoreActive, setPrevMoreActive] = useState(moreActive);
+  if (moreActive !== prevMoreActive) {
+    setPrevMoreActive(moreActive);
     if (moreActive) setMoreOpen(true);
-  }, [moreActive]);
+  }
 
   return (
     <>

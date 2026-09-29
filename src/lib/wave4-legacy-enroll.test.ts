@@ -3,7 +3,7 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, afterEach } from "node:test";
 import { shouldExpireOtherSubscriptionsOnEnroll } from "../app/api/enroll/route";
 import { shouldHideStudentTariffUi } from "./feature-flags";
 

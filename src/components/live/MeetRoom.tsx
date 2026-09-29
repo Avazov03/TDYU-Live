@@ -894,7 +894,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   useEffect(() => {
     if (moderator || !selfInfo) return;
     const stream = localStreamRef.current;
-    setHandRaised(Boolean(selfInfo.handRaised));
+    const serverHandRaised = Boolean(selfInfo.handRaised);
+    queueMicrotask(() => setHandRaised(serverHandRaised));
 
     if (selfInfo.canSpeak && !prevSpeakRef.current) {
       queueMicrotask(() => {

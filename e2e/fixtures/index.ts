@@ -27,10 +27,10 @@ type Fixtures = {
  * - role pages log in once per test via UI
  */
 export const test = base.extend<Fixtures>({
-  monitor: async ({ page }, use, testInfo) => {
+  monitor: async ({ page }, provide, testInfo) => {
     const monitor = new BrowserMonitor(page);
     monitor.attach();
-    await use(monitor);
+    await provide(monitor);
 
     const body = monitor.formatReport();
     await testInfo.attach("browser-diagnostics", {
@@ -49,7 +49,7 @@ export const test = base.extend<Fixtures>({
     }
   },
 
-  studentPage: async ({ page, monitor }, use) => {
+  studentPage: async ({ page, monitor }, provide) => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     const creds = studentCreds();
     test.skip(!creds, skipReasonMissingCreds("student"));
@@ -57,23 +57,23 @@ export const test = base.extend<Fixtures>({
       monitor,
       expectPath: /\/(app|onboard)(\/|\?|$)/,
     });
-    await use(page);
+    await provide(page);
   },
 
-  teacherPage: async ({ page, monitor }, use) => {
+  teacherPage: async ({ page, monitor }, provide) => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     const creds = teacherCreds();
     test.skip(!creds, skipReasonMissingCreds("teacher"));
     await loginAs(page, creds!, { monitor, expectPath: /\/teacher/ });
-    await use(page);
+    await provide(page);
   },
 
-  adminPage: async ({ page, monitor }, use) => {
+  adminPage: async ({ page, monitor }, provide) => {
     test.skip(!isE2EDbReady(), skipReasonDbNotReady());
     const creds = adminCreds();
     test.skip(!creds, skipReasonMissingCreds("admin"));
     await loginAs(page, creds!, { monitor, expectPath: /\/admin/ });
-    await use(page);
+    await provide(page);
   },
 });
 

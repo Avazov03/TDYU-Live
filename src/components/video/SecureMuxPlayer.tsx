@@ -18,9 +18,9 @@ export function SecureMuxPlayer({ lessonId, recordingId, title }: Props) {
   const [error, setError] = useState("");
   const [mode, setMode] = useState<string>("");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadTokenRef = useRef<() => Promise<void>>(async () => {});
 
   const loadToken = useCallback(async () => {
-    setError("");
     const res = await fetch("/api/recording/playback-token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,6 +35,7 @@ export function SecureMuxPlayer({ lessonId, recordingId, title }: Props) {
       setError(typeof data.code === "string" ? data.code : "RECORDING_ACCESS_DENIED");
       return;
     }
+    setError("");
     setMode(data.mode ?? "");
     setPlayerUrl(typeof data.playerUrl === "string" ? data.playerUrl : null);
     setMediaUrl(typeof data.mediaUrl === "string" ? data.mediaUrl : null);
@@ -44,12 +45,13 @@ export function SecureMuxPlayer({ lessonId, recordingId, title }: Props) {
     const refreshIn = Math.max(30_000, (ttlSec - 60) * 1000);
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(() => {
-      void loadToken();
+      void loadTokenRef.current();
     }, refreshIn);
   }, [lessonId, recordingId]);
 
   useEffect(() => {
-    void loadToken();
+    loadTokenRef.current = loadToken;
+    void loadTokenRef.current();
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
     };

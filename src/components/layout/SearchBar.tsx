@@ -35,10 +35,6 @@ export function SearchBar() {
   }, []);
 
   useEffect(() => {
-    refreshHistory();
-  }, [refreshHistory]);
-
-  useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) {
         setOpen(false);
@@ -84,11 +80,7 @@ export function SearchBar() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
+    if (!query.trim()) return;
     debounceRef.current = setTimeout(() => {
       void fetchSuggestions(query);
     }, 250);
@@ -241,6 +233,11 @@ export function SearchBar() {
             spellCheck={false}
             onChange={(e) => {
               setQuery(e.target.value);
+              if (!e.target.value.trim()) {
+                abortRef.current?.abort();
+                setSuggestions([]);
+                setLoading(false);
+              }
               setActiveIndex(-1);
               setOpen(true);
             }}

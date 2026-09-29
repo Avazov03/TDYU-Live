@@ -19,7 +19,6 @@ import {
   classifyVodFromFacts,
   isFixturePublicPlaybackId,
   isFixtureSignedPlaybackId,
-  mapAppRecordingState,
   type VodClass,
 } from "@/lib/recording-legacy-migration";
 import { isProductionLikeEnv } from "@/lib/recording-legacy-migration";
