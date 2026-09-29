@@ -10,11 +10,12 @@ const defaultSlot = () => nextTashkentHourInput();
 export function CreateLessonForm({
   courses,
 }: {
-  courses: { id: string; titleUz: string; needsReview?: boolean }[];
+  courses: { id: string; titleUz: string; statusText: string; needsReview?: boolean }[];
 }) {
   const router = useRouter();
   const [done, setDone] = useState<{ courseTitle: string; needsReview: boolean } | null>(null);
-  const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
+  const [courseId, setCourseId] = useState(courses.length === 1 ? courses[0].id : "");
+  const selected = courses.find((c) => c.id === courseId);
   const [titleUz, setTitleUz] = useState("");
   const [summaryUz, setSummaryUz] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
@@ -25,6 +26,10 @@ export function CreateLessonForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (!courseId) {
+      setError("Qaysi kursga dars qo‘shilishini tanlang");
+      return;
+    }
     setError("");
     setDone(null);
     setBusy(true);
@@ -70,12 +75,33 @@ export function CreateLessonForm({
         Qaysi kurs, qachon, nima o&apos;tiladi. Banner ixtiyoriy — bo&apos;lmasa yozuv kadri chiqadi.
       </p>
       <div className="field">
-        <label>Kurs</label>
-        <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+        <label htmlFor="cl-course">Kurs</label>
+        <select
+          id="cl-course"
+          value={courseId}
+          onChange={(e) => {
+            setCourseId(e.target.value);
+            setError("");
+          }}
+          aria-invalid={error && !courseId ? true : undefined}
+        >
+          {courses.length > 1 ? (
+            <option value="" disabled>
+              Kursni tanlang…
+            </option>
+          ) : null}
           {courses.map((c) => (
-            <option key={c.id} value={c.id}>{c.titleUz}</option>
+            <option key={c.id} value={c.id}>
+              {c.titleUz} — {c.statusText}
+            </option>
           ))}
         </select>
+        {selected?.needsReview ? (
+          <span className="small muted" style={{ display: "block", marginTop: 6 }}>
+            Bu kurs hali qoralama: darslarni rejalashtirasiz, o‘quvchilar esa ularni kurs tekshiruvdan o‘tib nashr
+            etilgach ko‘radi.
+          </span>
+        ) : null}
       </div>
       <div className="field">
         <label>Mavzu</label>

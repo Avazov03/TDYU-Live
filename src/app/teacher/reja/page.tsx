@@ -8,7 +8,7 @@ import { TeacherRejaBoard } from "@/components/teacher/TeacherRejaBoard";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
-import { lessonPlanLock, liveGate } from "@/lib/course-review-policy";
+import { lessonPlanLock, lifecycleLabel, liveGate } from "@/lib/course-review-policy";
 import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 import { lessonEnd } from "@/lib/schedule-policy";
 import type { CourseLifecycleStatus } from "@/generated/prisma/client";
@@ -68,6 +68,7 @@ export default async function TeacherRejaPage() {
                 courses={plannable.map((c) => ({
                   id: c.id,
                   titleUz: c.titleUz,
+                  statusText: c.lifecycleStatus ? lifecycleLabel(c.lifecycleStatus).toLowerCase() : "nashrda",
                   needsReview: Boolean(gateOf(c.lifecycleStatus)?.canSubmit),
                 }))}
               />
