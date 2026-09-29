@@ -21,6 +21,20 @@ export function parseMuxSignatureHeader(header: string | null): {
   return { timestamp, signatures };
 }
 
+/**
+ * Without MUX_WEBHOOK_SECRET an event cannot be authenticated. Unsigned events are only
+ * tolerated outside production (local dev / e2e fixture) and while Recording Wave 1 is off.
+ */
+export function allowUnsignedMuxWebhook(input: {
+  nodeEnv: string | undefined;
+  e2eFixture: boolean;
+  recordingReviewV1: boolean;
+}): boolean {
+  if (input.e2eFixture) return true;
+  if (input.nodeEnv === "production") return false;
+  return !input.recordingReviewV1;
+}
+
 export function verifyMuxWebhookSignature(input: {
   rawBody: string;
   signatureHeader: string | null;

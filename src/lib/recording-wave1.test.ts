@@ -10,7 +10,7 @@ import {
   studentMayPlayRecording,
   teacherMayPreviewRecording,
 } from "./recording-lifecycle";
-import { verifyMuxWebhookSignature } from "./mux-webhook";
+import { allowUnsignedMuxWebhook, verifyMuxWebhookSignature } from "./mux-webhook";
 import { isRecordingReviewV1Enabled } from "./feature-flags";
 
 describe("Recording Wave 1 state helpers", () => {
@@ -128,5 +128,33 @@ describe("Mux webhook signature", () => {
       secret: "whsec_test_secret",
     });
     assert.equal(res.ok, false);
+  });
+});
+
+describe("Mux webhook without secret", () => {
+  it("production never accepts unsigned events, even with Recording Wave 1 off", () => {
+    assert.equal(
+      allowUnsignedMuxWebhook({ nodeEnv: "production", e2eFixture: false, recordingReviewV1: false }),
+      false,
+    );
+    assert.equal(
+      allowUnsignedMuxWebhook({ nodeEnv: "production", e2eFixture: false, recordingReviewV1: true }),
+      false,
+    );
+  });
+
+  it("dev keeps legacy unsigned only while Wave 1 is off; e2e fixture allowed", () => {
+    assert.equal(
+      allowUnsignedMuxWebhook({ nodeEnv: "development", e2eFixture: false, recordingReviewV1: false }),
+      true,
+    );
+    assert.equal(
+      allowUnsignedMuxWebhook({ nodeEnv: "development", e2eFixture: false, recordingReviewV1: true }),
+      false,
+    );
+    assert.equal(
+      allowUnsignedMuxWebhook({ nodeEnv: "development", e2eFixture: true, recordingReviewV1: true }),
+      true,
+    );
   });
 });

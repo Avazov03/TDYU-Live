@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyCourseStudents } from "@/lib/notify";
 import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
-import { verifyMuxWebhookSignature } from "@/lib/mux-webhook";
+import { allowUnsignedMuxWebhook, verifyMuxWebhookSignature } from "@/lib/mux-webhook";
 import { failRecording, markRecordingReady } from "@/lib/recording-lifecycle";
 import { finalizeIngestByPassthrough, parseIngestPassthrough } from "@/lib/recording-mux-ingest";
 
@@ -35,11 +35,14 @@ export async function POST(req: Request) {
     if (!verified.ok) {
       return NextResponse.json({ error: "Invalid signature", code: verified.code }, { status: 401 });
     }
-  } else if (!e2eFixture) {
-    // Unsigned webhooks are rejected when Wave 1 is on; legacy unsigned only if flag off + no secret.
-    if (isRecordingReviewV1Enabled()) {
-      return NextResponse.json({ error: "MUX_WEBHOOK_SECRET required" }, { status: 503 });
-    }
+  } else if (
+    !allowUnsignedMuxWebhook({
+      nodeEnv: process.env.NODE_ENV,
+      e2eFixture,
+      recordingReviewV1: isRecordingReviewV1Enabled(),
+    })
+  ) {
+    return NextResponse.json({ error: "MUX_WEBHOOK_SECRET required" }, { status: 503 });
   }
 
   let event: MuxEvent;

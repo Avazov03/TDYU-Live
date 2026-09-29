@@ -45,6 +45,6 @@ test.describe("Public smoke", () => {
 
     await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
     await expect(page.getByText(SEED.courseTitleCivil).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Darslar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dars rejasi" })).toBeVisible();
   });
 });

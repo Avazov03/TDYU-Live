@@ -52,8 +52,8 @@ test.describe("Student smoke", () => {
     await studentPage.locator(`a[href="/courses/${SEED.courseCivilBasics}"]`).first().click();
     await expect(studentPage).toHaveURL(new RegExp(`/courses/${SEED.courseCivilBasics}`));
     await expect(studentPage.getByText(SEED.courseTitleCivil).first()).toBeVisible();
-    await expect(studentPage.getByRole("heading", { name: /Sizning (obunangiz|kursingiz)/i })).toBeVisible();
-    await expect(studentPage.getByRole("heading", { name: "Darslar" })).toBeVisible();
+    await expect(studentPage.getByTestId("course-owned")).toContainText(/Sizning kursingiz|Tarix/);
+    await expect(studentPage.getByRole("heading", { name: "Dars rejasi" })).toBeVisible();
   });
 
   test("Student can open a lesson", async ({ studentPage, monitor }) => {
