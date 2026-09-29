@@ -10,6 +10,7 @@ import { formatSom } from "@/lib/tariffs";
 import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
 import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 import { Icon } from "@/components/ui/Icon";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 
 function healthLabel(h: CourseHealth) {
   if (h === "live") return "Jonli";
@@ -129,6 +130,16 @@ export function AdminCoursesBoard({
   };
 
   const togglePublish = async (course: AdminCourseInsight) => {
+    if (
+      course.isPublished &&
+      !(await confirmAction({
+        title: "Kursni yashirasizmi?",
+        message: `«${course.titleUz}» katalogda ko‘rinmay qoladi va uni yangi o‘quvchi sotib ololmaydi.`,
+        confirmLabel: "Yashirish",
+      }))
+    ) {
+      return;
+    }
     setBusyId(course.id);
     setError("");
     const res = await fetch(`/api/admin/courses/${course.id}`, {

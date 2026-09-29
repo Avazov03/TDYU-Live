@@ -6,10 +6,14 @@ import { ImpersonateTeacherButton } from "@/components/admin/ImpersonateTeacherB
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
 import { Icon } from "@/components/ui/Icon";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 import { tashkentParts } from "@/lib/utils";
 
-const RESET_PASSWORD_CONFIRM =
-  "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Yangi parol yaratilsinmi? Eski parol darhol ishlamay qoladi.";
+const RESET_PASSWORD_CONFIRM = {
+  title: "Yangi parol yaratilsinmi?",
+  message: "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Eski parol darhol ishlamay qoladi.",
+  confirmLabel: "Yangi parol yaratish",
+};
 
 export type TeacherRow = {
   id: string;
@@ -150,6 +154,12 @@ export function AdminTeachersManager({
   };
 
   const revokeInvite = async (id: string) => {
+    const ok = await confirmAction({
+      title: "Taklifni bekor qilasizmi?",
+      message: "Yuborilgan taklif havolasi ishlamay qoladi. Kerak bo‘lsa, yangi taklif yuborasiz.",
+      confirmLabel: "Taklifni bekor qilish",
+    });
+    if (!ok) return;
     setBusyId(id);
     await fetch(`/api/admin/teachers/invites/${id}`, { method: "DELETE" });
     setBusyId("");
@@ -157,7 +167,7 @@ export function AdminTeachersManager({
   };
 
   const resetPassword = async (teacherId: string) => {
-    if (!window.confirm(RESET_PASSWORD_CONFIRM)) return "";
+    if (!(await confirmAction(RESET_PASSWORD_CONFIRM))) return "";
     setBusyId(teacherId);
     setError("");
     setOpenId(teacherId);
@@ -201,6 +211,16 @@ export function AdminTeachersManager({
   };
 
   const toggleBlock = async (t: TeacherRow) => {
+    if (
+      !t.isBlocked &&
+      !(await confirmAction({
+        title: "O‘qituvchini bloklaysizmi?",
+        message: `${t.fullName} tizimga kira olmaydi va efir ocha olmaydi. Keyin blokdan chiqarish mumkin.`,
+        confirmLabel: "Bloklash",
+      }))
+    ) {
+      return;
+    }
     setBusyId(t.id);
     const res = await fetch(`/api/admin/teachers/${t.id}/block`, {
       method: "POST",

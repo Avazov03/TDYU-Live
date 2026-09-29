@@ -7,6 +7,7 @@ import { MUX_RTMP_URL } from "@/lib/mux-player";
 import { CopyField } from "@/components/ui/CopyField";
 import { MeetRoom, type MeetRoomHandle } from "@/components/live/MeetRoom";
 import { LessonInventory } from "@/components/teacher/LessonInventory";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 
 type LiveStudioProps = {
   lessonId: string;
@@ -46,11 +47,19 @@ export function LiveStudio({
   const act = async (action: "lobby" | "start" | "end") => {
     if (
       action === "end" &&
-      !window.confirm(
+      !(await confirmAction(
         isLive
-          ? "Efirni tugatasizmi? Dars talabalar uchun yakunlanadi va qayta ochilmaydi."
-          : "Kutish xonasini yopasizmi? Talabalar xonadan chiqariladi.",
-      )
+          ? {
+              title: "Efirni tugatasizmi?",
+              message: "Dars talabalar uchun yakunlanadi va qayta ochilmaydi.",
+              confirmLabel: "Efirni tugatish",
+            }
+          : {
+              title: "Kutish xonasini yopasizmi?",
+              message: "Talabalar xonadan chiqariladi.",
+              confirmLabel: "Xonani yopish",
+            },
+      ))
     ) {
       return;
     }

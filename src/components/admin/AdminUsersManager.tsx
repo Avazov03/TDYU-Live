@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 import { tashkentParts } from "@/lib/utils";
 
-const RESET_PASSWORD_CONFIRM =
-  "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Yangi parol yaratilsinmi? Eski parol darhol ishlamay qoladi.";
+const RESET_PASSWORD_CONFIRM = {
+  title: "Yangi parol yaratilsinmi?",
+  message: "Parollar shifrlangan, ko‘rsatib bo‘lmaydi. Eski parol darhol ishlamay qoladi.",
+  confirmLabel: "Yangi parol yaratish",
+};
 
 type UserRole = "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
@@ -116,7 +120,7 @@ export function AdminUsersManager({
   };
 
   const resetPassword = async (userId: string) => {
-    if (!window.confirm(RESET_PASSWORD_CONFIRM)) return "";
+    if (!(await confirmAction(RESET_PASSWORD_CONFIRM))) return "";
     setBusyId(userId);
     setError("");
     setOpenId(userId);
@@ -160,6 +164,16 @@ export function AdminUsersManager({
   };
 
   const toggleBlock = async (user: AdminUserRow) => {
+    if (
+      !user.isBlocked &&
+      !(await confirmAction({
+        title: "Foydalanuvchini bloklaysizmi?",
+        message: `${user.fullName} tizimga kira olmaydi. Keyin blokdan chiqarish mumkin.`,
+        confirmLabel: "Bloklash",
+      }))
+    ) {
+      return;
+    }
     setBusyId(user.id);
     setError("");
     const res = await fetch(`/api/admin/users/${user.id}/block`, {
@@ -177,6 +191,16 @@ export function AdminUsersManager({
   };
 
   const subAction = async (subscriptionId: string, action: "extend" | "cancel") => {
+    if (
+      action === "cancel" &&
+      !(await confirmAction({
+        title: "Kurs obunasini bekor qilasizmi?",
+        message: "O‘quvchi bu kursning darslari va yozuvlariga kira olmay qoladi.",
+        confirmLabel: "Obunani bekor qilish",
+      }))
+    ) {
+      return;
+    }
     setBusyId(subscriptionId);
     setError("");
     const res = await fetch(`/api/admin/subscriptions/${subscriptionId}`, {
@@ -194,6 +218,16 @@ export function AdminUsersManager({
   };
 
   const entitlementAction = async (userId: string, action: "extend" | "cancel") => {
+    if (
+      action === "cancel" &&
+      !(await confirmAction({
+        title: "Tarifni bekor qilasizmi?",
+        message: "O‘quvchining tarif bo‘yicha barcha kirish huquqi darhol yopiladi.",
+        confirmLabel: "Tarifni bekor qilish",
+      }))
+    ) {
+      return;
+    }
     setBusyId(`ent-${userId}`);
     setError("");
     const res = await fetch(`/api/admin/entitlements/${userId}`, {

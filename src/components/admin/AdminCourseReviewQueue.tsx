@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 import type { AdminReviewCourse } from "@/lib/admin-courses";
 import { lifecycleLabel } from "@/lib/course-review-policy";
 import { formatSom } from "@/lib/tariffs";
@@ -67,6 +68,23 @@ export function AdminCourseReviewQueue({ courses, nowIso }: { courses: AdminRevi
   };
 
   const act = async (course: AdminReviewCourse, action: Action) => {
+    if (action === "reject" || action === "request_changes") {
+      const ok = await confirmAction(
+        action === "reject"
+          ? {
+              title: "Kursni rad etasizmi?",
+              message: `«${course.titleUz}» rad etiladi va o‘qituvchi uni qayta yubora olmaydi. Sabab o‘qituvchiga ko‘rsatiladi.`,
+              confirmLabel: "Rad etish",
+            }
+          : {
+              title: "Kursni qayta ishlashga qaytarasizmi?",
+              message: `«${course.titleUz}» o‘qituvchiga qaytariladi — u tuzatib, yana tekshiruvga yuboradi.`,
+              confirmLabel: "Qaytarish",
+              tone: "default",
+            },
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     setError("");
     setNotice("");

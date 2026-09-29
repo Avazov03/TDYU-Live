@@ -7,11 +7,9 @@ const BUTTON = {
 } as const;
 
 /** Ending a lesson asks for confirmation; accept it only if the expected prompt appears. */
-export function acceptNextConfirm(page: Page, message: RegExp): void {
-  page.once("dialog", (dialog) => {
-    if (dialog.type() === "confirm" && message.test(dialog.message())) void dialog.accept();
-    else void dialog.dismiss();
-  });
+export async function acceptNextConfirm(page: Page, message: RegExp): Promise<void> {
+  const dialog = page.getByTestId("confirm-dialog").filter({ hasText: message });
+  await dialog.getByTestId("confirm-ok").click({ timeout: 15_000 });
 }
 
 /**
@@ -24,13 +22,15 @@ export async function studioAction(
   action: keyof typeof BUTTON,
 ): Promise<void> {
   const path = `/api/teacher/lessons/${lessonId}/${action}`;
-  if (action === "end") acceptNextConfirm(page, /Efirni tugatasizmi/);
   const [res] = await Promise.all([
     page.waitForResponse(
       (r) => r.request().method() === "POST" && new URL(r.url()).pathname === path,
       { timeout: 60_000 },
     ),
-    page.getByTestId(BUTTON[action]).click(),
+    (async () => {
+      await page.getByTestId(BUTTON[action]).click();
+      if (action === "end") await acceptNextConfirm(page, /Efirni tugatasizmi/);
+    })(),
   ]);
   if (!res.ok()) {
     throw new Error(`${action} → HTTP ${res.status()} ${await res.text().catch(() => "")}`);

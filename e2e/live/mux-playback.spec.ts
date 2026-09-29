@@ -173,8 +173,8 @@ test.describe("Phase 8.5 live Mux playback", () => {
     expect((await api(adminPage, playbackPath(LESSON_ID))).status).toBe(200);
 
     monitor.noteAction("Teacher ends — live source disappears for the student");
-    acceptNextConfirm(teacherPage, /Efirni tugatasizmi/);
     await teacherPage.getByTestId("live-end").click();
+    await acceptNextConfirm(teacherPage, /Efirni tugatasizmi/);
     // End saves the browser recording first, then closes the stream.
     await expect
       .poll(async () => (await api(studentPage, playbackPath(LESSON_ID))).status, { timeout: 45_000 })

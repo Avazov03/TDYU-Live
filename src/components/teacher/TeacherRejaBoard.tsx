@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FilterChips } from "@/components/cabinet/FilterChips";
 import { LessonActions } from "@/components/teacher/LessonActions";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 import {
   clockLabel,
   hasPlayableRecording,
@@ -88,7 +89,12 @@ export function TeacherRejaBoard({ lessons, nowIso }: { lessons: RejaLessonRow[]
   const removable = overdue.filter((l) => !l.planLocked);
 
   const removeOverdue = async () => {
-    if (!window.confirm(`O‘tkazilmagan ${removable.length} ta darsni rejadan o‘chirasizmi?`)) return;
+    const ok = await confirmAction({
+      title: `${removable.length} ta darsni o‘chirasizmi?`,
+      message: "O‘tkazilmagan barcha darslar rejadan olib tashlanadi. Bu amalni qaytarib bo‘lmaydi.",
+      confirmLabel: "Hammasini o‘chirish",
+    });
+    if (!ok) return;
     setBulkBusy(true);
     setBulkNote("");
     let removed = 0;

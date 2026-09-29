@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { ConfirmDialogHost } from "@/components/ui/ConfirmDialog";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <SessionProvider>{children}</SessionProvider>
+          <ConfirmDialogHost />
         </ThemeProvider>
       </body>
     </html>

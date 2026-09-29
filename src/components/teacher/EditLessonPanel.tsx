@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 import { localInputToIso, tashkentParts } from "@/lib/utils";
 
 function toLocalInput(isoOrDate: string | Date) {
@@ -80,7 +81,12 @@ export function EditLessonPanel({
   };
 
   const remove = async () => {
-    if (!window.confirm("Bu darsni rejadan o‘chirasizmi?")) return;
+    const ok = await confirmAction({
+      title: "Darsni o‘chirasizmi?",
+      message: `«${titleUz}» rejadan olib tashlanadi. Bu amalni qaytarib bo‘lmaydi.`,
+      confirmLabel: "O‘chirish",
+    });
+    if (!ok) return;
     setBusy(true);
     setRowError("");
     const res = await fetch(`/api/teacher/lessons/${lessonId}`, { method: "DELETE" }).catch(() => null);

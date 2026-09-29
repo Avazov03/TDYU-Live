@@ -149,8 +149,8 @@ test.describe("Live Wave 3 attendance", () => {
     expect(open2[0].id).not.toBe(firstId);
 
     monitor.noteAction("Teacher ends live — no open intervals");
-    acceptNextConfirm(teacherPage, /Efirni tugatasizmi/);
     await teacherPage.getByTestId("live-end").click();
+    await acceptNextConfirm(teacherPage, /Efirni tugatasizmi/);
     // /end finishes the final recording upload and Mux completion before closing intervals.
     await expect
       .poll(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { confirmAction } from "@/components/ui/ConfirmDialog";
 
 export type LessonFile = {
   id: string;
@@ -55,6 +56,13 @@ export function LessonInventory({ lessonId, canPresent, onPresent }: LessonInven
   };
 
   const remove = async (id: string) => {
+    const file = items.find((i) => i.id === id);
+    const ok = await confirmAction({
+      title: "Faylni o‘chirasizmi?",
+      message: `«${file?.fileName ?? "Fayl"}» dars materiallaridan olib tashlanadi.`,
+      confirmLabel: "O‘chirish",
+    });
+    if (!ok) return;
     setBusy(true);
     await fetch(`/api/teacher/lessons/${lessonId}/assets/${id}`, { method: "DELETE" });
     setBusy(false);
