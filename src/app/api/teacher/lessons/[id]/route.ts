@@ -73,6 +73,7 @@ export async function PATCH(
     const check = checkReschedule({
       lessonId: lesson.id,
       currentStart: lesson.scheduledAt,
+      currentEnd: lessonEnd(lesson),
       nextStart: nextAt,
       nextEnd,
       now: new Date(),
@@ -140,7 +141,11 @@ export async function DELETE(
     return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
   }
   if (isScheduleRulesV1Enabled() && !isPreAudienceLifecycle(lesson.course.lifecycleStatus, reviewFlow)) {
-    const check = checkLessonRemoval({ currentStart: lesson.scheduledAt, now: new Date() });
+    const check = checkLessonRemoval({
+      currentStart: lesson.scheduledAt,
+      currentEnd: lessonEnd(lesson),
+      now: new Date(),
+    });
     if (!check.ok) {
       return NextResponse.json({ error: check.message, code: check.code }, { status: 409 });
     }

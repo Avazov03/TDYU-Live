@@ -5445,6 +5445,22 @@ html[data-theme="dark"] .acet-pane {
 .lx-reja-table tbody tr { transition: background 0.38s cubic-bezier(0.22, 1, 0.36, 1); }
 .lx-reja-table tbody tr:hover { background: var(--surface-hover); }
 .lx-reja-table tr.is-live { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.lx-reja-table tr.is-overdue .lx-reja-when { opacity: 0.7; }
+.badge.warn { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.lx-reja-overdue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--warning) 7%, transparent);
+}
+.lx-reja-overdue > p:first-child { flex: 1 1 320px; margin: 0; font-size: 13.5px; color: var(--text-2); }
+.lx-reja-overdue .lx-field-err { flex-basis: 100%; margin: 0; }
 .lx-reja-when { width: 170px; white-space: nowrap; }
 .lx-reja-when .lx-cd-date { display: inline-flex; vertical-align: middle; width: 46px; height: 46px; }
 .lx-reja-when-text { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-left: 12px; vertical-align: middle; }

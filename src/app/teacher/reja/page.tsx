@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { lessonPlanLock, liveGate } from "@/lib/course-review-policy";
 import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { lessonEnd } from "@/lib/schedule-policy";
 import type { CourseLifecycleStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -93,12 +94,14 @@ export default async function TeacherRejaPage() {
           </div>
         ) : (
           <TeacherRejaBoard
+            nowIso={new Date().toISOString()}
             lessons={lessons.map((lesson) => ({
               id: lesson.id,
               titleUz: lesson.titleUz,
               summaryUz: lesson.summaryUz,
               coverUrl: lesson.coverUrl,
               scheduledAt: lesson.scheduledAt.toISOString(),
+              endsAt: lessonEnd(lesson).toISOString(),
               status: lesson.status,
               courseTitle: lesson.course.titleUz,
               recordingUrl: lesson.recordingUrl,

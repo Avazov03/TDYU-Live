@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FilterChips } from "@/components/cabinet/FilterChips";
 import { LessonActions } from "@/components/teacher/LessonActions";
 import {
@@ -21,6 +22,7 @@ export type RejaLessonRow = {
   summaryUz?: string | null;
   coverUrl?: string | null;
   scheduledAt: string;
+  endsAt: string;
   status: PlanStatus;
   courseTitle: string;
   recordingUrl?: string | null;
@@ -32,7 +34,7 @@ export type RejaLessonRow = {
   planLocked?: boolean;
 };
 
-type Tab = "upcoming" | "past" | "all";
+type Tab = "upcoming" | "overdue" | "past" | "all";
 
 const UPCOMING: PlanStatus[] = ["scheduled", "lobby", "waiting_room", "live", "paused"];
 const OPEN: PlanStatus[] = ["lobby", "waiting_room", "live", "paused"];
@@ -42,13 +44,26 @@ function relativeDay(date: Date) {
   return /^(Bugun|Ertaga|Kecha)$/.test(short) ? short : weekdayUz(date);
 }
 
-export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
+export function TeacherRejaBoard({ lessons, nowIso }: { lessons: RejaLessonRow[]; nowIso: string }) {
+  const router = useRouter();
+  const overdueIds = useMemo(() => {
+    const nowMs = Date.parse(nowIso);
+    return new Set(lessons.filter((l) => l.status === "scheduled" && Date.parse(l.endsAt) <= nowMs).map((l) => l.id));
+  }, [lessons, nowIso]);
+  const isOverdue = (l: RejaLessonRow) => overdueIds.has(l.id);
   const upcoming = useMemo(
     () =>
       lessons
-        .filter((l) => UPCOMING.includes(l.status))
+        .filter((l) => UPCOMING.includes(l.status) && !overdueIds.has(l.id))
         .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt)),
-    [lessons],
+    [lessons, overdueIds],
+  );
+  const overdue = useMemo(
+    () =>
+      lessons
+        .filter((l) => overdueIds.has(l.id))
+        .sort((a, b) => Date.parse(b.scheduledAt) - Date.parse(a.scheduledAt)),
+    [lessons, overdueIds],
   );
   const past = useMemo(
     () =>
@@ -57,8 +72,44 @@ export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
         .sort((a, b) => Date.parse(b.scheduledAt) - Date.parse(a.scheduledAt)),
     [lessons],
   );
-  const [tab, setTab] = useState<Tab>(upcoming.length > 0 || past.length === 0 ? "upcoming" : "past");
-  const rows = tab === "upcoming" ? upcoming : tab === "past" ? past : [...upcoming, ...past];
+  const [tab, setTab] = useState<Tab>(
+    upcoming.length > 0 ? "upcoming" : overdue.length > 0 ? "overdue" : past.length > 0 ? "past" : "upcoming",
+  );
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNote, setBulkNote] = useState("");
+  const rows =
+    tab === "upcoming"
+      ? upcoming
+      : tab === "overdue"
+        ? overdue
+        : tab === "past"
+          ? past
+          : [...upcoming, ...overdue, ...past];
+  const removable = overdue.filter((l) => !l.planLocked);
+
+  const removeOverdue = async () => {
+    if (!window.confirm(`O‘tkazilmagan ${removable.length} ta darsni rejadan o‘chirasizmi?`)) return;
+    setBulkBusy(true);
+    setBulkNote("");
+    let removed = 0;
+    let lastError = "";
+    for (const lesson of removable) {
+      const res = await fetch(`/api/teacher/lessons/${lesson.id}`, { method: "DELETE" }).catch(() => null);
+      if (res?.ok) removed++;
+      else lastError = (res ? ((await res.json().catch(() => ({}))) as { error?: string }).error : "") || "Tarmoq xatosi";
+    }
+    setBulkBusy(false);
+    const failed = removable.length - removed;
+    setBulkNote(failed ? `${removed} ta o‘chirildi, ${failed} tasi o‘chmadi: ${lastError}` : "");
+    router.refresh();
+  };
+
+  const emptyText: Record<Tab, [string, string]> = {
+    upcoming: ["Kelgusi dars yo‘q", "Yuqoridan kursga yangi dars qo‘shing."],
+    overdue: ["Muddati o‘tgan dars yo‘q", "Barcha rejadagi darslar o‘z vaqtida."],
+    past: ["O‘tgan dars yo‘q", "Dars o‘tgach shu yerda chiqadi."],
+    all: ["Dars yo‘q", "Yuqoridan kursga yangi dars qo‘shing."],
+  };
 
   return (
     <div className="lx-reja">
@@ -69,16 +120,43 @@ export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
           ariaLabel="Darslar"
           options={[
             { value: "upcoming", label: "Kelgusi", count: upcoming.length },
+            ...(overdue.length > 0
+              ? [{ value: "overdue" as const, label: "Muddati o‘tgan", count: overdue.length }]
+              : []),
             { value: "past", label: "O‘tgan", count: past.length },
             { value: "all", label: "Hammasi", count: lessons.length },
           ]}
         />
       </div>
 
+      {tab === "overdue" && overdue.length > 0 ? (
+        <div className="lx-reja-overdue" role="status">
+          <p>
+            Bu darslar belgilangan vaqtda boshlanmagan. Yangi vaqt qo‘ying yoki rejadan olib tashlang — o‘quvchilar
+            jadvalida ham shunday ko‘rinadi.
+          </p>
+          {removable.length > 1 ? (
+            <button type="button" className="btn btn-sm btn-danger" disabled={bulkBusy} onClick={() => void removeOverdue()}>
+              {bulkBusy ? "O‘chirilmoqda…" : `Hammasini o‘chirish (${removable.length})`}
+            </button>
+          ) : null}
+          {bulkNote ? (
+            <p className="lx-field-err" role="alert">
+              {bulkNote}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <div className="lx-mc-empty">
-          <h2>{tab === "upcoming" ? "Kelgusi dars yo‘q" : "O‘tgan dars yo‘q"}</h2>
-          <p>{tab === "upcoming" ? "Yuqoridan kursga yangi dars qo‘shing." : "Dars o‘tgach shu yerda chiqadi."}</p>
+          <h2>{emptyText[tab][0]}</h2>
+          <p>{emptyText[tab][1]}</p>
+          {tab === "upcoming" && overdue.length > 0 ? (
+            <button type="button" className="btn btn-primary" onClick={() => setTab("overdue")}>
+              Muddati o‘tgan darslar ({overdue.length})
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="lx-reja-wrap">
@@ -97,8 +175,9 @@ export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
                 const p = tashkentParts(when);
                 const ready = hasPlayableRecording(lesson.recordingUrl, lesson.playbackId);
                 const open = OPEN.includes(lesson.status);
+                const late = isOverdue(lesson);
                 return (
-                  <tr key={lesson.id} className={open ? "is-live" : undefined}>
+                  <tr key={lesson.id} className={open ? "is-live" : late ? "is-overdue" : undefined}>
                     <td className="lx-reja-when">
                       <span className="lx-cd-date">
                         <strong>{Number(p.day)}</strong>
@@ -122,9 +201,13 @@ export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
                       {lesson.summaryUz ? <span className="lx-reja-summary">{lesson.summaryUz}</span> : null}
                     </td>
                     <td className="lx-reja-status">
-                      <span className={`badge ${statusTone(lesson.status, { hasRecording: ready })}`}>
-                        {statusLabel(lesson.status, { hasRecording: ready })}
-                      </span>
+                      {late ? (
+                        <span className="badge warn">O‘tkazilmagan</span>
+                      ) : (
+                        <span className={`badge ${statusTone(lesson.status, { hasRecording: ready })}`}>
+                          {statusLabel(lesson.status, { hasRecording: ready })}
+                        </span>
+                      )}
                     </td>
                     <td className="lx-reja-actions">
                       <LessonActions
@@ -137,6 +220,7 @@ export function TeacherRejaBoard({ lessons }: { lessons: RejaLessonRow[] }) {
                         scheduledAt={lesson.scheduledAt}
                         courseGate={lesson.courseGate}
                         planLocked={lesson.planLocked}
+                        overdue={late}
                       />
                     </td>
                   </tr>

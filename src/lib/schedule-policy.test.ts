@@ -130,6 +130,20 @@ describe("checkLessonRemoval", () => {
     assert.equal(checkLessonRemoval({ currentStart: at(2), now }).ok, false);
     assert.equal(checkLessonRemoval({ currentStart: at(25), now }).ok, true);
   });
+  it("a missed lesson (slot over) can be removed; one in progress cannot", () => {
+    assert.equal(checkLessonRemoval({ currentStart: at(-48), currentEnd: at(-46.5), now }).ok, true);
+    assert.equal(checkLessonRemoval({ currentStart: at(-1), currentEnd: at(0.5), now }).ok, false);
+  });
+});
+
+describe("checkReschedule — missed lesson", () => {
+  const base = { lessonId: "x", currentStart: at(-48), currentEnd: at(-46.5), now, others: [], formatWhen: fmt };
+  it("old time no longer blocks, new time still needs 24h notice", () => {
+    assert.equal(checkReschedule({ ...base, nextStart: at(30), nextEnd: at(31.5) }).ok, true);
+    const soon = checkReschedule({ ...base, nextStart: at(3), nextEnd: at(4.5) });
+    assert.equal(soon.ok, false);
+    if (!soon.ok) assert.equal(soon.code, "TOO_LATE");
+  });
 });
 
 describe("checkEarlyStart", () => {

@@ -94,6 +94,7 @@ export function checkReschedule(input: {
   formatWhen: (d: Date) => string;
   /** false = course has no students yet (draft): only past-time and conflict rules apply. */
   noticeRequired?: boolean;
+  currentEnd?: Date;
 }): ScheduleCheck {
   if (Number.isNaN(input.nextStart.getTime())) {
     return { ok: false, code: "INVALID_TIME", message: "Vaqt noto‘g‘ri" };
@@ -110,7 +111,7 @@ export function checkReschedule(input: {
     return { ok: true };
   }
   const minMs = RESCHEDULE_MIN_HOURS * HOUR_MS;
-  if (input.currentStart.getTime() - input.now.getTime() < minMs) {
+  if (!slotPassed(input.currentEnd, input.now) && input.currentStart.getTime() - input.now.getTime() < minMs) {
     return {
       ok: false,
       code: "TOO_LATE",
@@ -132,8 +133,14 @@ export function checkReschedule(input: {
   return { ok: true };
 }
 
+/** A never-started lesson whose slot is over: nobody is waiting for the old time any more. */
+function slotPassed(currentEnd: Date | undefined, now: Date) {
+  return Boolean(currentEnd && currentEnd.getTime() <= now.getTime());
+}
+
 /** Removing a scheduled lesson follows the same 24h notice rule. */
-export function checkLessonRemoval(input: { currentStart: Date; now: Date }): ScheduleCheck {
+export function checkLessonRemoval(input: { currentStart: Date; now: Date; currentEnd?: Date }): ScheduleCheck {
+  if (slotPassed(input.currentEnd, input.now)) return { ok: true };
   if (input.currentStart.getTime() - input.now.getTime() < RESCHEDULE_MIN_HOURS * HOUR_MS) {
     return {
       ok: false,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { localInputToIso, tashkentParts } from "@/lib/utils";
 
 function toLocalInput(isoOrDate: string | Date) {
@@ -16,6 +17,7 @@ export function EditLessonPanel({
   summaryUz,
   coverUrl,
   scheduledAt,
+  overdue = false,
 }: {
   lessonId: string;
   status: string;
@@ -23,20 +25,36 @@ export function EditLessonPanel({
   summaryUz?: string | null;
   coverUrl?: string | null;
   scheduledAt: string;
+  /** Never started and its slot is over — the dialog opens as "pick a new time". */
+  overdue?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDialogElement>(null);
+  const uid = useId();
   const [title, setTitle] = useState(titleUz);
   const [summary, setSummary] = useState(summaryUz ?? "");
   const [cover, setCover] = useState(coverUrl ?? "");
   const [when, setWhen] = useState(toLocalInput(scheduledAt));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [rowError, setRowError] = useState("");
 
   if (status === "live" || status === "lobby") return null;
 
+  const open = () => {
+    setTitle(titleUz);
+    setSummary(summaryUz ?? "");
+    setCover(coverUrl ?? "");
+    setWhen(toLocalInput(scheduledAt));
+    setError("");
+    setRowError("");
+    ref.current?.showModal();
+  };
+  const close = () => ref.current?.close();
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     const body: Record<string, string> = {
@@ -50,94 +68,110 @@ export function EditLessonPanel({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!res.ok) {
-      setError(data.error || "Saqlanmadi");
+    if (!res || !res.ok) {
+      setError(data.error || "Saqlanmadi — qayta urinib ko‘ring");
       return;
     }
-    setOpen(false);
+    close();
     router.refresh();
   };
 
   const remove = async () => {
     if (!window.confirm("Bu darsni rejadan o‘chirasizmi?")) return;
     setBusy(true);
-    setError("");
-    const res = await fetch(`/api/teacher/lessons/${lessonId}`, { method: "DELETE" });
-    const data = await res.json().catch(() => ({}));
+    setRowError("");
+    const res = await fetch(`/api/teacher/lessons/${lessonId}`, { method: "DELETE" }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!res.ok) {
-      setError(data.error || "O'chirilmadi");
+    if (!res || !res.ok) {
+      setRowError(data.error || "O‘chirilmadi");
       return;
     }
     router.refresh();
   };
 
-  if (!open) {
-    return (
+  const titleId = `${uid}-title`;
+
+  return (
+    <>
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => {
-            setError("");
-            setOpen(true);
-          }}
-        >
-          Tahrirlash
+        <button type="button" className={overdue ? "btn btn-sm btn-primary" : "btn btn-sm"} onClick={open}>
+          {overdue ? "Qayta rejalash" : "Tahrirlash"}
         </button>
         {status === "scheduled" ? (
           <button type="button" className="btn btn-sm btn-danger" disabled={busy} onClick={() => void remove()}>
             O‘chirish
           </button>
         ) : null}
-        {error ? (
+        {rowError ? (
           <p className="small" role="alert" style={{ color: "var(--danger)", margin: 0, flexBasis: "100%" }}>
-            {error}
+            {rowError}
           </p>
         ) : null}
       </div>
-    );
-  }
 
-  return (
-    <form onSubmit={save} className="soft-form" style={{ marginTop: 10, width: "100%" }}>
-      <div className="field">
-        <label>Mavzu</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-      </div>
-      <div className="field">
-        <label>Qisqa ma&apos;lumot</label>
-        <textarea value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={500} rows={2} />
-      </div>
-      <div className="field">
-        <label>Banner URL</label>
-        <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://" />
-      </div>
-      {status === "scheduled" ? (
-        <div className="field">
-          <label>Sana va vaqt</label>
-          <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} required />
+      <dialog ref={ref} className="lx-dialog" aria-labelledby={titleId}>
+        <div className="lx-dialog-head">
+          <h2 id={titleId}>{overdue ? "Qayta rejalash" : "Darsni tahrirlash"}</h2>
+          <button type="button" className="iconbtn" onClick={close} aria-label="Yopish">
+            <X size={18} aria-hidden />
+          </button>
         </div>
-      ) : null}
-      {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
-      <div className="row gap-8">
-        <button className="btn btn-sm btn-primary" type="submit" disabled={busy}>
-          Saqlash
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => {
-            setError("");
-            setOpen(false);
-          }}
-        >
-          Bekor
-        </button>
-      </div>
-    </form>
+        <form onSubmit={save} className="lx-dialog-body soft-form">
+          {overdue ? (
+            <p className="lx-dialog-note">
+              Bu dars belgilangan vaqtda o‘tkazilmadi. Yangi vaqt tanlang — o‘quvchilarga xabar boradi.
+            </p>
+          ) : null}
+          <div className="field">
+            <label htmlFor={`${uid}-t`}>Mavzu</label>
+            <input id={`${uid}-t`} value={title} onChange={(e) => setTitle(e.target.value)} required minLength={2} />
+          </div>
+          {status === "scheduled" ? (
+            <div className="field">
+              <label htmlFor={`${uid}-w`}>Sana va vaqt</label>
+              <input
+                id={`${uid}-w`}
+                type="datetime-local"
+                value={when}
+                onChange={(e) => setWhen(e.target.value)}
+                required
+              />
+            </div>
+          ) : null}
+          <div className="field">
+            <label htmlFor={`${uid}-s`}>Qisqa ma&apos;lumot</label>
+            <textarea
+              id={`${uid}-s`}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Darsda nima o‘tiladi"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={`${uid}-c`}>Banner URL</label>
+            <input id={`${uid}-c`} value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://" />
+          </div>
+          {error ? (
+            <p className="lx-field-err" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="lx-dialog-actions">
+            <button type="button" className="btn" onClick={close}>
+              Bekor qilish
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? "Saqlanmoqda…" : "Saqlash"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }

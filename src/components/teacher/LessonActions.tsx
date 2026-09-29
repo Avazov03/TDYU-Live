@@ -12,6 +12,7 @@ export function LessonActions({
   scheduledAt,
   courseGate,
   planLocked = false,
+  overdue = false,
 }: {
   lessonId: string;
   status: string;
@@ -22,11 +23,12 @@ export function LessonActions({
   scheduledAt: string;
   courseGate?: { label: string; canSubmit: boolean } | null;
   planLocked?: boolean;
+  overdue?: boolean;
 }) {
   return (
     <div className="lx-lesson-actions">
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-        {status === "scheduled" && courseGate ? (
+        {overdue ? null : status === "scheduled" && courseGate ? (
           courseGate.canSubmit ? (
             <Link href="/teacher#kurslar" className="btn btn-primary btn-sm">
               Tekshiruvga yuborish
@@ -35,7 +37,7 @@ export function LessonActions({
             <span className="lx-lesson-wait">Efir nashrdan keyin</span>
           )
         ) : null}
-        {status === "scheduled" && !courseGate ? (
+        {status === "scheduled" && !courseGate && !overdue ? (
           <Link href={`/teacher/live/${lessonId}`} className="btn btn-primary btn-sm">
             Studioga kirish
           </Link>
@@ -63,6 +65,7 @@ export function LessonActions({
           summaryUz={summaryUz}
           coverUrl={coverUrl}
           scheduledAt={scheduledAt}
+          overdue={overdue}
         />
       )}
     </div>
