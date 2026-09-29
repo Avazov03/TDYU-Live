@@ -105,4 +105,10 @@ describe("checkSpecialRefund — admin 50% after start", () => {
       if (!r.ok) assert.equal(r.code, "NOT_REFUNDABLE");
     }
   });
+
+  it("rejects purchases backfilled from legacy Tarif subscriptions", () => {
+    const r = checkSpecialRefund({ ...base, progressPercent: 10, legacyBackfill: true });
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.code, "NOT_REFUNDABLE");
+  });
 });

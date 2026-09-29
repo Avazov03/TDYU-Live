@@ -180,6 +180,7 @@ export async function issueSpecialRefund(input: {
       userId: true,
       status: true,
       amountPaid: true,
+      legacyBackfill: true,
       course: {
         select: { id: true, titleUz: true, lifecycleStatus: true, lessons: { select: { status: true } } },
       },
@@ -195,6 +196,7 @@ export async function issueSpecialRefund(input: {
     amountPaid: purchase.amountPaid,
     courseStarted: hasCourseStarted({ lifecycleStatus: purchase.course.lifecycleStatus, lessonStatuses }),
     progressPercent,
+    legacyBackfill: purchase.legacyBackfill,
     reason,
   });
   if (!check.ok) {

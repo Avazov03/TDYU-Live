@@ -9,7 +9,9 @@ import {
   type EnrollmentAccessResult,
 } from "@/lib/enrollment-access";
 import {
+  featureFlags,
   getEnrollmentAccessMode,
+  shouldHideStudentTariffUi,
 } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
@@ -60,9 +62,7 @@ export async function requireStudentCabinet(callbackUrl: string) {
     return { user: session.user, sub };
   }
 
-  const entitlement = await getActiveEntitlement(session.user.id);
-  if (entitlement) redirect("/onboard");
-  redirect("/#tariflar");
+  return redirectStudentWithoutCourses(session.user.id);
 }
 
 /** Dashboard ichidagi umumiy sahifa (qidiruv, tarix): talabaga enrollment/tarif kerak. */
@@ -92,9 +92,7 @@ export async function requireAppUser(callbackUrl: string) {
       return { user: session.user, sub };
     }
 
-    const entitlement = await getActiveEntitlement(session.user.id);
-    if (entitlement) redirect("/onboard");
-    redirect("/#tariflar");
+    return redirectStudentWithoutCourses(session.user.id);
   }
   return { user: session.user, sub: null };
 }
@@ -334,14 +332,22 @@ export function resolveStudentHomePath(input: {
   hasOpenEnrollment: boolean;
   hasActiveSubscription: boolean;
   hasActiveEntitlement: boolean;
+  /** FF_DISABLE_ONBOARD_ENROLL — Entitlement no longer leads to V1 onboard. */
+  onboardDisabled?: boolean;
 }): StudentHomePath {
-  const { mode, hasOpenEnrollment, hasActiveSubscription, hasActiveEntitlement } =
+  const { mode, hasOpenEnrollment, hasActiveSubscription, hasActiveEntitlement, onboardDisabled } =
     input;
   if (studentHasCabinetMembership({ mode, hasOpenEnrollment, hasActiveSubscription })) {
     return "/app";
   }
-  if (hasActiveEntitlement) return "/onboard";
+  if (hasActiveEntitlement && !onboardDisabled) return "/onboard";
   return "/";
+}
+
+/** Where a student without cabinet membership is sent (V1 onboard, Tarif grid or course catalog). */
+async function redirectStudentWithoutCourses(userId: string): Promise<never> {
+  if (!featureFlags.disableOnboardEnroll && (await getActiveEntitlement(userId))) redirect("/onboard");
+  redirect(shouldHideStudentTariffUi() ? "/#kurslar" : "/#tariflar");
 }
 
 /**

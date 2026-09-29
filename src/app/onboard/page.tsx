@@ -6,7 +6,7 @@ import {
   getAnyActiveSubscription,
   getAnyOpenEnrollment,
 } from "@/lib/access";
-import { getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { featureFlags, getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/roles";
 import { TARIFF_LABELS, isSubscriptionActive } from "@/lib/tariffs";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
@@ -28,11 +28,14 @@ export default async function OnboardPage() {
     const enr = await getAnyOpenEnrollment(session.user.id);
     if (enr) redirect("/app");
   }
+  if (featureFlags.disableOnboardEnroll) {
+    redirect(shouldHideStudentTariffUi() ? "/#kurslar" : "/#tariflar");
+  }
   const sub =
     mode === "enrollment" ? null : await getAnyActiveSubscription(session.user.id);
   if (sub) redirect("/app");
   const entitlement = await getActiveEntitlement(session.user.id);
-  if (!entitlement) redirect("/#tariflar");
+  if (!entitlement) redirect(shouldHideStudentTariffUi() ? "/#kurslar" : "/#tariflar");
 
   const [faculties, teachers] = await Promise.all([
     prisma.faculty.findMany({ orderBy: { order: "asc" } }),
@@ -79,7 +82,7 @@ export default async function OnboardPage() {
           <EmptyGuide
             title="O‘qituvchi hali yo‘q"
             text="Admin o‘qituvchini taklif qilgach shu yerda chiqadi."
-            href="/#tariflar"
+            href={shouldHideStudentTariffUi() ? "/#kurslar" : "/#tariflar"}
             cta="Bosh sahifa"
           />
         ) : (

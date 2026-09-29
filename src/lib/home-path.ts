@@ -6,7 +6,7 @@ import {
   getAnyOpenEnrollment,
   resolveStudentHomePath,
 } from "@/lib/access";
-import { getEnrollmentAccessMode } from "@/lib/feature-flags";
+import { featureFlags, getEnrollmentAccessMode } from "@/lib/feature-flags";
 
 /** Login/register dan keyin: admin/o'qituvchi kabinet, talaba — Enrollment yoki V1 onboard. */
 export async function resolveHomePath() {
@@ -31,5 +31,6 @@ export async function resolveHomePath() {
     hasOpenEnrollment: Boolean(enr),
     hasActiveSubscription: Boolean(sub),
     hasActiveEntitlement: Boolean(entitlement),
+    onboardDisabled: featureFlags.disableOnboardEnroll,
   });
 }

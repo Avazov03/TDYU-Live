@@ -85,6 +85,29 @@ describe("Wave 3 student shell / home path", () => {
     );
   });
 
+  it("4b onboard disabled: Entitlement alone no longer leads to /onboard; seat still → /app", () => {
+    assert.equal(
+      resolveStudentHomePath({
+        mode: "enrollment",
+        hasOpenEnrollment: false,
+        hasActiveSubscription: false,
+        hasActiveEntitlement: true,
+        onboardDisabled: true,
+      }),
+      "/",
+    );
+    assert.equal(
+      resolveStudentHomePath({
+        mode: "enrollment",
+        hasOpenEnrollment: true,
+        hasActiveSubscription: false,
+        hasActiveEntitlement: true,
+        onboardDisabled: true,
+      }),
+      "/app",
+    );
+  });
+
   it("5 Subscription-only does not gain target ownership in enrollment mode", () => {
     assert.equal(
       studentHasCabinetMembership({

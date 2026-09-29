@@ -71,6 +71,8 @@ type SpecialRefundInput = {
   amountPaid: number;
   courseStarted: boolean;
   progressPercent: number;
+  /** Purchase created by the Subscription → Enrollment backfill (was a Tarif payment). */
+  legacyBackfill?: boolean;
 };
 
 /** Support/admin exception after start: 50% only while progress < 50% and with a justification. */
@@ -91,6 +93,13 @@ export function checkSpecialRefund(
 
 /** Same rule without the reason — for showing the admin whether the action is available. */
 export function checkSpecialRefundEligibility(input: SpecialRefundInput): SpecialRefundCheck {
+  if (input.legacyBackfill) {
+    return {
+      ok: false,
+      code: "NOT_REFUNDABLE",
+      message: "Eski tarif obunasidan ko‘chirilgan xarid — kurs qaytarish qoidasi qo‘llanmaydi",
+    };
+  }
   if (input.purchaseStatus !== "completed") {
     return { ok: false, code: "NOT_REFUNDABLE", message: "Bu xarid uchun qaytarish qilib bo‘lmaydi" };
   }
