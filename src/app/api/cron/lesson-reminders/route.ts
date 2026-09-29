@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
-import { sendUpcomingLessonReminders } from "@/lib/lesson-reminders";
+import { sendCourseStartReminders, sendUpcomingLessonReminders } from "@/lib/lesson-reminders";
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +13,6 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const created = await sendUpcomingLessonReminders();
-  return NextResponse.json({ ok: true, created });
+  const courseStarts = await sendCourseStartReminders();
+  return NextResponse.json({ ok: true, created, courseStarts });
 }

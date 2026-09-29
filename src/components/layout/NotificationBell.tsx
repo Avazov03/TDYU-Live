@@ -9,18 +9,10 @@ type Item = {
   titleUz: string;
   messageUz: string;
   relatedId?: string | null;
+  href?: string | null;
   isRead: boolean;
   createdAt: string;
 };
-
-function itemHref(item: Item) {
-  if (!item.relatedId) return null;
-  if (item.type === "lesson_live" || item.type === "lesson_starting") return `/learn/${item.relatedId}`;
-  if (item.type === "assignment") return "/assignments";
-  if (item.type === "certificate") return `/certificates/${item.relatedId}`;
-  if (item.type === "system" && item.relatedId) return `/learn/${item.relatedId}`;
-  return null;
-}
 
 export function NotificationBell({ unreadCount }: { unreadCount: number }) {
   const [open, setOpen] = useState(false);
@@ -76,7 +68,7 @@ export function NotificationBell({ unreadCount }: { unreadCount: number }) {
             <div className="ddx-item muted">Hozircha xabar yo&apos;q</div>
           ) : (
             items.map((item) => {
-              const href = itemHref(item);
+              const href = item.href ?? null;
               const inner = (
                 <div>
                   <div style={{ fontWeight: item.isRead ? 400 : 600 }}>{item.titleUz}</div>

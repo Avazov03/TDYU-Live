@@ -53,6 +53,11 @@ export function getEnrollmentAccessMode(): EnrollmentAccessMode {
   return "off";
 }
 
+/** Admin subscription/entitlement edits belong to the tariff model; enrollment mode has no such access. */
+export function legacyTariffAdminWritesAllowed(mode: EnrollmentAccessMode = getEnrollmentAccessMode()): boolean {
+  return mode !== "enrollment";
+}
+
 /** True when runtime may grant access from Enrollment seats (dual or enrollment). */
 export function usesEnrollmentAccessPath(): boolean {
   const m = getEnrollmentAccessMode();

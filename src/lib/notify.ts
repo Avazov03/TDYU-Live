@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { sendEmail } from "@/lib/email";
 import { sendTelegramMessage, siteBaseUrl, type InlineKeyboard } from "@/lib/telegram/api";
+import { formatDateTime } from "@/lib/utils";
 
 type NotifyInput = {
   userId: string;
@@ -30,6 +31,9 @@ function keyboardFor(type: NotificationType, relatedId?: string | null): InlineK
   }
   if (type === "certificate") {
     return [[{ text: "🎓 Sertifikat", url: `${base}/certificates/${relatedId}` }]];
+  }
+  if (type === "purchase_success" || type === "course_starts_tomorrow") {
+    return [[{ text: "📚 Kursni ochish", url: `${base}/courses/${relatedId}` }]];
   }
   if (type === "grade") {
     return [[{ text: "📚 Kabinet", url: `${base}/app` }]];
@@ -65,6 +69,32 @@ export async function notifyUser(input: NotifyInput) {
     );
   }
   if (email) await sendEmail(email, input.titleUz, input.messageUz);
+}
+
+export async function notifyPurchaseSuccess(userId: string, courseId: string) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      titleUz: true,
+      lessons: {
+        where: { status: "scheduled", cancelledAt: null, scheduledAt: { gt: new Date() } },
+        orderBy: { scheduledAt: "asc" },
+        take: 1,
+        select: { scheduledAt: true },
+      },
+    },
+  });
+  if (!course) return;
+  const first = course.lessons[0]?.scheduledAt;
+  await notifyUser({
+    userId,
+    type: "purchase_success",
+    titleUz: "Xarid muvaffaqiyatli",
+    messageUz: `«${course.titleUz}» kursi «Mening kurslarim» bo‘limiga qo‘shildi.${
+      first ? ` Birinchi dars: ${formatDateTime(first)}.` : ""
+    }`,
+    relatedId: courseId,
+  });
 }
 
 type CourseRecipient = { id: string; email: string; telegramChatId: string | null };

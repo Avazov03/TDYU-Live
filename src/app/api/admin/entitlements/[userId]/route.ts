@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth, isAdminRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addDays } from "@/lib/tariffs";
+import { legacyTariffAdminWritesAllowed } from "@/lib/feature-flags";
 
 const schema = z.object({
   action: z.enum(["extend", "cancel"]),
@@ -16,6 +17,12 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+  }
+  if (!legacyTariffAdminWritesAllowed()) {
+    return NextResponse.json(
+      { error: "Tarif tizimi o‘chirilgan — kirish kurs xaridi orqali", code: "LEGACY_TARIFF_DISABLED" },
+      { status: 410 },
+    );
   }
 
   const { userId } = await params;

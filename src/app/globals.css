@@ -5027,6 +5027,7 @@ html[data-theme="dark"] .acet-pane {
 }
 .lx-today-stat-num small { font-size: 0.95rem; font-weight: 600; color: var(--text-3); }
 .lx-today-stat-label { font-size: 13.5px; color: var(--text-2); }
+.lx-demo-note { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); }
 .lx-today-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;

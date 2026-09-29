@@ -247,13 +247,27 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             <div className="player-wrap">
               <div className={`player-demo course-thumb tone-${(lesson.id.charCodeAt(0) % 6) + 1}`}>
                 <div>
-                  <div className="badge pending" style={{ marginBottom: 8 }} data-testid="recording-pending-review">
-                    YOZUV TEKSHIRUVDA
-                  </div>
-                  <h3>{lesson.titleUz}</h3>
-                  <p className="muted small">
-                    Yozuv o‘qituvchi tekshiruvidan keyin ochiladi.
-                  </p>
+                  {recordingStatus === "processing" || recordingStatus === "not_started" ? (
+                    <>
+                      <div className="badge pending" style={{ marginBottom: 8 }} data-testid="recording-preparing">
+                        YOZUV TAYYORLANMOQDA
+                      </div>
+                      <h3>{lesson.titleUz}</h3>
+                      <p className="muted small">
+                        Video qayta ishlanmoqda. Tayyor bo‘lgach o‘qituvchi ko‘rib chiqadi va shu yerda ochiladi.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="badge pending" style={{ marginBottom: 8 }} data-testid="recording-pending-review">
+                        YOZUV TEKSHIRUVDA
+                      </div>
+                      <h3>{lesson.titleUz}</h3>
+                      <p className="muted small">
+                        Yozuv o‘qituvchi tekshiruvidan keyin ochiladi.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

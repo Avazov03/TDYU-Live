@@ -70,7 +70,14 @@ export default async function AdminDashboardPage() {
             <Wallet size={18} aria-hidden />
           </span>
           <span className="lx-today-stat-num">{formatSom(kpis.monthRevenue)}</span>
-          <span className="lx-today-stat-label">Shu oy to‘lov</span>
+          <span className="lx-today-stat-label">
+            Shu oy daromad
+            {kpis.monthDemo > 0 ? (
+              <small className="lx-demo-note" data-testid="admin-demo-month">
+                Demo: {formatSom(kpis.monthDemo)} — daromadga kirmaydi
+              </small>
+            ) : null}
+          </span>
         </Link>
         <Link href="/admin/courses" className={`lx-today-stat${kpis.live > 0 ? " is-live" : ""}`}>
           <span className="lx-today-stat-icon">
@@ -201,12 +208,15 @@ export default async function AdminDashboardPage() {
 
         <section className="admin-panel">
           <div className="admin-panel-head">
-            <h3>To&apos;lovlar · 30 kun</h3>
+            <h3>Daromad · 30 kun</h3>
             <span className="small muted">
               {formatSom(revenueByDay.reduce((n, d) => n + d.value, 0))}
             </span>
           </div>
           <AdminBarChart data={revenueByDay} valueFormat="som" />
+          {data.demo30 > 0 ? (
+            <p className="small muted lx-demo-note">Demo: {formatSom(data.demo30)} — daromadga kirmaydi</p>
+          ) : null}
         </section>
 
         <section className="admin-panel">

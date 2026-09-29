@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { AdminRefundCell, type AdminRefundInfo } from "@/components/admin/AdminRefundCell";
 import { TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
+import { isRealRevenuePayment, splitRevenue } from "@/lib/revenue";
 import type { PaymentStatus, TariffTier } from "@/generated/prisma/client";
 
 export type AdminPaymentRow = {
@@ -19,6 +20,7 @@ export type AdminPaymentRow = {
   tier: TariffTier | null;
   amount: number;
   status: PaymentStatus;
+  isDemo: boolean;
   provider: string;
   createdAt: string;
   /** Set only when FF_REFUNDS_V1 is on and the payment belongs to a course purchase. */
@@ -45,10 +47,12 @@ type RangeFilter = "14" | "30" | "month" | "all";
 export function AdminPaymentsBoard({
   payments,
   chart14,
+  demo14,
   canSeeSecrets,
 }: {
   payments: AdminPaymentRow[];
   chart14: { label: string; value: number }[];
+  demo14: number;
   canSeeSecrets: boolean;
 }) {
   const showRefunds = payments.some((p) => p.refund);
@@ -76,10 +80,11 @@ export function AdminPaymentsBoard({
   }, [payments, query, status, tier, range]);
 
   const paid = filtered.filter((p) => p.status === "paid" || p.status === "demo_paid");
-  const sum = paid.reduce((n, p) => n + p.amount, 0);
+  const real = paid.filter(isRealRevenuePayment);
+  const { real: sum, demo: demoSum } = splitRevenue(paid);
   const byTier = { t1: 0, t2: 0, t3: 0 };
   let byCourse = 0;
-  for (const p of paid) {
+  for (const p of real) {
     if (p.tier) byTier[p.tier] += p.amount;
     else byCourse += p.amount;
   }
@@ -87,7 +92,7 @@ export function AdminPaymentsBoard({
   const pending = filtered.filter((p) => p.status === "pending").length;
 
   const byTeacher = new Map<string, number>();
-  for (const p of paid) {
+  for (const p of real) {
     const key = p.teacherName || "Kurssiz";
     byTeacher.set(key, (byTeacher.get(key) ?? 0) + p.amount);
   }
@@ -108,9 +113,14 @@ export function AdminPaymentsBoard({
 
       <div className="admin-summary">
         <div className="stat-card">
-          <div className="small muted">Filtr summa</div>
+          <div className="small muted">Filtr daromad</div>
           <div className="num" style={{ fontSize: 20 }}>{formatSom(sum)}</div>
           <div className="small muted">{paid.length} ta muvaffaqiyatli</div>
+          {demoSum > 0 ? (
+            <div className="lx-demo-note" data-testid="admin-demo-filter">
+              Demo: {formatSom(demoSum)} — daromadga kirmaydi
+            </div>
+          ) : null}
         </div>
         <div className="stat-card">
           <div className="small muted">1 / 2 / 3-tarif</div>
@@ -132,10 +142,13 @@ export function AdminPaymentsBoard({
       <div className="admin-charts-grid">
         <section className="admin-panel">
           <div className="admin-panel-head">
-            <h3>14 kunlik to&apos;lov</h3>
+            <h3>14 kunlik daromad</h3>
             <span className="small muted">{formatSom(chart14.reduce((n, d) => n + d.value, 0))}</span>
           </div>
           <AdminBarChart data={chart14} valueFormat="som" />
+          {demo14 > 0 ? (
+            <p className="small muted lx-demo-note">Demo: {formatSom(demo14)} — daromadga kirmaydi</p>
+          ) : null}
         </section>
         <section className="admin-panel">
           <div className="admin-panel-head">

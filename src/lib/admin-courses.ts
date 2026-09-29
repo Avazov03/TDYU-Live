@@ -3,6 +3,7 @@ import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
+import { SUCCESS_PAYMENT_WHERE, splitRevenue } from "@/lib/revenue";
 
 export type AdminReviewCourse = {
   id: string;
@@ -144,7 +145,9 @@ export type AdminCourseInsight = {
   lastLessonAt: string | null;
   lastLessonTitle: string | null;
   health: CourseHealth;
+  /** Real revenue only (demo excluded). */
   paymentSum: number;
+  demoSum: number;
   paymentCount: number;
 };
 
@@ -211,8 +214,8 @@ export async function getAdminCourseBoard() {
           orderBy: { scheduledAt: "asc" },
         },
         payments: {
-          where: { status: { in: ["demo_paid", "paid"] } },
-          select: { amount: true },
+          where: SUCCESS_PAYMENT_WHERE,
+          select: { amount: true, status: true, isDemo: true },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -296,7 +299,8 @@ export async function getAdminCourseBoard() {
         endedCount: ended.length,
         lastLessonAt: last?.scheduledAt ?? null,
       }),
-      paymentSum: course.payments.reduce((n, p) => n + p.amount, 0),
+      paymentSum: splitRevenue(course.payments).real,
+      demoSum: splitRevenue(course.payments).demo,
       paymentCount: course.payments.length,
     };
   });

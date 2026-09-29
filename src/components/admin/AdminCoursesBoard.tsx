@@ -342,8 +342,11 @@ export function AdminCoursesBoard({
                             <div>{course.activeAttendees} / {course.activeStudents}</div>
                           </div>
                           <div>
-                            <div className="small muted">To&apos;lov</div>
+                            <div className="small muted">Daromad</div>
                             <div>{formatSom(course.paymentSum)} · {course.paymentCount} ta</div>
+                            {course.demoSum > 0 ? (
+                              <div className="lx-demo-note">Demo: {formatSom(course.demoSum)} — daromadga kirmaydi</div>
+                            ) : null}
                           </div>
                           {(reviewFlow && course.lifecycleStatus) || seatMode ? (
                             <div>

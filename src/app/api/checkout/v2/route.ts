@@ -5,6 +5,7 @@ import { featureFlags } from "@/lib/feature-flags";
 import { isStudentRole } from "@/lib/roles";
 import { checkoutCourseV2 } from "@/lib/checkout-v2/service";
 import { CheckoutV2Error, checkoutErrorBody } from "@/lib/checkout-v2/errors";
+import { notifyPurchaseSuccess } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,12 @@ export async function POST(req: Request) {
       isDemo: result.payment.isDemo,
       idempotentReplay: result.idempotentReplay,
     });
+
+    if (!result.idempotentReplay) {
+      await notifyPurchaseSuccess(session.user.id, result.purchase.courseId).catch((err) =>
+        console.error("checkout_v2_notify_failed", err),
+      );
+    }
 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {

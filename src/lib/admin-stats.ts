@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
+import { REAL_REFUND_WHERE, SUCCESS_PAYMENT_WHERE, isRealRevenuePayment, splitRevenue } from "@/lib/revenue";
 
 const OPEN_SEAT: Prisma.EnrollmentWhereInput = { accessOpen: true, status: { in: ["active", "completed"] } };
 
@@ -73,9 +74,9 @@ export async function getAdminDashboard() {
     prisma.payment.findMany({
       where: {
         createdAt: { gte: monthStart },
-        status: { in: ["demo_paid", "paid"] },
+        ...SUCCESS_PAYMENT_WHERE,
       },
-      select: { amount: true },
+      select: { amount: true, status: true, isDemo: true },
     }),
     prisma.user.findMany({
       where: { role: "student", createdAt: { gte: days30 } },
@@ -84,9 +85,9 @@ export async function getAdminDashboard() {
     prisma.payment.findMany({
       where: {
         createdAt: { gte: days30 },
-        status: { in: ["demo_paid", "paid"] },
+        ...SUCCESS_PAYMENT_WHERE,
       },
-      select: { amount: true, createdAt: true },
+      select: { amount: true, createdAt: true, status: true, isDemo: true },
     }),
     prisma.lesson.findMany({
       where: {
@@ -137,7 +138,11 @@ export async function getAdminDashboard() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.refund.findMany({
-      where: { status: "refunded", completedAt: { gte: days30 < monthStart ? days30 : monthStart } },
+      where: {
+        status: "refunded",
+        completedAt: { gte: days30 < monthStart ? days30 : monthStart },
+        ...REAL_REFUND_WHERE,
+      },
       select: { amount: true, completedAt: true },
     }),
     prisma.enrollment.groupBy({ by: ["status"], where: OPEN_SEAT, _count: { _all: true } }),
@@ -159,7 +164,7 @@ export async function getAdminDashboard() {
     .filter((r): r is { amount: number; completedAt: Date } => r.completedAt !== null)
     .map((r) => ({ at: r.completedAt, amount: -r.amount }));
   const revenueByDay = buildDaySeriesSum(29, [
-    ...recentPayments.map((p) => ({ at: p.createdAt, amount: p.amount })),
+    ...recentPayments.filter(isRealRevenuePayment).map((p) => ({ at: p.createdAt, amount: p.amount })),
     ...refundEntries.filter((r) => r.at >= days30),
   ]);
 
@@ -186,9 +191,9 @@ export async function getAdminDashboard() {
     .sort((a, b) => b.activeStudents - a.activeStudents)
     .slice(0, 5);
 
+  const monthSplit = splitRevenue(monthPayments);
   const monthRevenue =
-    monthPayments.reduce((n, p) => n + p.amount, 0) +
-    refundEntries.filter((r) => r.at >= monthStart).reduce((n, r) => n + r.amount, 0);
+    monthSplit.real + refundEntries.filter((r) => r.at >= monthStart).reduce((n, r) => n + r.amount, 0);
 
   return {
     kpis: {
@@ -201,12 +206,14 @@ export async function getAdminDashboard() {
       openSeats: seats.active + seats.completed,
       live: liveLessons,
       monthRevenue,
+      monthDemo: monthSplit.demo,
     },
     seatMode,
     tiers: activeTier,
     seats,
     registrationsByDay,
     revenueByDay,
+    demo30: splitRevenue(recentPayments).demo,
     lessonStatus,
     topCourses,
     attention: {

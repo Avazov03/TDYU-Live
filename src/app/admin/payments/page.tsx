@@ -9,6 +9,7 @@ import {
   hasCourseStarted,
 } from "@/lib/refund-policy";
 import type { AdminRefundInfo } from "@/components/admin/AdminRefundCell";
+import { isDemoSuccessPayment, isRealRevenuePayment } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,7 @@ export default async function AdminPaymentsPage() {
     tier: p.purchase && !p.purchase.legacyBackfill ? null : p.tier,
     amount: p.amount,
     status: p.status,
+    isDemo: p.isDemo,
     provider: p.provider,
     createdAt: p.createdAt.toISOString(),
     refund: refundInfo(p),
@@ -101,9 +103,11 @@ export default async function AdminPaymentsPage() {
     const d = new Date(now.getTime() - i * 86_400_000);
     buckets.set(dayKey(d), { label: dayLabel(d), value: 0 });
   }
+  let demo14 = 0;
   for (const p of payments) {
     if (p.createdAt < days14) continue;
-    if (p.status !== "paid" && p.status !== "demo_paid") continue;
+    if (isDemoSuccessPayment(p)) demo14 += p.amount;
+    if (!isRealRevenuePayment(p)) continue;
     const row = buckets.get(dayKey(p.createdAt));
     if (row) row.value += p.amount;
   }
@@ -112,6 +116,7 @@ export default async function AdminPaymentsPage() {
     <AdminPaymentsBoard
       payments={rows}
       chart14={[...buckets.values()]}
+      demo14={demo14}
       canSeeSecrets={canSeeSecrets}
     />
   );
