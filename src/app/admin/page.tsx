@@ -1,66 +1,108 @@
 import Link from "next/link";
 import { AdminBarChart, AdminDonut, AdminHBar } from "@/components/admin/AdminCharts";
-import { AdminCapabilities } from "@/components/admin/AdminCapabilities";
+import { BadgeCheck, GraduationCap, Presentation, Radio, Wallet } from "lucide-react";
 import { getAdminDashboard } from "@/lib/admin-stats";
+import { getAdminReviewQueue } from "@/lib/admin-courses";
+import { lifecycleLabel } from "@/lib/course-review-policy";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 import { formatSom } from "@/lib/tariffs";
 import { formatDateTime, fmt } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const data = await getAdminDashboard();
+  const reviewFlow = isCourseReviewV1Enabled();
+  const [data, review] = await Promise.all([
+    getAdminDashboard(),
+    reviewFlow ? getAdminReviewQueue() : Promise.resolve([]),
+  ]);
   const { kpis, tiers, registrationsByDay, revenueByDay, lessonStatus, topCourses, attention } = data;
+  const reviewPending = review.filter((c) =>
+    c.lifecycleStatus === "submitted" || c.lifecycleStatus === "in_review" || c.lifecycleStatus === "approved",
+  );
   const hasAttention =
-    attention.live.length > 0 || attention.invites.length > 0 || attention.expiring.length > 0;
+    reviewPending.length > 0 ||
+    attention.live.length > 0 ||
+    attention.invites.length > 0 ||
+    attention.expiring.length > 0;
 
   return (
     <div className="admin-board">
-      <div className="lx-board" style={{ marginBottom: 8 }}>
-        <p className="lx-kicker">Boshqaruv</p>
-        <h2>Bugun platformada</h2>
-        <p className="muted small lx-lead">
-          Avval imkoniyatlaringizni ko‘ring, keyin raqam va diqqat bloklariga o‘ting.
-        </p>
-      </div>
-
-      <AdminCapabilities
-        students={kpis.students}
-        teachers={kpis.teachers}
-        courses={kpis.courses}
-        activeSubs={kpis.activeSubs}
-        pendingInvites={kpis.teachersPending}
-      />
-
-      <div className="kpi-grid">
-        <Link href="/admin/users" className="stat-card stat-link">
-          <div className="small muted">O&apos;quvchilar</div>
-          <div className="num">{fmt(kpis.students)}</div>
-        </Link>
-        <Link href="/admin/teachers" className="stat-card stat-link">
-          <div className="small muted">O&apos;qituvchilar</div>
-          <div className="num">{fmt(kpis.teachers)}</div>
-          {kpis.teachersPending > 0 ? (
-            <div className="small muted">{kpis.teachersPending} ta invite kutilmoqda</div>
-          ) : null}
-        </Link>
-        <div className="stat-card">
-          <div className="small muted">Faol obuna</div>
-          <div className="num">{fmt(kpis.activeSubs)}</div>
+      <header className="lx-mc-head lx-admin-head">
+        <div>
+          <p className="lx-kicker">Boshqaruv</p>
+          <h1 className="lx-mc-title">Bugun platformada</h1>
+          <p className="lx-mc-sub">
+            {fmt(kpis.courses)} ta kurs · {fmt(kpis.students)} ta o‘quvchi · {fmt(kpis.teachers)} ta o‘qituvchi
+          </p>
         </div>
-        <Link href="/admin/payments" className="stat-card stat-link">
-          <div className="small muted">Shu oy to&apos;lov</div>
-          <div className="num" style={{ fontSize: 22 }}>{formatSom(kpis.monthRevenue)}</div>
+      </header>
+
+      <div className="lx-admin-stats">
+        <Link href="/admin/users" className="lx-today-stat">
+          <span className="lx-today-stat-icon">
+            <GraduationCap size={18} aria-hidden />
+          </span>
+          <span className="lx-today-stat-num">{fmt(kpis.students)}</span>
+          <span className="lx-today-stat-label">O‘quvchi</span>
         </Link>
-        <div className="stat-card">
-          <div className="small muted">Hozir jonli</div>
-          <div className="num">{fmt(kpis.live)}</div>
-        </div>
+        <Link
+          href="/admin/teachers"
+          className={`lx-today-stat${kpis.teachersPending > 0 ? " is-alert" : ""}`}
+        >
+          <span className="lx-today-stat-icon">
+            <Presentation size={18} aria-hidden />
+          </span>
+          <span className="lx-today-stat-num">{fmt(kpis.teachers)}</span>
+          <span className="lx-today-stat-label">
+            O‘qituvchi{kpis.teachersPending > 0 ? ` · ${kpis.teachersPending} taklif kutilmoqda` : ""}
+          </span>
+        </Link>
+        <Link href="/admin/users" className="lx-today-stat">
+          <span className="lx-today-stat-icon">
+            <BadgeCheck size={18} aria-hidden />
+          </span>
+          <span className="lx-today-stat-num">{fmt(kpis.activeSubs)}</span>
+          <span className="lx-today-stat-label">Faol obuna</span>
+        </Link>
+        <Link href="/admin/payments" className="lx-today-stat">
+          <span className="lx-today-stat-icon">
+            <Wallet size={18} aria-hidden />
+          </span>
+          <span className="lx-today-stat-num">{formatSom(kpis.monthRevenue)}</span>
+          <span className="lx-today-stat-label">Shu oy to‘lov</span>
+        </Link>
+        <Link href="/admin/courses" className={`lx-today-stat${kpis.live > 0 ? " is-live" : ""}`}>
+          <span className="lx-today-stat-icon">
+            <Radio size={18} aria-hidden />
+          </span>
+          <span className="lx-today-stat-num">{fmt(kpis.live)}</span>
+          <span className="lx-today-stat-label">Hozir jonli</span>
+        </Link>
       </div>
 
       {hasAttention ? (
         <section className="admin-attention">
-          <h3>Diqqat</h3>
+          <h2 className="lx-cd-h2">Diqqat</h2>
           <div className="admin-attention-grid">
+            {reviewPending.length > 0 ? (
+              <div className="admin-attention-card" data-testid="attention-review">
+                <p className="lx-kicker">Tekshiruv · {reviewPending.length} ta</p>
+                <div className="lx-stack">
+                  {reviewPending.slice(0, 3).map((item) => (
+                    <Link key={item.id} href="/admin/review" className="lx-row" style={{ padding: 10 }}>
+                      <div>
+                        <h3 style={{ fontSize: 14 }}>{item.titleUz}</h3>
+                        <p className="small muted" style={{ margin: 0 }}>
+                          {item.teacherName} · {lifecycleLabel(item.lifecycleStatus)}
+                        </p>
+                      </div>
+                      <span className="lx-go">Ochish</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {attention.live.length > 0 ? (
               <div className="admin-attention-card">
                 <p className="lx-kicker">Jonli efir</p>

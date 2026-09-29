@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
 import { formatDateTime, parseClientDateTime } from "@/lib/utils";
-import { isCourseCompletionV1Enabled, isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import {
+  isCourseCompletionV1Enabled,
+  isCourseReviewV1Enabled,
+  isScheduleRulesV1Enabled,
+} from "@/lib/feature-flags";
+import { lessonPlanLock } from "@/lib/course-review-policy";
 import { checkNewLessonTime, lessonEnd } from "@/lib/schedule-policy";
 import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 
@@ -37,6 +42,10 @@ export async function POST(req: Request) {
       { error: "Kurs yakunlangan — yangi dars qo‘shib bo‘lmaydi", code: "COURSE_COMPLETED" },
       { status: 409 },
     );
+  }
+  const planLock = lessonPlanLock(course.lifecycleStatus, isCourseReviewV1Enabled());
+  if (planLock) {
+    return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
   }
 
   const when = parseClientDateTime(parsed.data.scheduledAt);

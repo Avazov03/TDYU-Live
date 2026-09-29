@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { localInputToIso } from "@/lib/utils";
+import { localInputToIso, tashkentParts } from "@/lib/utils";
 
 function toLocalInput(isoOrDate: string | Date) {
-  const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const p = tashkentParts(typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate);
+  return `${p.year}-${String(p.monthIndex + 1).padStart(2, "0")}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 export function EditLessonPanel({

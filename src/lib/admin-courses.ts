@@ -9,7 +9,10 @@ export type AdminReviewCourse = {
   descriptionUz: string;
   topicUz: string | null;
   teacherName: string;
+  subjectName: string;
   lifecycleStatus: CourseLifecycleStatus;
+  /** When the course entered its current review state (latest review event, else creation). */
+  waitingSinceIso: string;
   listPrice: number | null;
   capacity: number | null;
   priceT1: number;
@@ -45,7 +48,9 @@ export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
       listPrice: true,
       capacity: true,
       priceT1: true,
+      createdAt: true,
       teacher: { select: { fullName: true } },
+      subject: { select: { nameUz: true } },
       lessons: {
         where: { status: { not: "cancelled" } },
         orderBy: { scheduledAt: "asc" },
@@ -73,7 +78,9 @@ export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
       descriptionUz: c.descriptionUz,
       topicUz: c.topicUz,
       teacherName: c.teacher.fullName,
+      subjectName: c.subject.nameUz,
       lifecycleStatus: c.lifecycleStatus as CourseLifecycleStatus,
+      waitingSinceIso: (c.reviewEvents[0]?.createdAt ?? c.createdAt).toISOString(),
       listPrice: c.listPrice,
       capacity: c.capacity,
       priceT1: c.priceT1,
@@ -91,7 +98,18 @@ export async function getAdminReviewQueue(): Promise<AdminReviewCourse[]> {
         whenLabel: formatDateTime(e.createdAt),
       })),
     }))
-    .sort((a, b) => (order.get(a.lifecycleStatus) ?? 9) - (order.get(b.lifecycleStatus) ?? 9));
+    .sort(
+      (a, b) =>
+        (order.get(a.lifecycleStatus) ?? 9) - (order.get(b.lifecycleStatus) ?? 9) ||
+        a.waitingSinceIso.localeCompare(b.waitingSinceIso),
+    );
+}
+
+/** Courses that need an admin action: new submissions, in review, approved awaiting publish. */
+export async function countPendingReviews(): Promise<number> {
+  return prisma.course.count({
+    where: { lifecycleStatus: { in: ["submitted", "in_review", "approved"] } },
+  });
 }
 
 export type CourseHealth = "empty" | "idle" | "on_track" | "live" | "stale";

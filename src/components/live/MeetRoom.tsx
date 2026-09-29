@@ -66,6 +66,7 @@ async function api(body: Record<string, unknown>) {
   if (!res.ok) {
     throw Object.assign(new Error(data.error || "Xona xatosi"), {
       code: typeof data.code === "string" ? data.code : undefined,
+      status: res.status,
     });
   }
   return data as {
@@ -805,12 +806,20 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           }
         }
       } catch (err) {
-        const code = (err as { code?: string }).code;
+        const { code, status } = err as { code?: string; status?: number };
         const roomClosed =
           code === "SESSION_ENDED" || code === "NOT_JOINABLE" || code === "LESSON_CANCELLED";
-        if (roomClosed && !phaseRefreshRef.current) {
-          phaseRefreshRef.current = true;
-          router.refresh();
+        if (roomClosed) {
+          if (!phaseRefreshRef.current) {
+            phaseRefreshRef.current = true;
+            router.refresh();
+          }
+          return;
+        }
+        // Signed out or access revoked: retrying every 800 ms cannot succeed.
+        if (status === 401 || status === 403) {
+          window.clearInterval(poll);
+          setError(status === 401 ? "Sessiya tugadi — qayta kiring." : err instanceof Error ? err.message : "Ruxsat yo'q");
         }
       }
     };

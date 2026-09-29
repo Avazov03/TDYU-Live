@@ -10,6 +10,8 @@ export function LessonActions({
   summaryUz,
   coverUrl,
   scheduledAt,
+  courseGate,
+  planLocked = false,
 }: {
   lessonId: string;
   status: string;
@@ -18,13 +20,24 @@ export function LessonActions({
   summaryUz?: string | null;
   coverUrl?: string | null;
   scheduledAt: string;
+  courseGate?: { label: string; canSubmit: boolean } | null;
+  planLocked?: boolean;
 }) {
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div className="lx-lesson-actions">
       <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-        {status === "scheduled" ? (
+        {status === "scheduled" && courseGate ? (
+          courseGate.canSubmit ? (
+            <Link href="/teacher#kurslar" className="btn btn-primary btn-sm">
+              Tekshiruvga yuborish
+            </Link>
+          ) : planLocked ? null : (
+            <span className="lx-lesson-wait">Efir nashrdan keyin</span>
+          )
+        ) : null}
+        {status === "scheduled" && !courseGate ? (
           <Link href={`/teacher/live/${lessonId}`} className="btn btn-primary btn-sm">
-            Studioga — shu dars
+            Studioga kirish
           </Link>
         ) : null}
         {status === "lobby" ? (
@@ -38,19 +51,20 @@ export function LessonActions({
           </Link>
         ) : null}
       </div>
-      {status === "live" || status === "lobby" ? (
-        <p className="small muted" style={{ margin: 0 }}>
-          Efir/kutish faqat shu dars sahifasida ochiladi.
-        </p>
-      ) : null}
-      <EditLessonPanel
-        lessonId={lessonId}
-        status={status}
-        titleUz={titleUz}
-        summaryUz={summaryUz}
-        coverUrl={coverUrl}
-        scheduledAt={scheduledAt}
-      />
+      {planLocked ? (
+        <span className="lx-lesson-wait" title="Kurs tekshiruvda — reja muzlatilgan">
+          Reja muzlatilgan
+        </span>
+      ) : (
+        <EditLessonPanel
+          lessonId={lessonId}
+          status={status}
+          titleUz={titleUz}
+          summaryUz={summaryUz}
+          coverUrl={coverUrl}
+          scheduledAt={scheduledAt}
+        />
+      )}
     </div>
   );
 }

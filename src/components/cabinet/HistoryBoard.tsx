@@ -3,9 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FilterChips } from "@/components/cabinet/FilterChips";
-import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
-import { dayTitle, localDayKey } from "@/lib/plan";
-import { formatDateTime } from "@/lib/utils";
+import {
+  clockLabel,
+  localDayKey,
+  shortDayTitle,
+  statusLabel,
+  weekdayUz,
+  type PlanStatus,
+} from "@/lib/plan";
+import { initials } from "@/lib/utils";
 
 type HistoryItem = {
   id: string;
@@ -15,7 +21,20 @@ type HistoryItem = {
   courseTitle: string;
   teacher: string;
   joinedAt: string;
+  status: PlanStatus;
+  hasRecording: boolean;
 };
+
+const OPEN_STATUSES: PlanStatus[] = ["live", "lobby", "waiting_room", "paused"];
+
+function pillFor(item: HistoryItem): { text: string; live?: boolean } | null {
+  if (item.status === "live") return { text: "Jonli", live: true };
+  if (OPEN_STATUSES.includes(item.status)) return { text: "Kutish zali", live: true };
+  if (item.status === "cancelled") return { text: "Bekor qilingan" };
+  if (item.status === "scheduled") return null;
+  if (item.hasRecording) return { text: "Yozuv bor" };
+  return { text: statusLabel(item.status, { hasRecording: false }) };
+}
 
 export function HistoryBoard({ items }: { items: HistoryItem[] }) {
   const [courseId, setCourseId] = useState("all");
@@ -26,10 +45,10 @@ export function HistoryBoard({ items }: { items: HistoryItem[] }) {
     return [...map.entries()].map(([id, title]) => ({ id, title }));
   }, [items]);
 
-  const filtered = useMemo(() => {
-    if (courseId === "all") return items;
-    return items.filter((i) => i.courseId === courseId);
-  }, [items, courseId]);
+  const filtered = useMemo(
+    () => (courseId === "all" ? items : items.filter((i) => i.courseId === courseId)),
+    [items, courseId],
+  );
 
   const byDay = useMemo(() => {
     const map = new Map<string, HistoryItem[]>();
@@ -43,69 +62,96 @@ export function HistoryBoard({ items }: { items: HistoryItem[] }) {
   }, [filtered]);
 
   return (
-    <div className="lx-board">
-      <p className="lx-kicker">Ko&apos;rilganlar</p>
-      <h2>Ochgan darslaringiz</h2>
-      <p className="muted small lx-lead">Kurs bo&apos;yicha filtrlang.</p>
-
-      {courses.length > 1 ? (
-        <div className="lx-filter-row">
-          <FilterChips
-            value={courseId}
-            onChange={setCourseId}
-            ariaLabel="Kurs"
-            options={[
-              { value: "all", label: "Barcha kurslar", count: items.length },
-              ...courses.map((c) => ({
-                value: c.id,
-                label: c.title,
-                count: items.filter((i) => i.courseId === c.id).length,
-              })),
-            ]}
-          />
+    <div className="lx-sc">
+      <header className="lx-mc-head">
+        <div>
+          <p className="lx-kicker">Ko&apos;rilganlar</p>
+          <h1 className="lx-mc-title">Ko&apos;rilganlar</h1>
+          {items.length > 0 ? (
+            <p className="lx-mc-sub">{items.length} ta dars · oxirgi kirganlaringiz tepada</p>
+          ) : null}
         </div>
-      ) : null}
+      </header>
 
       {items.length === 0 ? (
-        <EmptyGuide
-          title="Hali dars ochilmagan"
-          text="Darsga kirganingizdan keyin shu yerda tarix saqlanadi."
-          href="/schedule"
-          cta="Dars rejaga"
-        />
-      ) : null}
-
-      {items.length > 0 && byDay.length === 0 ? (
-        <div className="lx-empty">
-          <h3>Shu kursda yozuv yo‘q</h3>
-          <p className="muted small">Boshqa kursni tanlang.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setCourseId("all")}>
-            Hammasi
-          </button>
+        <div className="lx-mc-empty">
+          <h2>Hali dars ochilmagan</h2>
+          <p>Darsga kirganingizdan keyin u shu yerda saqlanadi — yozuvga qaytish oson bo‘ladi.</p>
+          <Link href="/schedule" className="btn btn-primary">
+            Dars jadvali
+          </Link>
         </div>
-      ) : null}
+      ) : (
+        <>
+          {courses.length > 1 ? (
+            <div className="lx-mc-filters">
+              <FilterChips
+                value={courseId}
+                onChange={setCourseId}
+                ariaLabel="Kurs"
+                options={[
+                  { value: "all", label: "Barcha kurslar", count: items.length },
+                  ...courses.map((c) => ({
+                    value: c.id,
+                    label: c.title,
+                    count: items.filter((i) => i.courseId === c.id).length,
+                  })),
+                ]}
+              />
+            </div>
+          ) : null}
 
-      {byDay.map(([key, rows]) => (
-        <section key={key} className="lx-group">
-          <h3>{dayTitle(rows[0] ? new Date(rows[0].joinedAt) : new Date(key))}</h3>
-          <div className="lx-stack">
-            {rows.map((row) => (
-              <Link key={row.id} href={`/learn/${row.lessonId}`} className="lx-row">
-                <div>
-                  <p className="lx-kicker">
-                    {row.teacher} · {formatDateTime(new Date(row.joinedAt))}
-                  </p>
-                  <h3>{row.title}</h3>
-                  <p className="small muted" style={{ margin: 0 }}>
-                    {row.courseTitle}
-                  </p>
+          <div className="lx-hist">
+            {byDay.map(([key, rows]) => (
+              <section key={key} className="lx-hist-day">
+                <h2 className="lx-hist-dayhead">
+                  {shortDayTitle(new Date(rows[0].joinedAt))}
+                  <span>{weekdayUz(new Date(rows[0].joinedAt))}</span>
+                </h2>
+                <div className="lx-sc-day">
+                  {rows.map((row) => {
+                    const pill = pillFor(row);
+                    const open = OPEN_STATUSES.includes(row.status);
+                    return (
+                      <article key={row.id} className={`lx-sc-card${open ? " is-live" : ""}`}>
+                        <div className="lx-sc-time">
+                          <strong>{clockLabel(new Date(row.joinedAt))}</strong>
+                          <span>kirgansiz</span>
+                        </div>
+                        <div className="lx-sc-info">
+                          {pill ? (
+                            <p className="lx-sc-meta">
+                              <span className={`lx-cd-pill${pill.live ? " is-live" : ""}`}>{pill.text}</span>
+                            </p>
+                          ) : null}
+                          <h3 className="lx-sc-title">
+                            <Link href={`/learn/${row.lessonId}`}>{row.title}</Link>
+                          </h3>
+                          <p className="lx-sc-course">{row.courseTitle}</p>
+                          <p className="lx-sc-teacher">
+                            <span className="avatar sm" aria-hidden>
+                              {initials(row.teacher)}
+                            </span>
+                            {row.teacher}
+                          </p>
+                        </div>
+                        <div className="lx-sc-action">
+                          <Link
+                            href={`/learn/${row.lessonId}`}
+                            className={`btn${open ? " btn-primary" : ""}`}
+                          >
+                            {open ? "Darsga qaytish" : row.hasRecording ? "Yozuvni ko‘rish" : "Ochish"}
+                          </Link>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
-                <span className="lx-go">Ochish</span>
-              </Link>
+              </section>
             ))}
           </div>
-        </section>
-      ))}
+        </>
+      )}
     </div>
   );
 }

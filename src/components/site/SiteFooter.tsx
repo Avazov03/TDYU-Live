@@ -70,7 +70,7 @@ function IconLinkedin({ className }: { className?: string }) {
 export function SiteFooter() {
   const year = new Date().getFullYear();
   const hideTariff = shouldHideStudentTariffUi();
-  const ctaHref = hideTariff ? "/search" : "/#tariflar";
+  const ctaHref = hideTariff ? "/#kurslar" : "/#tariflar";
   const ctaLabel = hideTariff ? "Kurslarni ko‘rish" : "Tarif tanlash";
 
   return (
@@ -127,7 +127,7 @@ export function SiteFooter() {
                 <Link href="/#haqida">Loyiha haqida</Link>
               </li>
               <li>
-                <Link href={hideTariff ? "/search" : "/#tariflar"}>
+                <Link href={hideTariff ? "/#kurslar" : "/#tariflar"}>
                   {hideTariff ? "Kurslar" : "Tariflar"}
                 </Link>
               </li>

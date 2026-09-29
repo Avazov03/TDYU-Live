@@ -25,7 +25,7 @@ test.describe("Student smoke", () => {
     monitor.noteAction("Goto /app");
     await studentPage.goto("/app");
     await expect(studentPage).toHaveURL(/\/app/);
-    await expect(studentPage.getByRole("heading", { name: /Nima qilish kerak/i })).toBeVisible();
+    await expect(studentPage.getByRole("heading", { name: /^Salom/i })).toBeVisible();
     await expect(studentPage.getByText(/ta kurs/i).first()).toBeVisible();
   });
 
@@ -37,7 +37,7 @@ test.describe("Student smoke", () => {
     // Prefer page kicker (sidebar also has a hidden "Kurslarim" span).
     await expect(studentPage.locator(".lx-kicker").filter({ hasText: "Kurslarim" })).toBeVisible();
     await expect(
-      studentPage.getByRole("heading", { name: /O'qituvchi, keyin uning kurslari/i }),
+      studentPage.getByRole("heading", { name: /Mening kurslarim/i }),
     ).toBeVisible();
     await expect(studentPage.getByText(SEED.courseTitleCivil).first()).toBeVisible({
       timeout: 15_000,
@@ -80,7 +80,7 @@ test.describe("Student smoke", () => {
     await studentPage.locator('a[href="/my-courses"]').first().click();
     await expect(studentPage).toHaveURL(/\/my-courses/);
     await expect(
-      studentPage.getByRole("heading", { name: /O'qituvchi, keyin uning kurslari/i }),
+      studentPage.getByRole("heading", { name: /Mening kurslarim/i }),
     ).toBeVisible();
   });
 

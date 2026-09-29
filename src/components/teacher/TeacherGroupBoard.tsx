@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { FilterChips } from "@/components/cabinet/FilterChips";
 import { IssueCertificateButton } from "@/components/teacher/IssueCertificateButton";
-import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { TARIFF_LABELS } from "@/lib/tariffs";
-import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
+import { UZ_MONTHS_SHORT, initials, tashkentParts } from "@/lib/utils";
 import type { TariffTier } from "@/generated/prisma/client";
 
 type StudentRow = {
@@ -100,129 +101,157 @@ export function TeacherGroupBoard({
     0,
   );
 
-  if (courses.length === 0) {
-    return (
-      <EmptyGuide
-        title="Hali kurs yo‘q"
-        text="Avval Rejada dars qo‘shing. O‘quvchilar obuna bo‘lgach shu yerda chiqadi."
-        href="/teacher/reja"
-        cta="Dars rejaga"
-      />
-    );
-  }
+  const studentTotal = new Set(courses.flatMap((c) => c.students.map((s) => s.userId))).size;
+  const silentCount = courses.reduce(
+    (n, c) => n + c.students.filter((s) => matchesFilter(s, "silent")).length,
+    0,
+  );
+  const t3Count = courses.reduce((n, c) => n + c.students.filter((s) => s.tier === "t3").length, 0);
+  const expiringCount = courses.reduce((n, c) => n + c.students.filter(isExpiring).length, 0);
+  const allCount = courses.reduce((n, c) => n + c.students.length, 0);
+
+  const filterOptions: { value: Filter; label: string; count: number }[] = [
+    { value: "attention", label: "Diqqat", count: attentionCount },
+    { value: "all", label: "Barchasi", count: allCount },
+    { value: "silent", label: "Hali ochmagan", count: silentCount },
+    ...(showTiers
+      ? [
+          { value: "t3" as const, label: "3-tarif", count: t3Count },
+          { value: "expiring" as const, label: "7 kunda tugaydi", count: expiringCount },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="lx-board">
-      <p className="lx-kicker">Guruh</p>
-      <h2>Kimga e’tibor berish kerak</h2>
-      <p className="muted small lx-lead">
-        {showTiers
-          ? "Filtrlar bilan past davomat, tugayotgan obuna va 3-tarifni tez topasiz."
-          : "Past davomatli va hali darsga kirmagan o‘quvchilarni tez topasiz. Sertifikat shu yerdan beriladi."}
-      </p>
-
-      <div className="staff-toolbar" style={{ marginBottom: 18 }}>
-        <select className="staff-filter" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-          <option value="all">Barcha kurslar</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.titleUz} ({c.activeCount})
-            </option>
-          ))}
-        </select>
-        <select className="staff-filter" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
-          <option value="attention">Diqqat ({attentionCount})</option>
-          <option value="all">Barchasi</option>
-          {showTiers ? <option value="t3">3-tarif</option> : null}
-          {showTiers ? <option value="expiring">7 kunda tugaydi</option> : null}
-          <option value="silent">Hali ochmagan</option>
-        </select>
-      </div>
-
-      {visible.every((c) => c.students.length === 0) ? (
-        <div className="lx-empty">
-          <h3>Bu filtrda odam yo‘q</h3>
-          <p className="muted small">Barcha o‘quvchilarni ko‘rish uchun filtrni o‘zgartiring.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setFilter("all")}>
-            Barchasini ko‘rsat
-          </button>
+    <div className="lx-sc">
+      <header className="lx-mc-head">
+        <div>
+          <p className="lx-kicker">Guruh</p>
+          <h1 className="lx-mc-title">O‘quvchilar</h1>
+          <p className="lx-mc-sub">
+            {courses.length === 0
+              ? "Kurs ochilgach o‘quvchilar shu yerda chiqadi"
+              : `${studentTotal} ta o‘quvchi · ${attentionCount} tasi e’tibor talab qiladi`}
+          </p>
         </div>
-      ) : null}
+      </header>
 
-      {visible.map((course) => (
-        <section key={course.id} className="lx-group">
-          <h3>{course.titleUz}</h3>
-          <div className="studio-kpis" style={{ marginBottom: 14 }}>
-            <div className="studio-kpi">
-              <span className="small muted">Ko‘rinayotgan</span>
-              <b>{course.students.length}</b>
-            </div>
-            {showTiers ? (
-              <div className="studio-kpi">
-                <span className="small muted">1 / 2 / 3</span>
-                <b>
-                  {course.t1} / {course.t2} / {course.t3}
-                </b>
-              </div>
+      {courses.length === 0 ? (
+        <div className="lx-mc-empty">
+          <h2>Hali kurs yo‘q</h2>
+          <p>Avval rejaga dars qo‘shing. O‘quvchilar kursni sotib olgach shu yerda chiqadi.</p>
+          <Link href="/teacher/reja" className="btn btn-primary">
+            Dars rejasi
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="lx-mc-filters">
+            <FilterChips value={filter} onChange={setFilter} ariaLabel="O‘quvchilar filtri" options={filterOptions} />
+            {courses.length > 1 ? (
+              <select
+                className="lx-grp-select"
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                aria-label="Kurs"
+              >
+                <option value="all">Barcha kurslar</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.titleUz} ({c.activeCount})
+                  </option>
+                ))}
+              </select>
             ) : null}
-            <div className="studio-kpi">
-              <span className="small muted">O‘rtacha davomat</span>
-              <b>{course.lessonCount ? `${course.attendPct}%` : "—"}</b>
-            </div>
           </div>
 
-          {course.students.length === 0 ? (
-            <p className="muted small">Bu kursda filtrga mos o‘quvchi yo‘q.</p>
+          {visible.every((c) => c.students.length === 0) ? (
+            <div className="lx-mc-empty">
+              <h2>{filter === "attention" ? "Hammasi joyida" : "Bu filtrda o‘quvchi yo‘q"}</h2>
+              <p>
+                {filter === "attention"
+                  ? "Hozir e’tibor talab qiladigan o‘quvchi yo‘q."
+                  : "Barcha o‘quvchilarni ko‘rish uchun filtrni o‘zgartiring."}
+              </p>
+              <button type="button" className="btn btn-primary" onClick={() => setFilter("all")}>
+                Barchasini ko‘rsat
+              </button>
+            </div>
           ) : (
-            TIERS.map((tier) => {
-              const students = course.students.filter((s) => s.tier === tier);
-              if (students.length === 0) return null;
-              const label = tier ? TARIFF_LABELS[tier] : "Kurs o‘quvchisi";
-              return (
-                <div key={tier ?? "course"} style={{ marginBottom: 16 }}>
-                  <div className="row gap-8" style={{ marginBottom: 8 }}>
-                    <span className="badge accent">{label}</span>
-                    <span className="small muted">
-                      {tier ? TIER_NOTES[tier] : "Kursni sotib olgan"} · {students.length} ta
-                    </span>
-                  </div>
-                  <div className="lx-stack">
-                    {students.map((s) => (
-                      <article key={s.rowId} className="lx-row" data-testid="group-student">
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p className="lx-kicker">
-                            {filter === "attention" ? attentionWhy(s) || label : label}
-                          </p>
-                          <h3>{s.fullName}</h3>
-                          <p className="small muted" style={{ margin: 0 }}>
-                            {s.email} · davomat {s.attended}/{s.lessonCount} ({s.pct}%)
-                            {s.endsAt ? ` · gacha ${formatWhen(s.endsAt)}` : ""}
-                          </p>
-                          {s.seenTitles.length > 0 ? (
-                            <p className="small muted" style={{ margin: "6px 0 0" }}>
-                              Ochgan: {s.seenTitles.slice(0, 3).join(", ")}
-                              {s.seenTitles.length > 3 ? "…" : ""}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div style={{ flexShrink: 0 }}>
-                          {tier === "t1" ? (
-                            <span className="small muted">Yozuv tarifi</span>
-                          ) : s.hasCert ? (
-                            <span className="badge success">Sertifikat</span>
-                          ) : (
-                            <IssueCertificateButton courseId={course.id} userId={s.userId} />
-                          )}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              );
-            })
+            <div className="lx-hist">
+              {visible
+                .filter((course) => course.students.length > 0)
+                .map((course) => (
+                  <section key={course.id} className="lx-grp-course">
+                    <div className="lx-grp-head">
+                      <h2 className="lx-cd-h2">{course.titleUz}</h2>
+                      <span className="lx-grp-stats">
+                        {course.activeCount} ta o‘quvchi
+                        {course.lessonCount ? ` · o‘rtacha davomat ${course.attendPct}%` : ""}
+                        {showTiers ? ` · tariflar ${course.t1}/${course.t2}/${course.t3}` : ""}
+                      </span>
+                    </div>
+                    <div className="lx-sc-day">
+                      {[...course.students]
+                        .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || a.pct - b.pct)
+                        .map((s) => {
+                          const why = attentionWhy(s);
+                          return (
+                            <article key={s.rowId} className="lx-grp-row" data-testid="group-student">
+                              <span className="avatar" aria-hidden>
+                                {initials(s.fullName)}
+                              </span>
+                              <div className="lx-grp-info">
+                                <p className="lx-grp-name">
+                                  {s.fullName}
+                                  {s.tier ? (
+                                    <span className="lx-cd-pill" title={TIER_NOTES[s.tier]}>
+                                      {TARIFF_LABELS[s.tier]}
+                                    </span>
+                                  ) : null}
+                                  {why ? <span className="lx-cd-pill is-warn">{why}</span> : null}
+                                </p>
+                                <p className="lx-grp-email">
+                                  {s.email}
+                                  {s.endsAt ? ` · ${formatWhen(s.endsAt)} gacha` : ""}
+                                </p>
+                                {s.seenTitles.length > 0 ? (
+                                  <p className="lx-grp-seen">
+                                    Ochgan: {s.seenTitles.slice(0, 3).join(", ")}
+                                    {s.seenTitles.length > 3 ? "…" : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <div className="lx-grp-attend">
+                                <div className="lx-mc-progress-row">
+                                  <span>Davomat</span>
+                                  <span>
+                                    {s.attended}/{s.lessonCount}
+                                  </span>
+                                </div>
+                                <div className="lx-mc-bar">
+                                  <span style={{ width: `${s.pct}%` }} />
+                                </div>
+                              </div>
+                              <div className="lx-grp-action">
+                                {s.tier === "t1" ? (
+                                  <span className="lx-grp-muted">Yozuv tarifi</span>
+                                ) : s.hasCert ? (
+                                  <span className="lx-as-state is-done">Sertifikat berilgan</span>
+                                ) : (
+                                  <IssueCertificateButton courseId={course.id} userId={s.userId} />
+                                )}
+                              </div>
+                            </article>
+                          );
+                        })}
+                    </div>
+                  </section>
+                ))}
+            </div>
           )}
-        </section>
-      ))}
+        </>
+      )}
     </div>
   );
 }

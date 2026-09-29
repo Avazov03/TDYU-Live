@@ -6,6 +6,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { statusLabel, type PlanStatus } from "@/lib/plan";
+import { liveGate } from "@/lib/course-review-policy";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,7 @@ export default async function TeacherLiveLessonPage({
         select: {
           id: true,
           titleUz: true,
+          lifecycleStatus: true,
           lessons: {
             where: { status: { in: ["scheduled", "lobby", "live"] } },
             orderBy: { scheduledAt: "asc" },
@@ -44,6 +47,7 @@ export default async function TeacherLiveLessonPage({
   if (!lesson) notFound();
 
   const siblings = lesson.course.lessons;
+  const gate = liveGate(lesson.course.lifecycleStatus, isCourseReviewV1Enabled());
 
   return (
     <AppShell active="teacher">
@@ -66,10 +70,24 @@ export default async function TeacherLiveLessonPage({
             {statusLabel(lesson.status as PlanStatus)}
           </span>
         </p>
-        <p className="small muted" style={{ margin: 0 }}>
-          Shu dars uchun kutish xonasi va jonli efir. Boshqa kursga o‘tish uchun Studio yoki Rejaga qayting.
-        </p>
+        {gate ? null : (
+          <p className="small muted" style={{ margin: 0 }}>
+            Shu dars uchun kutish xonasi va jonli efir. Boshqa kursga o‘tish uchun Studio yoki Rejaga qayting.
+          </p>
+        )}
       </div>
+
+      {gate ? (
+        <section className="lx-gate" data-testid="live-gate">
+          <span className="lx-cd-pill is-warn">Kurs: {gate.label}</span>
+          <h3 className="lx-gate-title">Efir hali yopiq</h3>
+          <p className="lx-gate-hint">{gate.hint}</p>
+          <p className="lx-gate-hint">Dars fayllarini hozirdan yuklab qo‘yishingiz mumkin.</p>
+          <Link href="/teacher#kurslar" className={gate.canSubmit ? "btn btn-primary" : "btn"}>
+            {gate.canSubmit ? "Tekshiruvga yuborish" : "Studioga qaytish"}
+          </Link>
+        </section>
+      ) : null}
 
       {siblings.length > 1 ? (
         <div className="studio-lesson-switch lx-board" style={{ marginBottom: 14 }}>
@@ -97,6 +115,7 @@ export default async function TeacherLiveLessonPage({
         status={lesson.status}
         streamKey={lesson.streamKey}
         displayName={teacher.fullName}
+        liveBlocked={Boolean(gate)}
       />
 
       <p style={{ marginTop: 16 }}>

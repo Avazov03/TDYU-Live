@@ -137,6 +137,52 @@ export function isLiveAllowedForCourse(status: CourseLifecycleStatus | null): bo
   return status === "published" || status === "upcoming" || status === "active";
 }
 
+export type LiveGate = {
+  label: string;
+  hint: string;
+  /** Teacher can move it forward themselves (send for review). */
+  canSubmit: boolean;
+};
+
+/** Why the teacher cannot open a room yet — mirrors the lobby/start API guard. Null = allowed. */
+export function liveGate(status: CourseLifecycleStatus | null, reviewFlow: boolean): LiveGate | null {
+  if (!reviewFlow || isLiveAllowedForCourse(status)) return null;
+  const label = lifecycleLabel(status);
+  if (status === "draft" || status === "changes_requested") {
+    return { label, hint: "Efir kurs tasdiqlanib nashr etilgach ochiladi. Avval kursni tekshiruvga yuboring.", canSubmit: true };
+  }
+  if (status === "submitted" || status === "in_review") {
+    return { label, hint: "Admin kursni tekshirmoqda. Tasdiqlanib nashr etilgach efir ochiladi.", canSubmit: false };
+  }
+  if (status === "approved") {
+    return { label, hint: "Kurs tasdiqlandi — admin nashr qilgach efir ochiladi.", canSubmit: false };
+  }
+  return { label, hint: "Bu kursda efir ochilmaydi.", canSubmit: false };
+}
+
+/**
+ * Why the lesson plan is frozen (admin reviews exactly what was submitted). Null = teacher may
+ * add/edit/remove lessons. Legacy (null) and flag-off keep old behaviour.
+ */
+export function lessonPlanLock(status: CourseLifecycleStatus | null, reviewFlow: boolean): string | null {
+  if (!reviewFlow) return null;
+  if (status === "submitted" || status === "in_review") {
+    return "Kurs tekshiruvda — dars rejasini o‘zgartirib bo‘lmaydi. Tuzatish kerak bo‘lsa, admin o‘zgartirish so‘raydi.";
+  }
+  if (status === "approved") {
+    return "Kurs tasdiqlangan — nashr etilguncha dars rejasi o‘zgarmaydi.";
+  }
+  if (status === "rejected") {
+    return "Kurs rad etilgan — unga dars qo‘shib bo‘lmaydi.";
+  }
+  return null;
+}
+
+/** Nobody can own a draft course yet, so student-notice rules (24h) don't apply to its plan. */
+export function isPreAudienceLifecycle(status: CourseLifecycleStatus | null, reviewFlow: boolean): boolean {
+  return reviewFlow && (status === "draft" || status === "changes_requested");
+}
+
 const LABELS: Record<CourseLifecycleStatus, string> = {
   draft: "Qoralama",
   submitted: "Tekshiruvga yuborilgan",

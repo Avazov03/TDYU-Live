@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import { hasPlayableRecording, statusLabel, statusTone } from "@/lib/plan";
 
 type LessonRowProps = {
@@ -46,13 +47,14 @@ export function LessonRow({
           <span className="thumb-play sm" aria-hidden>
             ▶
           </span>
-        ) : (
-          <span className="dur" aria-hidden>
-            …
+        ) : status === "scheduled" ? (
+          <span className="lx-row-soon" aria-hidden>
+            <Icon name="calendar" size={18} />
           </span>
-        )}
+        ) : null}
       </div>
       <div className="vinfo" style={{ flex: 1, minWidth: 0 }}>
+        {active ? <span className="lx-row-now">Hozir ochiq</span> : null}
         <h3 style={{ fontSize: compact ? 13 : 14 }}>{titleUz}</h3>
         <p>{subtitle}</p>
         <span className={`badge ${tone}`}>{label}</span>

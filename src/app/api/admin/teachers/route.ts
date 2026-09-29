@@ -30,11 +30,22 @@ export async function POST(req: Request) {
 
   try {
   const email = parsed.data.contactEmail.toLowerCase();
-  const existing = await prisma.teacher.findFirst({
-    where: { contactEmail: email },
-    include: { user: true },
+  // Serialised per email: a double click or two admins must not create two profiles.
+  const { teacher, isNew } = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`teacher-email:${email}`}))`;
+    const found = await tx.teacher.findFirst({ where: { contactEmail: email } });
+    if (found) return { teacher: found, isNew: false };
+    const created = await tx.teacher.create({
+      data: {
+        fullName: parsed.data.fullName,
+        contactEmail: email,
+        facultyId: parsed.data.facultyId,
+        subjectId: parsed.data.subjectId,
+      },
+    });
+    return { teacher: created, isNew: true };
   });
-  if (existing?.userId) {
+  if (!isNew && teacher.userId) {
     return NextResponse.json(
       {
         error:
@@ -43,10 +54,10 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
-  if (existing) {
+  if (!isNew) {
     const invite = await prisma.teacherInvite.create({
       data: {
-        teacherId: existing.id,
+        teacherId: teacher.id,
         token: createInviteToken(),
         expiresAt: inviteExpiresAt(),
       },
@@ -54,19 +65,10 @@ export async function POST(req: Request) {
     const url = inviteUrl(invite.token);
     const canSeeSecrets = await viewerCanSeeCredentials(session.user.id, session.user.role);
     return NextResponse.json(
-      { teacher: canSeeSecrets ? existing : { id: existing.id, fullName: existing.fullName }, inviteUrl: url, reused: true },
+      { teacher: canSeeSecrets ? teacher : { id: teacher.id, fullName: teacher.fullName }, inviteUrl: url, reused: true },
       { status: 201 },
     );
   }
-
-  const teacher = await prisma.teacher.create({
-    data: {
-      fullName: parsed.data.fullName,
-      contactEmail: email,
-      facultyId: parsed.data.facultyId,
-      subjectId: parsed.data.subjectId,
-    },
-  });
 
   const invite = await prisma.teacherInvite.create({
     data: {

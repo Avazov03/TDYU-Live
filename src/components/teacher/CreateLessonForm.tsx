@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { localInputToIso, nextTashkentHourInput } from "@/lib/utils";
 
 const defaultSlot = () => nextTashkentHourInput();
 
-export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: string }[] }) {
+export function CreateLessonForm({
+  courses,
+}: {
+  courses: { id: string; titleUz: string; needsReview?: boolean }[];
+}) {
   const router = useRouter();
+  const [done, setDone] = useState<{ courseTitle: string; needsReview: boolean } | null>(null);
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [titleUz, setTitleUz] = useState("");
   const [summaryUz, setSummaryUz] = useState("");
@@ -20,6 +26,7 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
     e.preventDefault();
     if (busy) return;
     setError("");
+    setDone(null);
     setBusy(true);
     let res: Response;
     let data: { error?: string };
@@ -50,6 +57,8 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
     setSummaryUz("");
     setCoverUrl("");
     setScheduledAt(defaultSlot());
+    const course = courses.find((c) => c.id === courseId);
+    setDone({ courseTitle: course?.titleUz ?? "", needsReview: Boolean(course?.needsReview) });
     router.refresh();
   };
 
@@ -85,6 +94,19 @@ export function CreateLessonForm({ courses }: { courses: { id: string; titleUz: 
         <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
+      {done ? (
+        <div className={`lx-form-done${done.needsReview ? " is-next" : ""}`} role="status" data-testid="lesson-created">
+          <strong>Dars «{done.courseTitle}» rejasiga qo‘shildi.</strong>
+          {done.needsReview ? (
+            <>
+              <span>Kurs hali qoralama — o‘quvchilar ko‘rishi va efir ochilishi uchun uni tekshiruvga yuboring.</span>
+              <Link href="/teacher#kurslar" className="btn btn-primary btn-sm">
+                Tekshiruvga yuborish
+              </Link>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       <button className="btn btn-primary" type="submit" disabled={busy}>
         {busy ? "Saqlanmoqda..." : "Jadvalga qo\u2018shish"}
       </button>

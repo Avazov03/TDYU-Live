@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
+import Link from "next/link";
 import { SoftDisclosure } from "@/components/admin/SoftDisclosure";
 import { CreateLessonForm } from "@/components/teacher/CreateLessonForm";
 import { CreateCoursePlanForm } from "@/components/teacher/CreateCoursePlanForm";
@@ -8,6 +8,9 @@ import { TeacherRejaBoard } from "@/components/teacher/TeacherRejaBoard";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
+import { lessonPlanLock, liveGate } from "@/lib/course-review-policy";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import type { CourseLifecycleStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -22,57 +25,91 @@ export default async function TeacherRejaPage() {
   await ensureTeacherWorkspace(row.id);
   const teacher = await prisma.teacher.findUnique({
     where: { id: row.id },
-    include: { courses: { select: { id: true, titleUz: true } } },
+    include: { courses: { select: { id: true, titleUz: true, lifecycleStatus: true } } },
   });
   if (!teacher) redirect("/teacher");
 
   const lessons = await prisma.lesson.findMany({
     where: { course: { teacherId: teacher.id } },
-    include: { course: { select: { titleUz: true } } },
+    include: { course: { select: { titleUz: true, lifecycleStatus: true } } },
     orderBy: { scheduledAt: "asc" },
   });
+  const reviewFlow = isCourseReviewV1Enabled();
+  const gateOf = (status: CourseLifecycleStatus | null) => {
+    const gate = liveGate(status, reviewFlow);
+    return gate ? { label: gate.label, canSubmit: gate.canSubmit } : null;
+  };
+  const plannable = teacher.courses.filter(
+    (c) => c.lifecycleStatus !== "completed" && !lessonPlanLock(c.lifecycleStatus, reviewFlow),
+  );
+  const lockedCount = teacher.courses.length - plannable.length;
 
   return (
     <AppShell active="teacher-reja">
-      <div className="lx-board" style={{ marginBottom: 12 }}>
-        <p className="lx-kicker">Reja</p>
-        <h2>Dars rejasi</h2>
-        <p className="muted small lx-lead">
-          Kurs yarating yoki mavjud kursga dars qo‘shing. Jadval — sana, vaqt, holat, amallar.
-        </p>
+      <div className="lx-sc">
+        <header className="lx-mc-head">
+          <div>
+            <p className="lx-kicker">Reja</p>
+            <h1 className="lx-mc-title">Dars rejasi</h1>
+            <p className="lx-mc-sub">
+              {lessons.length} ta dars · {teacher.courses.length} ta kurs
+            </p>
+          </div>
+        </header>
+
+        <div className="lx-reja-tools">
+          <SoftDisclosure
+            title="Kursga dars qo‘shish"
+            defaultOpen={lessons.length === 0 && plannable.length > 0}
+          >
+            {plannable.length > 0 ? (
+              <CreateLessonForm
+                courses={plannable.map((c) => ({
+                  id: c.id,
+                  titleUz: c.titleUz,
+                  needsReview: Boolean(gateOf(c.lifecycleStatus)?.canSubmit),
+                }))}
+              />
+            ) : null}
+            {lockedCount > 0 ? (
+              <p className="small muted" style={{ margin: plannable.length ? "-8px 0 0" : 0 }}>
+                {plannable.length ? `Yana ${lockedCount} ta kurs` : "Barcha kurslaringiz"} tekshiruvda yoki yakunlangan —
+                ularning rejasi hozir o‘zgarmaydi.
+              </p>
+            ) : null}
+          </SoftDisclosure>
+          <SoftDisclosure title="Yangi kurs yaratish" defaultOpen={teacher.courses.length === 0}>
+            <CreateCoursePlanForm />
+          </SoftDisclosure>
+        </div>
+
+        {lessons.length === 0 ? (
+          <div className="lx-mc-empty">
+            <h2>Hali reja yo‘q</h2>
+            <p>Yuqoridan kurs yoki dars qo‘shing — Studio’da kurs kartalari chiqadi.</p>
+            <Link href="/teacher" className="btn btn-primary">
+              Studio
+            </Link>
+          </div>
+        ) : (
+          <TeacherRejaBoard
+            lessons={lessons.map((lesson) => ({
+              id: lesson.id,
+              titleUz: lesson.titleUz,
+              summaryUz: lesson.summaryUz,
+              coverUrl: lesson.coverUrl,
+              scheduledAt: lesson.scheduledAt.toISOString(),
+              status: lesson.status,
+              courseTitle: lesson.course.titleUz,
+              recordingUrl: lesson.recordingUrl,
+              playbackId: lesson.muxVodPlaybackId,
+              streamKey: lesson.streamKey,
+              courseGate: gateOf(lesson.course.lifecycleStatus),
+              planLocked: Boolean(lessonPlanLock(lesson.course.lifecycleStatus, reviewFlow)),
+            }))}
+          />
+        )}
       </div>
-
-      <SoftDisclosure title="Yangi kurs (umumiy mavzu)" defaultOpen={teacher.courses.length === 0}>
-        <CreateCoursePlanForm />
-      </SoftDisclosure>
-
-      <SoftDisclosure title="Mavjud kursga dars qo‘shish" defaultOpen={lessons.length === 0 && teacher.courses.length > 0}>
-        <CreateLessonForm courses={teacher.courses.map((c) => ({ id: c.id, titleUz: c.titleUz }))} />
-      </SoftDisclosure>
-
-      {lessons.length === 0 ? (
-        <EmptyGuide
-          title="Hali reja yo‘q"
-          text="Yuqoridan kurs yoki dars qo‘shing — Studio’da kartalar chiqadi."
-          href="/teacher"
-          cta="Studio"
-        />
-      ) : (
-        <TeacherRejaBoard
-          lessons={lessons.map((lesson) => ({
-            id: lesson.id,
-            titleUz: lesson.titleUz,
-            summaryUz: lesson.summaryUz,
-            coverUrl: lesson.coverUrl,
-            scheduledAt: lesson.scheduledAt.toISOString(),
-            status: lesson.status,
-            courseTitle: lesson.course.titleUz,
-            recordingUrl: lesson.recordingUrl,
-            playbackId: lesson.muxVodPlaybackId,
-            streamKey: lesson.streamKey,
-          }))}
-        />
-      )}
     </AppShell>
   );
 }

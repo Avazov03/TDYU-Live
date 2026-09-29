@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
   const courseId = await ensureTeacherWorkspace(teacher.id);
   if (!courseId) {
-    return NextResponse.json({ error: "Kurs ochilmadi" }, { status: 500 });
+    return NextResponse.json({ error: "Bu o‘qituvchida hali kurs yo‘q" }, { status: 409 });
   }
 
   // Legacy workspace courses only; reviewed courses are published solely by admin approval.

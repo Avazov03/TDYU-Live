@@ -62,9 +62,9 @@ export function parseClientDateTime(value: string): Date {
   return new Date(NAIVE_LOCAL_DATETIME.test(trimmed) ? `${trimmed}+05:00` : trimmed);
 }
 
-/** `datetime-local` input value → ISO instant in the browser's own zone. */
+/** `datetime-local` input value (Tashkent wall-clock, whatever the browser zone) → ISO instant. */
 export function localInputToIso(value: string): string {
-  const d = new Date(value);
+  const d = parseClientDateTime(value);
   return Number.isNaN(d.getTime()) ? value : d.toISOString();
 }
 

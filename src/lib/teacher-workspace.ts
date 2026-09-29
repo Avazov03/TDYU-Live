@@ -2,10 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { PLATFORM_PRICES } from "@/lib/tariffs";
 import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
-/** O'qituvchida hech bo'lmaganda bitta kurs bo'lsin — Zoom/Classroom kabi birinchi kundan ish joyi. */
+/**
+ * O'qituvchida hech bo'lmaganda bitta kurs bo'lsin — Zoom/Classroom kabi birinchi kundan ish joyi.
+ * Review flow: no auto-course (a subject-named draft only confuses) — the teacher names their own.
+ */
 export async function ensureTeacherWorkspace(teacherId: string) {
   const existing = await prisma.course.findFirst({ where: { teacherId }, select: { id: true } });
   if (existing) return existing.id;
+  if (isCourseReviewV1Enabled()) return null;
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
@@ -23,9 +27,6 @@ export async function ensureTeacherWorkspace(teacherId: string) {
       priceT1: PLATFORM_PRICES.t1,
       priceT2: PLATFORM_PRICES.t2,
       priceT3: PLATFORM_PRICES.t3,
-      ...(isCourseReviewV1Enabled()
-        ? { lifecycleStatus: "draft" as const, isPublished: false, createdByUserId: teacher.userId }
-        : {}),
     },
     select: { id: true },
   });

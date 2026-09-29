@@ -1,6 +1,6 @@
 import type { LessonStatus } from "@/generated/prisma/client";
 import { coverUrl as generatedCover } from "@/lib/thumbs";
-import { UZ_MONTHS_LONG, tashkentParts } from "@/lib/utils";
+import { UZ_MONTHS_LONG, UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
 
 const TZ = "Asia/Tashkent";
 
@@ -24,6 +24,43 @@ export function dayTitle(date: Date) {
   if (localDayKey(date) === localDayKey(tomorrow)) return "Ertaga";
   const p = tashkentParts(date);
   return `${Number(p.day)}-${UZ_MONTHS_LONG[p.monthIndex]}`;
+}
+
+/** "Bugun" / "Ertaga" / "13 okt" — compact day label for timelines. */
+export function shortDayTitle(date: Date) {
+  const key = localDayKey(date);
+  const today = new Date();
+  if (key === localDayKey(today)) return "Bugun";
+  if (key === localDayKey(new Date(today.getTime() + 86_400_000))) return "Ertaga";
+  if (key === localDayKey(new Date(today.getTime() - 86_400_000))) return "Kecha";
+  const p = tashkentParts(date);
+  return `${Number(p.day)} ${UZ_MONTHS_SHORT[p.monthIndex]}`;
+}
+
+/** "Bugun" / "Ertaga" / "5 kundan keyin" — calendar days in Asia/Tashkent. */
+export function daysUntilLabel(date: Date, now = new Date()) {
+  const days = Math.round(
+    (Date.parse(localDayKey(date)) - Date.parse(localDayKey(now))) / 86_400_000,
+  );
+  if (days <= 0) return "Bugun";
+  if (days === 1) return "Ertaga";
+  return `${days} kundan keyin`;
+}
+
+const UZ_WEEKDAYS: Record<string, string> = {
+  Monday: "Dushanba",
+  Tuesday: "Seshanba",
+  Wednesday: "Chorshanba",
+  Thursday: "Payshanba",
+  Friday: "Juma",
+  Saturday: "Shanba",
+  Sunday: "Yakshanba",
+};
+const WEEKDAY_FMT = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "long" });
+
+/** "Dushanba" in Asia/Tashkent. */
+export function weekdayUz(date: Date) {
+  return UZ_WEEKDAYS[WEEKDAY_FMT.format(date)] ?? "";
 }
 
 export function clockLabel(date: Date) {

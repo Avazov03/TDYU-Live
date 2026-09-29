@@ -28,9 +28,18 @@ import {
 } from "@/lib/live-mux-playback";
 import { canUseLiveChat } from "@/lib/tariffs";
 import { muxPlayerUrl } from "@/lib/mux-player";
-import { formatDateTime, initials } from "@/lib/utils";
+import { UZ_MONTHS_SHORT, formatDateTime, initials, tashkentParts } from "@/lib/utils";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
-import { hasPlayableRecording, statusLabel } from "@/lib/plan";
+import {
+  clockLabel,
+  dayTitle,
+  daysUntilLabel,
+  hasPlayableRecording,
+  isJoinableLiveStatus,
+  statusLabel,
+  weekdayUz,
+} from "@/lib/plan";
+import { Icon } from "@/components/ui/Icon";
 import {
   getLatestRecordingForLesson,
   resolveReplayPlaybackId,
@@ -166,6 +175,21 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
       hasPlayableRecording(item.recordingUrl, item.muxVodPlaybackId),
   ).length;
   const progressPct = playlist.length ? Math.round((doneCount / playlist.length) * 100) : 0;
+  const courseNotStarted =
+    playlist.length > 0 &&
+    playlist.every((item) => item.status === "scheduled" || item.status === "cancelled");
+  const firstLesson = playlist.find((item) => item.status === "scheduled") ?? playlist[0];
+  const nextPlayable = Boolean(
+    next &&
+      (isJoinableLiveStatus(next.status) ||
+        hasPlayableRecording(next.recordingUrl, next.muxVodPlaybackId)),
+  );
+  const isScheduled = lesson.status === "scheduled";
+  const startParts = tashkentParts(lesson.scheduledAt);
+  const lessonEnd =
+    lesson.scheduledEndAt ??
+    new Date(lesson.scheduledAt.getTime() + (lesson.durationMinutes ?? 90) * 60_000);
+  const siteBase = (process.env.AUTH_URL || process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
 
   return (
     <AppShell active="my-courses">
@@ -254,8 +278,14 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             <ScheduledLessonCard
               lessonId={lesson.id}
               title={lesson.titleUz}
+              courseTitle={lesson.course.titleUz}
               startsAtIso={lesson.scheduledAt.toISOString()}
-              startsAtLabel={formatDateTime(lesson.scheduledAt)}
+              endsAtIso={lessonEnd.toISOString()}
+              dayNum={String(Number(startParts.day))}
+              monthShort={UZ_MONTHS_SHORT[startParts.monthIndex]}
+              whenLabel={`${weekdayUz(lesson.scheduledAt)}, ${dayTitle(lesson.scheduledAt)} · ${clockLabel(lesson.scheduledAt)}`}
+              relativeLabel={daysUntilLabel(lesson.scheduledAt)}
+              lessonUrl={`${siteBase}/learn/${lesson.id}`}
             />
           ) : (
             <div className="player-wrap paywall">
@@ -284,11 +314,25 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
 
           <h2 style={{ margin: "16px 0 8px", fontSize: 18 }}>{lesson.titleUz}</h2>
           <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
-            <div className="muted small">
-              {formatDateTime(lesson.scheduledAt)}
-              {" · "}
-              {statusLabel(lesson.status, { hasRecording: readyNow })}
-            </div>
+            {courseNotStarted && firstLesson ? (
+              <div className="lx-learn-soon" aria-label="Kurs holati">
+                <Icon name="calendar" size={16} />
+                <span>
+                  Kurs <b>{dayTitle(firstLesson.scheduledAt)}</b> boshlanadi · {playlist.length} ta dars
+                  {index >= 0 ? ` · bu ${index + 1}-dars` : ""}
+                </span>
+              </div>
+            ) : (
+              <div className="muted small">
+                {isScheduled ? null : (
+                  <>
+                    {formatDateTime(lesson.scheduledAt)}
+                    {" · "}
+                    {statusLabel(lesson.status, { hasRecording: readyNow })}
+                  </>
+                )}
+              </div>
+            )}
             <div className="row gap-8">
               <WatchShareButton path={`/learn/${lesson.id}`} />
             </div>
@@ -298,17 +342,19 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             <RecordingPublishButton lessonId={lesson.id} status={recordingStatus} />
           ) : null}
 
-          <div className="lx-learn-progress" aria-label="Kurs progressi">
-            <div className="lx-learn-progress-meta">
-              <span>
-                {index >= 0 ? index + 1 : "—"}/{playlist.length} dars
-              </span>
-              <span>{progressPct}% yozuv tayyor</span>
+          {courseNotStarted ? null : (
+            <div className="lx-learn-progress" aria-label="Kurs progressi">
+              <div className="lx-learn-progress-meta">
+                <span>
+                  {index >= 0 ? index + 1 : "—"}/{playlist.length} dars
+                </span>
+                <span>{progressPct}% yozuv tayyor</span>
+              </div>
+              <div className="lx-learn-progress-track">
+                <div className="lx-learn-progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
             </div>
-            <div className="lx-learn-progress-track">
-              <div className="lx-learn-progress-fill" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
+          )}
 
           <div className="lx-learn-nav">
             {prev ? (
@@ -321,7 +367,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               </span>
             )}
             {next ? (
-              <Link href={`/learn/${next.id}`} className="btn btn-primary btn-sm">
+              <Link href={`/learn/${next.id}`} className={nextPlayable ? "btn btn-primary btn-sm" : "btn btn-sm"}>
                 {next.titleUz} →
               </Link>
             ) : (
@@ -339,7 +385,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
                 <div className="small muted">{lesson.course.titleUz}</div>
               </div>
             </Link>
-            <Link href={`/courses/${lesson.course.id}`} className="btn btn-primary btn-sm">
+            <Link href={`/courses/${lesson.course.id}`} className={isScheduled ? "btn btn-sm" : "btn btn-primary btn-sm"}>
               Kurs
             </Link>
           </div>
@@ -369,7 +415,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               key={item.id}
               id={item.id}
               titleUz={item.titleUz}
-              subtitle={formatDateTime(item.scheduledAt)}
+              subtitle={`${dayTitle(item.scheduledAt)}, ${clockLabel(item.scheduledAt)}`}
               status={item.status}
               compact
               active={item.id === lesson.id}

@@ -90,6 +90,22 @@ describe("checkReschedule (24h rule)", () => {
     });
     assert.equal(!r.ok && r.code, "CONFLICT");
   });
+  it("draft course (noticeRequired=false): no 24h rule, still no past time or conflict", () => {
+    const draft = { ...base, noticeRequired: false };
+    assert.deepEqual(checkReschedule({ ...draft, currentStart: at(2), nextStart: at(3), nextEnd: at(4.5) }), {
+      ok: true,
+    });
+    const past = checkReschedule({ ...draft, currentStart: at(2), nextStart: at(-1), nextEnd: at(0.5) });
+    assert.equal(!past.ok && past.code, "INVALID_TIME");
+    const clash = checkReschedule({
+      ...draft,
+      currentStart: at(2),
+      nextStart: at(5.5),
+      nextEnd: at(7),
+      others: [win("other", 5)],
+    });
+    assert.equal(!clash.ok && clash.code, "CONFLICT");
+  });
 });
 
 describe("checkLessonRemoval", () => {

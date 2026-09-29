@@ -25,7 +25,7 @@ import {
   type SidebarLinks,
 } from "@/components/ui/aceternity-sidebar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
-import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import { ROLE_LABELS, isAdminRole, isTeacherRole, roleKind } from "@/lib/roles";
 import { initials } from "@/lib/utils";
 
 export type NavKey =
@@ -204,11 +204,13 @@ function StudentSidebarNav({
   primary,
   more,
   userName,
+  profileLabel,
   logoHref,
 }: {
   primary: NavItem[];
   more: NavItem[];
   userName: string;
+  profileLabel: string;
   logoHref: string;
 }) {
   const { open, setOpen } = useSidebar();
@@ -249,7 +251,7 @@ function StudentSidebarNav({
       <div>
         <SidebarLink
           link={{
-            label: userName,
+            label: profileLabel,
             href: "/settings",
             icon: (
               <span className="h-7 w-7 flex-shrink-0 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-[10px] font-medium inline-flex items-center justify-center">
@@ -267,10 +269,12 @@ function StudentSidebarNav({
 function SidebarNav({
   items,
   userName,
+  profileLabel,
   logoHref,
 }: {
   items: NavItem[];
   userName: string;
+  profileLabel: string;
   logoHref: string;
 }) {
   const { setOpen } = useSidebar();
@@ -285,7 +289,7 @@ function SidebarNav({
       <div>
         <SidebarLink
           link={{
-            label: userName,
+            label: profileLabel,
             href: "/settings",
             icon: (
               <span className="h-7 w-7 flex-shrink-0 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-[10px] font-medium inline-flex items-center justify-center">
@@ -309,6 +313,7 @@ export function Sidebar({
   const [open, setOpen] = useState(false);
   const reduced = useReducedMotion();
   const displayName = userName?.trim() || "Profil";
+  const profileLabel = `${displayName} · ${ROLE_LABELS[roleKind(userRole)]}`;
   const logoHref = isTeacherRole(userRole) ? "/teacher" : isAdminRole(userRole) ? "/admin" : "/app";
   const isStudent = !isTeacherRole(userRole) && !isAdminRole(userRole);
   const student = useMemo(
@@ -334,11 +339,11 @@ export function Sidebar({
           <StudentSidebarNav
             primary={student.primary}
             more={student.more}
-            userName={displayName}
+            userName={displayName} profileLabel={profileLabel}
             logoHref={logoHref}
           />
         ) : (
-          <SidebarNav items={items} userName={displayName} logoHref={logoHref} />
+          <SidebarNav items={items} userName={displayName} profileLabel={profileLabel} logoHref={logoHref} />
         )}
       </DesktopSidebar>
       <MobileSidebar className="justify-between gap-10">
@@ -346,11 +351,11 @@ export function Sidebar({
           <StudentSidebarNav
             primary={student.primary}
             more={student.more}
-            userName={displayName}
+            userName={displayName} profileLabel={profileLabel}
             logoHref={logoHref}
           />
         ) : (
-          <SidebarNav items={items} userName={displayName} logoHref={logoHref} />
+          <SidebarNav items={items} userName={displayName} profileLabel={profileLabel} logoHref={logoHref} />
         )}
       </MobileSidebar>
     </SidebarProvider>

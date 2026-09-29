@@ -4,53 +4,49 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BRAND } from "@/lib/brand";
-import { Icon } from "@/components/ui/Icon";
+import {
+  BookOpen,
+  ClipboardCheck,
+  GraduationCap,
+  LayoutDashboard,
+  Presentation,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { initials } from "@/lib/utils";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { RoleBadge } from "@/components/layout/RoleBadge";
 
 type AdminShellProps = {
   children: React.ReactNode;
   userName?: string;
+  /** null = course review flow is off (no «Tekshiruv» section). */
+  reviewCount?: number | null;
 };
 
-const NAV = [
-  {
-    href: "/admin",
-    label: "Bugun",
-    hint: "Imkoniyatlar + KPI",
-    icon: "home" as const,
-    exact: true,
-  },
-  {
-    href: "/admin/users",
-    label: "O'quvchilar",
-    hint: "Blok · obuna · parol",
-    icon: "users" as const,
-  },
-  {
-    href: "/admin/teachers",
-    label: "O'qituvchilar",
-    hint: "Invite · blok",
-    icon: "users" as const,
-  },
-  {
-    href: "/admin/courses",
-    label: "Kurslar",
-    hint: "Tahrir · nashr",
-    icon: "list" as const,
-  },
-  {
-    href: "/admin/payments",
-    label: "To'lovlar",
-    hint: "Kirim · filtr",
-    icon: "msquare" as const,
-  },
+type NavItem = { href: string; label: string; hint: string; icon: LucideIcon; exact?: boolean; badge?: number };
+
+const NAV: NavItem[] = [
+  { href: "/admin", label: "Bugun", hint: "KPI · diqqat", icon: LayoutDashboard, exact: true },
+  { href: "/admin/review", label: "Tekshiruv", hint: "Tasdiqlash · nashr", icon: ClipboardCheck },
+  { href: "/admin/users", label: "O‘quvchilar", hint: "Blok · obuna · parol", icon: GraduationCap },
+  { href: "/admin/teachers", label: "O‘qituvchilar", hint: "Taklif · blok", icon: Presentation },
+  { href: "/admin/courses", label: "Kurslar", hint: "Ro‘yxat · tahrir", icon: BookOpen },
+  { href: "/admin/payments", label: "To‘lovlar", hint: "Kirim · qaytarish", icon: Wallet },
 ];
 
-export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
+function isActive(pathname: string, item: { href: string; exact?: boolean }) {
+  return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+}
+
+export function AdminShell({ children, userName = "Admin", reviewCount = null }: AdminShellProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const nav = NAV.flatMap((item) => {
+    if (item.href !== "/admin/review") return [item];
+    return reviewCount == null ? [] : [{ ...item, badge: reviewCount }];
+  });
 
   return (
     <div className="admin-shell lx-admin-shell">
@@ -62,10 +58,11 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
           </Link>
         </div>
         <div className="topbar-right">
-          <Link href="/" className="btn btn-sm">
+          <Link href="/" className="btn btn-sm lx-admin-home">
             Bosh sahifa
           </Link>
           <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className="iconbtn" />
+          <RoleBadge role="admin" />
           <Link href="/settings" className="avatar sm" title="Profil" style={{ textDecoration: "none" }}>
             {initials(userName)}
           </Link>
@@ -74,27 +71,52 @@ export function AdminShell({ children, userName = "Admin" }: AdminShellProps) {
           </button>
         </div>
       </div>
+      <nav className="lx-admin-tabs" aria-label="Admin bo‘limlari">
+        {nav.map((item) => {
+          const active = isActive(pathname, item);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`lx-admin-tab${active ? " is-active" : ""}`}
+              aria-current={active ? "page" : undefined}
+            >
+              <item.icon size={16} aria-hidden />
+              {item.label}
+              {item.badge ? (
+                <span className="lx-nav-count" aria-label={`${item.badge} ta kutmoqda`}>
+                  {item.badge}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
       <div className="shell">
         <aside className="sidebar admin-sidebar lx-admin-sidebar">
           <p className="admin-nav-kicker lx-kicker" style={{ marginLeft: 12 }}>
-            Kabinet
+            Admin panel
           </p>
-          {NAV.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
+          {nav.map((item) => {
+            const active = isActive(pathname, item);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`navitem admin-navitem${active ? " active" : ""}`}
                 title={item.hint}
+                aria-current={active ? "page" : undefined}
               >
-                <Icon name={item.icon} />
+                <item.icon size={20} aria-hidden />
                 <span className="navlabel">
                   <strong>{item.label}</strong>
                   <small>{item.hint}</small>
                 </span>
+                {item.badge ? (
+                  <span className="lx-nav-count" aria-label={`${item.badge} ta kutmoqda`}>
+                    {item.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

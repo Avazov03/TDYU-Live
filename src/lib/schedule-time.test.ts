@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatDateTime, parseClientDateTime } from "./utils";
+import { formatDateTime, localInputToIso, parseClientDateTime } from "./utils";
 import { clockLabel, dayTitle } from "./plan";
 
 describe("Uzbek date labels (ICU-independent)", () => {
@@ -32,5 +32,22 @@ describe("parseClientDateTime", () => {
   it("invalid input stays invalid", () => {
     assert.ok(Number.isNaN(parseClientDateTime("ertaga").getTime()));
     assert.ok(Number.isNaN(parseClientDateTime("").getTime()));
+  });
+});
+
+describe("localInputToIso", () => {
+  it("reads the input as Tashkent time regardless of the browser zone", () => {
+    const prev = process.env.TZ;
+    try {
+      for (const tz of ["Europe/Moscow", "America/New_York", "Asia/Tashkent", "UTC"]) {
+        process.env.TZ = tz;
+        assert.equal(localInputToIso("2026-10-10T15:00"), "2026-10-10T10:00:00.000Z", tz);
+      }
+    } finally {
+      process.env.TZ = prev;
+    }
+  });
+  it("leaves unparseable input as-is", () => {
+    assert.equal(localInputToIso("ertaga"), "ertaga");
   });
 });

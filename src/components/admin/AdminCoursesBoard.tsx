@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
-import { SoftDisclosure, SoftExpand } from "@/components/admin/SoftDisclosure";
+import { SoftExpand } from "@/components/admin/SoftDisclosure";
 import { AdminDonut, AdminHBar } from "@/components/admin/AdminCharts";
 import type { AdminCourseInsight, AdminTeacherCourseGroup, CourseHealth } from "@/lib/admin-courses";
 import { formatSom } from "@/lib/tariffs";
@@ -77,19 +77,8 @@ export function AdminCoursesBoard({
     priceT3: "",
   });
   const [busyId, setBusyId] = useState("");
-  const [form, setForm] = useState({
-    titleUz: "",
-    descriptionUz: "",
-    teacherId: teachers[0]?.id ?? "",
-    facultyId: faculties[0]?.id ?? "",
-    subjectId: subjects[0]?.id ?? "",
-    priceT1: "150000",
-    priceT2: "250000",
-    priceT3: "400000",
-  });
   const [error, setError] = useState("");
 
-  const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const setEdit = (key: string, value: string) => setEditForm((f) => ({ ...f, [key]: value }));
 
   const startEdit = (course: AdminCourseInsight) => {
@@ -107,7 +96,8 @@ export function AdminCoursesBoard({
     setError("");
   };
 
-  const saveEdit = async (courseId: string) => {
+  const saveEdit = async (course: AdminCourseInsight) => {
+    const courseId = course.id;
     setBusyId(courseId);
     setError("");
     const res = await fetch(`/api/admin/courses/${courseId}`, {
@@ -119,9 +109,13 @@ export function AdminCoursesBoard({
         teacherId: editForm.teacherId,
         facultyId: editForm.facultyId,
         subjectId: editForm.subjectId,
-        priceT1: Number(editForm.priceT1),
-        priceT2: Number(editForm.priceT2),
-        priceT3: Number(editForm.priceT3),
+        ...(reviewFlow && course.lifecycleStatus
+          ? {}
+          : {
+              priceT1: Number(editForm.priceT1),
+              priceT2: Number(editForm.priceT2),
+              priceT3: Number(editForm.priceT3),
+            }),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -168,40 +162,8 @@ export function AdminCoursesBoard({
       .filter((g) => g.courses.length > 0);
   }, [groups, query, health, teacherId]);
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const res = await fetch("/api/admin/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        priceT1: Number(form.priceT1),
-        priceT2: Number(form.priceT2),
-        priceT3: Number(form.priceT3),
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error || "Saqlanmadi");
-      return;
-    }
-    setForm((f) => ({ ...f, titleUz: "", descriptionUz: "" }));
-    router.refresh();
-  };
-
   return (
     <div className="admin-board">
-      <div className="staff-head">
-        <div>
-          <p className="lx-kicker" style={{ marginBottom: 4 }}>Kurslar</p>
-          <h2>O&apos;qituvchi → kurs → faollik</h2>
-          <p className="small muted" style={{ marginTop: 4 }}>
-            Bir qarashda kim nima o&apos;qitadi, reja bormi, davomat va obuna qanday.
-          </p>
-        </div>
-      </div>
-
       <div className="admin-summary">
         <div className="stat-card">
           <div className="small muted">Kurs</div>
@@ -252,59 +214,6 @@ export function AdminCoursesBoard({
           />
         </section>
       </div>
-
-      <SoftDisclosure title="Yangi kurs" defaultOpen={courses.length === 0}>
-        <form onSubmit={create} className="soft-form">
-          <div className="field">
-            <label>Nomi</label>
-            <input value={form.titleUz} onChange={(e) => set("titleUz", e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>Tavsif</label>
-            <textarea value={form.descriptionUz} onChange={(e) => set("descriptionUz", e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>O&apos;qituvchi</label>
-            <select value={form.teacherId} onChange={(e) => set("teacherId", e.target.value)}>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>{t.fullName}</option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Fakultet</label>
-            <select value={form.facultyId} onChange={(e) => set("facultyId", e.target.value)}>
-              {faculties.map((f) => (
-                <option key={f.id} value={f.id}>{f.nameUz}</option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Fan</label>
-            <select value={form.subjectId} onChange={(e) => set("subjectId", e.target.value)}>
-              {subjects.filter((s) => s.facultyId === form.facultyId).map((s) => (
-                <option key={s.id} value={s.id}>{s.nameUz}</option>
-              ))}
-            </select>
-          </div>
-          <div className="row gap-12">
-            <div className="field" style={{ flex: 1 }}>
-              <label>1-tarif</label>
-              <input value={form.priceT1} onChange={(e) => set("priceT1", e.target.value)} />
-            </div>
-            <div className="field" style={{ flex: 1 }}>
-              <label>2-tarif</label>
-              <input value={form.priceT2} onChange={(e) => set("priceT2", e.target.value)} />
-            </div>
-            <div className="field" style={{ flex: 1 }}>
-              <label>3-tarif</label>
-              <input value={form.priceT3} onChange={(e) => set("priceT3", e.target.value)} />
-            </div>
-          </div>
-          {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
-          <button className="btn btn-primary" type="submit">Saqlash</button>
-        </form>
-      </SoftDisclosure>
 
       <div className="staff-toolbar">
         <div className="staff-search">
@@ -417,12 +326,21 @@ export function AdminCoursesBoard({
                             <div className="small muted">To&apos;lov</div>
                             <div>{formatSom(course.paymentSum)} · {course.paymentCount} ta</div>
                           </div>
-                          <div>
-                            <div className="small muted">Narx 1/2/3</div>
-                            <div className="small">
-                              {formatSom(course.priceT1)} / {formatSom(course.priceT2)} / {formatSom(course.priceT3)}
+                          {reviewFlow && course.lifecycleStatus ? (
+                            <div>
+                              <div className="small muted">Narx</div>
+                              <div className="small">
+                                {course.listPrice ? formatSom(course.listPrice) : "Tasdiqlashda belgilanadi"}
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div>
+                              <div className="small muted">Narx 1/2/3</div>
+                              <div className="small">
+                                {formatSom(course.priceT1)} / {formatSom(course.priceT2)} / {formatSom(course.priceT3)}
+                              </div>
+                            </div>
+                          )}
                           <div>
                             <div className="small muted">Holat</div>
                             <div>
@@ -438,7 +356,7 @@ export function AdminCoursesBoard({
                             className="soft-form"
                             onSubmit={(e) => {
                               e.preventDefault();
-                              void saveEdit(course.id);
+                              void saveEdit(course);
                             }}
                           >
                             <div className="field">
@@ -475,20 +393,22 @@ export function AdminCoursesBoard({
                                   ))}
                               </select>
                             </div>
-                            <div className="row gap-12">
-                              <div className="field" style={{ flex: 1 }}>
-                                <label>1-tarif</label>
-                                <input value={editForm.priceT1} onChange={(e) => setEdit("priceT1", e.target.value)} />
+                            {reviewFlow && course.lifecycleStatus ? null : (
+                              <div className="row gap-12">
+                                <div className="field" style={{ flex: 1 }}>
+                                  <label>1-tarif</label>
+                                  <input value={editForm.priceT1} onChange={(e) => setEdit("priceT1", e.target.value)} />
+                                </div>
+                                <div className="field" style={{ flex: 1 }}>
+                                  <label>2-tarif</label>
+                                  <input value={editForm.priceT2} onChange={(e) => setEdit("priceT2", e.target.value)} />
+                                </div>
+                                <div className="field" style={{ flex: 1 }}>
+                                  <label>3-tarif</label>
+                                  <input value={editForm.priceT3} onChange={(e) => setEdit("priceT3", e.target.value)} />
+                                </div>
                               </div>
-                              <div className="field" style={{ flex: 1 }}>
-                                <label>2-tarif</label>
-                                <input value={editForm.priceT2} onChange={(e) => setEdit("priceT2", e.target.value)} />
-                              </div>
-                              <div className="field" style={{ flex: 1 }}>
-                                <label>3-tarif</label>
-                                <input value={editForm.priceT3} onChange={(e) => setEdit("priceT3", e.target.value)} />
-                              </div>
-                            </div>
+                            )}
                             {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
                             <div className="staff-detail-actions">
                               <button className="btn btn-sm btn-primary" type="submit" disabled={busyId === course.id}>

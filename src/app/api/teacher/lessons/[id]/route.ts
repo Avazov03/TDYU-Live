@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTeacherForUser } from "@/lib/teacher";
 import { formatDateTime, parseClientDateTime } from "@/lib/utils";
-import { isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import { isCourseReviewV1Enabled, isScheduleRulesV1Enabled } from "@/lib/feature-flags";
+import { isPreAudienceLifecycle, lessonPlanLock } from "@/lib/course-review-policy";
 import { checkLessonRemoval, checkReschedule, lessonEnd } from "@/lib/schedule-policy";
 import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 import { notifyCourseStudents } from "@/lib/notify";
@@ -22,7 +23,7 @@ async function ownedLesson(userId: string, lessonId: string) {
   if (!teacher) return null;
   return prisma.lesson.findFirst({
     where: { id: lessonId, course: { teacherId: teacher.id } },
-    include: { course: { select: { teacherId: true, titleUz: true } } },
+    include: { course: { select: { teacherId: true, titleUz: true, lifecycleStatus: true } } },
   });
 }
 
@@ -40,6 +41,11 @@ export async function PATCH(
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
   if (lesson.status === "live" || lesson.status === "lobby") {
     return NextResponse.json({ error: "Kutish/jonli efirda tahrirlab bo'lmaydi" }, { status: 400 });
+  }
+  const reviewFlow = isCourseReviewV1Enabled();
+  const planLock = lessonPlanLock(lesson.course.lifecycleStatus, reviewFlow);
+  if (planLock) {
+    return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
   }
 
   const parsed = patchSchema.safeParse(await req.json());
@@ -72,6 +78,7 @@ export async function PATCH(
       now: new Date(),
       others: await loadTeacherLessonWindows(lesson.course.teacherId),
       formatWhen: formatDateTime,
+      noticeRequired: !isPreAudienceLifecycle(lesson.course.lifecycleStatus, reviewFlow),
     });
     if (!check.ok) {
       return NextResponse.json(
@@ -127,7 +134,12 @@ export async function DELETE(
   if (lesson.status !== "scheduled") {
     return NextResponse.json({ error: "Faqat rejadagi darsni o'chirish mumkin" }, { status: 400 });
   }
-  if (isScheduleRulesV1Enabled()) {
+  const reviewFlow = isCourseReviewV1Enabled();
+  const planLock = lessonPlanLock(lesson.course.lifecycleStatus, reviewFlow);
+  if (planLock) {
+    return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
+  }
+  if (isScheduleRulesV1Enabled() && !isPreAudienceLifecycle(lesson.course.lifecycleStatus, reviewFlow)) {
     const check = checkLessonRemoval({ currentStart: lesson.scheduledAt, now: new Date() });
     if (!check.ok) {
       return NextResponse.json({ error: check.message, code: check.code }, { status: 409 });

@@ -24,7 +24,7 @@ test.describe("Student shell Enrollment-first", () => {
 
     await expect(page).toHaveURL(/\/(app|onboard)/);
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: /Nima qilish kerak/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Salom/i })).toBeVisible();
     await expect(page.locator('a[href="/my-courses"]').first()).toBeVisible();
     await expect(page.locator('a[href="/schedule"]').first()).toBeVisible();
   });

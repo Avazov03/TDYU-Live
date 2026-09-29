@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth, isAdminRole } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { BRAND } from "@/lib/brand";
+import { countPendingReviews } from "@/lib/admin-courses";
+import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
 export default async function AdminLayout({
   children,
@@ -17,8 +19,13 @@ export default async function AdminLayout({
   }
 
   const userName = session.user.name ?? "Admin";
+  const reviewCount = isCourseReviewV1Enabled() ? await countPendingReviews().catch(() => 0) : null;
 
-  return <AdminShell userName={userName}>{children}</AdminShell>;
+  return (
+    <AdminShell userName={userName} reviewCount={reviewCount}>
+      {children}
+    </AdminShell>
+  );
 }
 
 export async function generateMetadata() {

@@ -98,15 +98,13 @@ export function AdminPaymentsBoard({
 
   return (
     <div className="admin-board">
-      <div className="staff-head">
+      <header className="lx-mc-head lx-admin-head">
         <div>
-          <p className="lx-kicker" style={{ marginBottom: 4 }}>To&apos;lovlar</p>
-          <h2>Kirim oqimi</h2>
-          <p className="small muted" style={{ marginTop: 4 }}>
-            Filtrlangan ko&apos;rinishdagi summa va holat. Hover bilan kunlik ustunlar.
-          </p>
+          <p className="lx-kicker">To‘lovlar</p>
+          <h1 className="lx-mc-title">To‘lovlar</h1>
+          <p className="lx-mc-sub">Kirim, holat va qaytarishlar — tanlangan filtr bo‘yicha.</p>
         </div>
-      </div>
+      </header>
 
       <div className="admin-summary">
         <div className="stat-card">
@@ -230,16 +228,18 @@ export function AdminPaymentsBoard({
                     </span>
                   </div>
                 </td>
-                <td>{p.courseTitle ?? "Tarif (kurs keyin)"}</td>
+                <td className="lx-pay-course">{p.courseTitle ?? "Tarif (kurs keyin)"}</td>
                 <td className="small muted">{p.teacherName ?? "—"}</td>
-                <td>{p.tier ? TARIFF_LABELS[p.tier] : "Kurs xaridi"}</td>
-                <td>{formatSom(p.amount)}</td>
-                <td>
+                <td className="lx-pay-nowrap">{p.tier ? TARIFF_LABELS[p.tier] : "Kurs xaridi"}</td>
+                <td className="lx-pay-nowrap lx-pay-amount">{formatSom(p.amount)}</td>
+                <td className="lx-pay-nowrap">
                   <span className={`badge ${statusTone(p.status)}`}>{statusLabel(p.status)}</span>
                   <div className="small muted">{p.provider}</div>
                 </td>
-                <td className="small muted">{formatDateTime(new Date(p.createdAt))}</td>
-                {showRefunds ? <td>{p.refund ? <AdminRefundCell info={p.refund} /> : null}</td> : null}
+                <td className="small muted lx-pay-nowrap">{formatDateTime(new Date(p.createdAt))}</td>
+                {showRefunds ? (
+                  <td className="lx-pay-refund">{p.refund ? <AdminRefundCell info={p.refund} /> : null}</td>
+                ) : null}
               </tr>
             ))}
           </tbody>

@@ -89,6 +89,7 @@ export function AdminTeachersManager({
   const [facultyId, setFacultyId] = useState(faculties[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? "");
   const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState("");
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [showPw, setShowPw] = useState<Record<string, boolean>>({});
@@ -116,13 +117,24 @@ export function AdminTeachersManager({
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creating) return;
     setError("");
-    const res = await fetch("/api/admin/teachers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, contactEmail, facultyId, subjectId }),
-    });
-    const data = await res.json();
+    setCreating(true);
+    let res: Response;
+    let data: { error?: string; inviteUrl?: string };
+    try {
+      res = await fetch("/api/admin/teachers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName, contactEmail, facultyId, subjectId }),
+      });
+      data = await res.json().catch(() => ({}));
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+      return;
+    } finally {
+      setCreating(false);
+    }
     if (!res.ok) {
       setError(data.error || "Saqlanmadi");
       return;
@@ -229,15 +241,15 @@ export function AdminTeachersManager({
 
   return (
     <>
-      <div className="staff-head">
+      <header className="lx-mc-head lx-admin-head">
         <div>
-          <p className="lx-kicker" style={{ marginBottom: 4 }}>O&apos;qituvchilar</p>
-          <h2>O&apos;qituvchi jamoasi</h2>
-          <p className="small muted" style={{ marginTop: 4 }}>
-            Jami {teachers.length}. O&apos;quvchilar alohida sahifada.
-          {canSeeSecrets
-            ? " Parolni tiklasangiz yangi parol bir marta ko'rinadi va nusxalanadi."
-            : " Login, email va parol faqat super adminga ko'rinadi."}
+          <p className="lx-kicker">O‘qituvchilar</p>
+          <h1 className="lx-mc-title">O‘qituvchilar</h1>
+          <p className="lx-mc-sub">Jami {teachers.length}</p>
+          <p className="lx-admin-note">
+            {canSeeSecrets
+              ? "Parolni tiklasangiz yangi parol bir marta ko‘rinadi va nusxalanadi."
+              : "Login, email va parol faqat super adminga ko‘rinadi."}
           </p>
         </div>
         <div className="staff-head-actions">
@@ -248,7 +260,7 @@ export function AdminTeachersManager({
             Taklif havolasi
           </button>
         </div>
-      </div>
+      </header>
 
       {error ? <p className="small" style={{ color: "var(--danger)", marginBottom: 12 }}>{error}</p> : null}
       {copied === "new-invite" ? (
@@ -547,7 +559,9 @@ export function AdminTeachersManager({
             </div>
             <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
               <button type="button" className="btn btn-sm" onClick={() => setModalOpen(false)}>Bekor</button>
-              <button className="btn btn-sm btn-primary" type="submit">Yaratish va nusxalash</button>
+              <button className="btn btn-sm btn-primary" type="submit" disabled={creating}>
+                {creating ? "Yaratilmoqda..." : "Yaratish va nusxalash"}
+              </button>
             </div>
             {error ? (
               <p className="small" style={{ color: "var(--danger)", marginTop: 10 }}>{error}</p>

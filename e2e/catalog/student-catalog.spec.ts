@@ -36,7 +36,7 @@ test.describe("Student catalog Enrollment-first", () => {
     await loginAs(page, creds!, { monitor });
 
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: /Nima qilish kerak/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Salom/i })).toBeVisible();
     await expect(page.getByText(/\d+\s+ta kurs/i).first()).toBeVisible();
   });
 

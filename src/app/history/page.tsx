@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { HistoryBoard } from "@/components/cabinet/HistoryBoard";
 import { requireAppUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
+import { hasPlayableRecording } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function HistoryPage() {
           courseTitle: row.lesson.course.titleUz,
           teacher: row.lesson.course.teacher.fullName,
           joinedAt: row.joinedAt.toISOString(),
+          status: row.lesson.status,
+          hasRecording: hasPlayableRecording(row.lesson.recordingUrl, row.lesson.muxVodPlaybackId),
         }))}
       />
     </AppShell>

@@ -9,7 +9,10 @@ import type { CourseLifecycleStatus } from "@/generated/prisma/client";
 import {
   checkCourseReviewAction,
   isLiveAllowedForCourse,
+  isPreAudienceLifecycle,
   isTeacherEditableLifecycle,
+  lessonPlanLock,
+  liveGate,
   type ReviewCheckInput,
 } from "./course-review-policy";
 import { isCourseReviewV1Enabled } from "./feature-flags";
@@ -164,6 +167,36 @@ describe("lifecycle helpers", () => {
     assert.equal(isLiveAllowedForCourse("published"), true);
     for (const s of ["draft", "submitted", "in_review", "approved", "rejected", "completed"] as const) {
       assert.equal(isLiveAllowedForCourse(s), false, s);
+    }
+  });
+  it("liveGate mirrors the live guard and says who moves next", () => {
+    assert.equal(liveGate("draft", false), null);
+    for (const s of [null, "published", "upcoming", "active"] as const) {
+      assert.equal(liveGate(s, true), null, String(s));
+    }
+    assert.equal(liveGate("draft", true)?.canSubmit, true);
+    assert.equal(liveGate("changes_requested", true)?.canSubmit, true);
+    for (const s of ["submitted", "in_review", "approved", "rejected", "completed"] as const) {
+      const gate = liveGate(s, true);
+      assert.ok(gate, s);
+      assert.equal(gate.canSubmit, false, s);
+    }
+  });
+  it("lessonPlanLock freezes the plan from submit until publish (and after reject)", () => {
+    for (const s of ["submitted", "in_review", "approved", "rejected"] as const) {
+      assert.ok(lessonPlanLock(s, true), s);
+      assert.equal(lessonPlanLock(s, false), null, `${s} flag off`);
+    }
+    for (const s of [null, "draft", "changes_requested", "published", "upcoming", "active"] as const) {
+      assert.equal(lessonPlanLock(s, true), null, String(s));
+    }
+  });
+  it("isPreAudienceLifecycle only for drafts under the review flow", () => {
+    assert.equal(isPreAudienceLifecycle("draft", true), true);
+    assert.equal(isPreAudienceLifecycle("changes_requested", true), true);
+    assert.equal(isPreAudienceLifecycle("draft", false), false);
+    for (const s of [null, "submitted", "approved", "published", "upcoming", "active"] as const) {
+      assert.equal(isPreAudienceLifecycle(s, true), false, String(s));
     }
   });
 });

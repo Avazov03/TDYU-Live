@@ -18,7 +18,6 @@ export async function POST() {
 
   let courseId: string | null;
   if (isCourseReviewV1Enabled()) {
-    await ensureTeacherWorkspace(teacher.id);
     const liveCourse = await prisma.course.findFirst({
       where: {
         teacherId: teacher.id,

@@ -31,7 +31,11 @@ export function AdminRefundCell({ info }: { info: AdminRefundInfo }) {
     );
   }
   if (info.kind === "blocked") {
-    return <span className="small muted">{info.note}</span>;
+    return (
+      <span className="small muted lx-pay-note" title={info.note}>
+        {info.note}
+      </span>
+    );
   }
 
   const submit = async () => {

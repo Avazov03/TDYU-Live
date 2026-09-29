@@ -16,6 +16,8 @@ type LiveStudioProps = {
   status: string;
   streamKey?: string | null;
   displayName: string;
+  /** Course is not published yet — the lobby API would refuse, so don't offer it. */
+  liveBlocked?: boolean;
 };
 
 export function LiveStudio({
@@ -26,6 +28,7 @@ export function LiveStudio({
   status,
   streamKey,
   displayName,
+  liveBlocked = false,
 }: LiveStudioProps) {
   const router = useRouter();
   const meetRef = useRef<MeetRoomHandle>(null);
@@ -37,7 +40,7 @@ export function LiveStudio({
 
   const isLive = status === "live";
   const isLobby = status === "lobby" || status === "waiting_room";
-  const canOpenLobby = status === "scheduled";
+  const canOpenLobby = status === "scheduled" && !liveBlocked;
   const inRoom = isLive || isLobby;
 
   const act = async (action: "lobby" | "start" | "end") => {
@@ -99,6 +102,8 @@ export function LiveStudio({
             </span>
           ) : isLobby ? (
             <span className="badge accent">Kutish xonasi</span>
+          ) : liveBlocked ? (
+            <span className="badge pending">Dars rejada</span>
           ) : (
             <span className="badge pending">Tanlangan dars</span>
           )}

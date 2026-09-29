@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { LiveShortsFeed, type LiveShort } from "@/components/shorts/LiveShortsFeed";
 import { prisma } from "@/lib/prisma";
 import {
@@ -36,20 +36,25 @@ export default async function ShortsPage() {
         : Boolean(sub && canWatchLive(sub.tier));
     if (!liveAllowed) {
       return (
-        <AppShell active="home">
-          <div className="lx-board">
-            <p className="lx-kicker">Shorts</p>
-            <h2>Jonli efir ochiq emas</h2>
-            <EmptyGuide
-              title={mode === "enrollment" ? "Kursga yozilish kerak" : "2 va 3-tarif kerak"}
-              text={
-                mode === "enrollment"
-                  ? "Jonli efir Shorts faqat ochiq Enrollment bo‘lgan kurslar uchun."
-                  : "Jonli efir Shorts orqali faqat yuqori tariflarda ochiladi."
-              }
-              href={mode === "enrollment" ? "/my-courses" : "/#tariflar"}
-              cta={mode === "enrollment" ? "Kurslarim" : "Tarifni tanlash"}
-            />
+        <AppShell active="shorts">
+          <div className="lx-sc">
+            <header className="lx-mc-head">
+              <div>
+                <p className="lx-kicker">Shorts</p>
+                <h1 className="lx-mc-title">Jonli efirlar</h1>
+              </div>
+            </header>
+            <div className="lx-mc-empty">
+              <h2>{mode === "enrollment" ? "Kursga yozilish kerak" : "2 va 3-tarif kerak"}</h2>
+              <p>
+                {mode === "enrollment"
+                  ? "Jonli efirlar faqat sotib olingan kurslaringiz uchun ochiladi."
+                  : "Jonli efirlar Shorts orqali faqat yuqori tariflarda ochiladi."}
+              </p>
+              <Link href={mode === "enrollment" ? "/#kurslar" : "/#tariflar"} className="btn btn-primary">
+                {mode === "enrollment" ? "Kurslarni ko‘rish" : "Tarifni tanlash"}
+              </Link>
+            </div>
           </div>
         </AppShell>
       );
@@ -98,15 +103,20 @@ export default async function ShortsPage() {
   return (
     <AppShell active="shorts" mainClassName={items.length > 0 ? "shorts-main" : undefined}>
       {items.length === 0 ? (
-        <div className="lx-board">
-          <p className="lx-kicker">Shorts</p>
-          <h2>Hozir jonli efir yo‘q</h2>
-          <EmptyGuide
-            title="Kutish kerak"
-            text="O‘qituvchi efirni boshlagach shu yerda ochiladi. Shu orada rejani ko‘ring."
-            href="/schedule"
-            cta="Dars rejaga"
-          />
+        <div className="lx-sc">
+          <header className="lx-mc-head">
+            <div>
+              <p className="lx-kicker">Shorts</p>
+              <h1 className="lx-mc-title">Jonli efirlar</h1>
+            </div>
+          </header>
+          <div className="lx-mc-empty">
+            <h2>Hozir jonli efir yo‘q</h2>
+            <p>O‘qituvchi efirni boshlaganda shu yerda darhol ochiladi. Shu orada jadvalni ko‘ring.</p>
+            <Link href="/schedule" className="btn btn-primary">
+              Dars jadvali
+            </Link>
+          </div>
         </div>
       ) : (
         <LiveShortsFeed shorts={items} />

@@ -45,14 +45,22 @@ export function CheckoutV2Client({
     setError("");
     setStep("processing");
 
-    const res = await fetch("/api/checkout/v2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey,
-      },
-      body: JSON.stringify({ courseId, provider: "demo" }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/checkout/v2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({ courseId, provider: "demo" }),
+      });
+    } catch {
+      // Same Idempotency-Key on retry, so a payment that did land is replayed, not repeated.
+      setError("Tarmoq xatosi — qayta urinib ko‘ring");
+      setStep("method");
+      return;
+    }
 
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
@@ -80,8 +88,8 @@ export function CheckoutV2Client({
       enrollment: data.enrollment,
       idempotentReplay: Boolean(data.idempotentReplay),
     });
+    // No router.refresh(): the server page redirects owners to the course, which would replace this receipt.
     setStep("success");
-    router.refresh();
   }
 
   return (

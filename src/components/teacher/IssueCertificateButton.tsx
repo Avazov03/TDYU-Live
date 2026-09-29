@@ -27,7 +27,7 @@ export function IssueCertificateButton({ courseId, userId }: { courseId: string;
 
   return (
     <>
-      <button className="btn btn-sm btn-primary" type="button" disabled={loading} onClick={issue}>
+      <button className="btn btn-sm" type="button" disabled={loading} onClick={issue}>
         Sertifikat berish
       </button>
       {error ? (

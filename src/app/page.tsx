@@ -10,6 +10,8 @@ import { PLATFORM_PRICES, TARIFF_BLURBS, TARIFF_FEATURES, TARIFF_LABELS, TARIFF_
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
 import { HeroSparkles } from "@/components/site/HeroSparkles";
+import { LandingCourses } from "@/components/site/LandingCourses";
+import { listPublicCourses, parsePageParam } from "@/lib/public-courses";
 import {
   PricingWithHeaderAndIcons,
   type PricingPlan,
@@ -40,8 +42,14 @@ const ROLES = [
   { title: "Admin", text: "O'qituvchilarni taklif qiladi." },
 ] as const;
 
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kurslar?: string | string[] }>;
+}) {
+  const { kurslar } = await searchParams;
   const session = await auth();
+  const coursePage = await listPublicCourses({ page: parsePageParam(kurslar) });
   const mode = getEnrollmentAccessMode();
   const userId = session?.user?.id;
   const enr =
@@ -92,7 +100,7 @@ export default async function LandingPage() {
               </Link>
             ) : session?.user ? (
               <Link
-                href={hideTariff ? "/search" : "/#tariflar"}
+                href={hideTariff ? "/#kurslar" : "/#tariflar"}
                 className="btn btn-primary"
               >
                 {hideTariff ? "Kurslarni ko‘rish" : "Tarif tanlash"}
@@ -113,6 +121,8 @@ export default async function LandingPage() {
 
       <div className="lx-below">
         <div className="lx-below-bg" aria-hidden />
+        <LandingCourses data={coursePage} showPrice={hideTariff} showSearch />
+
         <section id="qanday" className="lx-section">
           <div className="lx-section-head">
             <p className="lx-kicker">Jarayon</p>
@@ -153,25 +163,9 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        {hideTariff ? null : (
         <section id="tariflar" className="lx-section lx-section-wide" data-testid="landing-pricing">
-          {hideTariff ? (
-            <div className="lx-status" data-testid="landing-course-cta">
-              <p className="lx-status-label">Kurslar</p>
-              <p className="lx-status-meta">
-                Tarif paketlar o‘rniga alohida kurslar. Qidiruvdan kurs toping yoki Kabinetga o‘ting.
-              </p>
-              <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-                <Link href="/search" className="btn btn-primary">
-                  Kurslarni qidirish
-                </Link>
-                {home === "/app" ? (
-                  <Link href="/app" className="btn">
-                    Kabinet
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          ) : sub ? (
+          {sub ? (
             <div className="lx-status">
               <p className="lx-status-label">{TARIFF_LABELS[sub.tier]} faol</p>
               <p className="lx-status-meta">
@@ -231,6 +225,7 @@ export default async function LandingPage() {
             />
           )}
         </section>
+        )}
 
         <SiteFooter />
       </div>

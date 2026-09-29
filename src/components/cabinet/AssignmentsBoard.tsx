@@ -1,31 +1,78 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { FilterChips } from "@/components/cabinet/FilterChips";
-import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
 import { SubmitForm } from "@/components/assignment/SubmitForm";
-import { formatDateTime } from "@/lib/utils";
+import { Icon } from "@/components/ui/Icon";
+import { initials } from "@/lib/utils";
+
+export type AssignmentState = "open" | "late" | "done";
 
 type AssignmentItem = {
   id: string;
   titleUz: string;
   descriptionUz: string;
-  dueAt: string;
-  courseId: string;
+  dueLabel: string;
   courseTitle: string;
-  teacherId: string;
   teacherName: string;
-  submitted: boolean;
+  state: AssignmentState;
   grade: number | null;
   teacherNote: string | null;
 };
 
-type DueFilter = "all" | "open" | "late" | "done";
+type Filter = "all" | AssignmentState;
 
-function stateOf(item: AssignmentItem, now: number): Exclude<DueFilter, "all"> {
-  if (item.submitted) return "done";
-  if (new Date(item.dueAt).getTime() < now) return "late";
-  return "open";
+const ORDER: Record<AssignmentState, number> = { open: 0, late: 1, done: 2 };
+const STATE_LABEL: Record<AssignmentState, string> = {
+  open: "Ochiq",
+  late: "Kechikkan",
+  done: "Topshirilgan",
+};
+
+function AssignmentCard({ item }: { item: AssignmentItem }) {
+  const [answering, setAnswering] = useState(false);
+  return (
+    <article className={`lx-as-card is-${item.state}`} data-testid="assignment-card">
+      <div className="lx-as-top">
+        <span className={`lx-as-state is-${item.state}`}>{STATE_LABEL[item.state]}</span>
+        <span className="lx-as-due">
+          <Icon name="clock" size={14} /> {item.dueLabel}
+        </span>
+      </div>
+      <h3 className="lx-as-title">{item.titleUz}</h3>
+      <p className="lx-sc-teacher">
+        <span className="avatar sm" aria-hidden>
+          {initials(item.teacherName)}
+        </span>
+        {item.courseTitle} · {item.teacherName}
+      </p>
+      {item.descriptionUz ? <p className="lx-as-desc">{item.descriptionUz}</p> : null}
+
+      {item.state === "done" ? (
+        <div className="lx-as-result">
+          {item.grade != null ? (
+            <p className="lx-as-grade">
+              Baho: <strong>{item.grade}</strong>
+            </p>
+          ) : (
+            <p className="lx-as-grade is-pending">Javobingiz yuborildi — tekshiruv kutilmoqda</p>
+          )}
+          {item.teacherNote ? <p className="lx-as-note">{item.teacherNote}</p> : null}
+        </div>
+      ) : answering ? (
+        <div className="lx-as-form">
+          <SubmitForm assignmentId={item.id} onCancel={() => setAnswering(false)} />
+        </div>
+      ) : (
+        <div className="lx-as-actions">
+          <button type="button" className="btn btn-primary" onClick={() => setAnswering(true)}>
+            Javob yuborish
+          </button>
+        </div>
+      )}
+    </article>
+  );
 }
 
 export function AssignmentsBoard({
@@ -35,127 +82,83 @@ export function AssignmentsBoard({
   items: AssignmentItem[];
   priorityNote?: boolean;
 }) {
-  const [filter, setFilter] = useState<DueFilter>("all");
-  const now = Date.now();
+  const [filter, setFilter] = useState<Filter>("all");
 
   const counts = useMemo(() => {
     const base = { all: items.length, open: 0, late: 0, done: 0 };
-    for (const item of items) base[stateOf(item, now)] += 1;
+    for (const item of items) base[item.state] += 1;
     return base;
-  }, [items, now]);
+  }, [items]);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((item) => stateOf(item, now) === filter);
-  }, [items, filter, now]);
+  const shown = useMemo(
+    () =>
+      items
+        .filter((item) => filter === "all" || item.state === filter)
+        .sort((a, b) => ORDER[a.state] - ORDER[b.state]),
+    [items, filter],
+  );
 
-  const byTeacher = useMemo(() => {
-    const map = new Map<
-      string,
-      { name: string; courses: Map<string, { id: string; title: string; items: AssignmentItem[] }> }
-    >();
-    for (const item of filtered) {
-      const teacher = map.get(item.teacherId) ?? { name: item.teacherName, courses: new Map() };
-      const course = teacher.courses.get(item.courseId) ?? {
-        id: item.courseId,
-        title: item.courseTitle,
-        items: [],
-      };
-      course.items.push(item);
-      teacher.courses.set(item.courseId, course);
-      map.set(item.teacherId, teacher);
-    }
-    return [...map.entries()];
-  }, [filtered]);
+  const summary = [
+    counts.open ? `${counts.open} ta ochiq` : null,
+    counts.late ? `${counts.late} ta kechikkan` : null,
+    counts.done ? `${counts.done} ta topshirilgan` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="lx-board">
-      <p className="lx-kicker">Topshiriqlar</p>
-      <h2>Kimdan va qaysi kursdan</h2>
-      <p className="muted small lx-lead">Muddat va holat bo&apos;yicha filtr.</p>
-      {priorityNote ? (
-        <p className="small muted" style={{ marginTop: -8 }}>
-          3-tarifdagi ishingiz o&apos;qituvchida birinchi navbatda.
-        </p>
-      ) : null}
-
-      <FilterChips
-        value={filter}
-        onChange={setFilter}
-        ariaLabel="Topshiriq holati"
-        options={[
-          { value: "all", label: "Hammasi", count: counts.all },
-          { value: "open", label: "Ochiq", count: counts.open },
-          { value: "late", label: "Kechikkan", count: counts.late },
-          { value: "done", label: "Topshirilgan", count: counts.done },
-        ]}
-      />
+    <div className="lx-sc">
+      <header className="lx-mc-head">
+        <div>
+          <p className="lx-kicker">Topshiriqlar</p>
+          <h1 className="lx-mc-title">Topshiriqlar</h1>
+          {summary ? <p className="lx-mc-sub">{summary}</p> : null}
+          {priorityNote ? (
+            <p className="lx-mc-sub">3-tarifdagi ishingiz o&apos;qituvchida birinchi navbatda.</p>
+          ) : null}
+        </div>
+      </header>
 
       {items.length === 0 ? (
-        <EmptyGuide
-          title="Topshiriq yo‘q"
-          text="Faol kurslaringizda hozircha vazifa qo‘yilmagan."
-          href="/my-courses"
-          cta="Kurslarim"
-        />
-      ) : null}
-
-      {items.length > 0 && byTeacher.length === 0 ? (
-        <div className="lx-empty">
-          <h3>Shu filtrda topshiriq yo‘q</h3>
-          <p className="muted small">Boshqa holatni tanlang.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setFilter("all")}>
-            Hammasi
-          </button>
+        <div className="lx-mc-empty">
+          <h2>Topshiriq yo‘q</h2>
+          <p>O‘qituvchi kursingizga topshiriq qo‘ysa, shu yerda chiqadi.</p>
+          <Link href="/my-courses" className="btn btn-primary">
+            Kurslarim
+          </Link>
         </div>
-      ) : null}
-
-      {byTeacher.map(([id, teacher]) => (
-        <section key={id} className="lx-group">
-          <h3>{teacher.name}</h3>
-          {[...teacher.courses.values()].map((course) => (
-            <div key={course.id} style={{ marginBottom: 16 }}>
-              <p className="lx-kicker">{course.title}</p>
-              <div className="lx-stack">
-                {course.items.map((item) => {
-                  const state = stateOf(item, now);
-                  return (
-                    <article key={item.id} className="lx-row">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3>{item.titleUz}</h3>
-                        <p className="small muted" style={{ margin: 0 }}>
-                          Muddat: {formatDateTime(new Date(item.dueAt))}
-                        </p>
-                        <p style={{ margin: "10px 0" }}>{item.descriptionUz}</p>
-                        {state === "done" ? (
-                          <div>
-                            <span className="badge success">
-                              {item.grade != null ? `Baho: ${item.grade}` : "Topshirilgan"}
-                            </span>
-                            {item.grade == null ? (
-                              <p className="small muted">Tekshiruv kutilmoqda</p>
-                            ) : null}
-                            {item.teacherNote ? <p className="small">{item.teacherNote}</p> : null}
-                          </div>
-                        ) : (
-                          <div>
-                            <span className={`badge ${state === "late" ? "danger" : "pending"}`}>
-                              {state === "late" ? "Kechikkan" : "Ochiq"}
-                            </span>
-                            <div style={{ marginTop: 10 }}>
-                              <SubmitForm assignmentId={item.id} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+      ) : (
+        <>
+          <div className="lx-mc-filters">
+            <FilterChips
+              value={filter}
+              onChange={setFilter}
+              ariaLabel="Topshiriq holati"
+              options={[
+                { value: "all", label: "Hammasi", count: counts.all },
+                { value: "open", label: "Ochiq", count: counts.open },
+                { value: "late", label: "Kechikkan", count: counts.late },
+                { value: "done", label: "Topshirilgan", count: counts.done },
+              ]}
+            />
+          </div>
+          {shown.length === 0 ? (
+            <div className="lx-mc-empty">
+              <h2>Shu filtrda topshiriq yo‘q</h2>
+              <p>Boshqa holatni tanlang.</p>
+              <button type="button" className="btn btn-primary" onClick={() => setFilter("all")}>
+                Hammasi
+              </button>
             </div>
-          ))}
-        </section>
-      ))}
+          ) : (
+            <div className="lx-as-list">
+              {shown.map((item) => (
+                <AssignmentCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

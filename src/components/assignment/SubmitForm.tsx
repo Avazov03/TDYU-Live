@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function SubmitForm({ assignmentId }: { assignmentId: string }) {
+export function SubmitForm({ assignmentId, onCancel }: { assignmentId: string; onCancel?: () => void }) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -34,23 +34,36 @@ export function SubmitForm({ assignmentId }: { assignmentId: string }) {
   };
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="lx-as-submit">
       <div className="field">
-        <label>Matn</label>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Javobingiz..." />
+        <label htmlFor={`answer-${assignmentId}`}>Javobingiz</label>
+        <textarea
+          id={`answer-${assignmentId}`}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Javobingizni shu yerga yozing..."
+        />
       </div>
       <div className="field">
-        <label>Fayl (PDF yoki rasm)</label>
+        <label htmlFor={`file-${assignmentId}`}>Fayl biriktirish (ixtiyoriy · PDF yoki rasm)</label>
         <input
+          id={`file-${assignmentId}`}
           type="file"
           accept="image/*,.pdf"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
-      <button className="btn btn-primary" type="submit" disabled={loading}>
-        {loading ? "Yuborilmoqda..." : "Topshirish"}
-      </button>
+      <div className="lx-as-submit-row">
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? "Yuborilmoqda..." : "Topshirish"}
+        </button>
+        {onCancel ? (
+          <button type="button" className="btn" onClick={onCancel} disabled={loading}>
+            Bekor qilish
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }

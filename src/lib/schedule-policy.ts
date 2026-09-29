@@ -74,9 +74,22 @@ export function checkReschedule(input: {
   now: Date;
   others: LessonWindow[];
   formatWhen: (d: Date) => string;
+  /** false = course has no students yet (draft): only past-time and conflict rules apply. */
+  noticeRequired?: boolean;
 }): ScheduleCheck {
   if (Number.isNaN(input.nextStart.getTime())) {
     return { ok: false, code: "INVALID_TIME", message: "Vaqt noto‘g‘ri" };
+  }
+  if (input.noticeRequired === false) {
+    if (input.nextStart.getTime() <= input.now.getTime()) {
+      return { ok: false, code: "INVALID_TIME", message: "O‘tgan vaqtga dars qo‘yib bo‘lmaydi" };
+    }
+    const hit = findScheduleConflict(
+      { start: input.nextStart, end: input.nextEnd, excludeId: input.lessonId },
+      input.others,
+    );
+    if (hit) return { ok: false, code: "CONFLICT", message: conflictMessage(hit, input.formatWhen), conflictId: hit.id };
+    return { ok: true };
   }
   const minMs = RESCHEDULE_MIN_HOURS * HOUR_MS;
   if (input.currentStart.getTime() - input.now.getTime() < minMs) {

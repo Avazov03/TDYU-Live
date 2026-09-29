@@ -1,88 +1,67 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyGuide } from "@/components/cabinet/EmptyGuide";
-import { requireAppUser } from "@/lib/access";
-import { prisma } from "@/lib/prisma";
-import { formatSom } from "@/lib/tariffs";
-import Link from "next/link";
+import { PublicCourseCard, PublicCoursePager } from "@/components/course/PublicCourseCard";
+import { auth } from "@/lib/auth";
+import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
+import { listPublicCourses, parsePageParam } from "@/lib/public-courses";
 
 export const dynamic = "force-dynamic";
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
-  await requireAppUser(`/search${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  const { q, page } = await searchParams;
   const query = q?.trim() ?? "";
+  // Finding a course to buy must not require already owning one.
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(`/search${query ? `?q=${encodeURIComponent(query)}` : ""}`)}`);
+  }
 
-  const courses =
-    query.length >= 2
-      ? await prisma.course.findMany({
-          where: {
-            isPublished: true,
-            OR: [
-              { titleUz: { contains: query, mode: "insensitive" } },
-              { descriptionUz: { contains: query, mode: "insensitive" } },
-              { teacher: { fullName: { contains: query, mode: "insensitive" } } },
-              { subject: { nameUz: { contains: query, mode: "insensitive" } } },
-              { faculty: { nameUz: { contains: query, mode: "insensitive" } } },
-            ],
-          },
-          include: {
-            teacher: { select: { fullName: true } },
-            faculty: { select: { nameUz: true } },
-            subject: { select: { nameUz: true } },
-            _count: { select: { lessons: true } },
-          },
-          take: 24,
-        })
-      : [];
+  const searching = query.length >= 2;
+  const data = await listPublicCourses({ page: parsePageParam(page), query: searching ? query : "" });
+  const hrefFor = (p: number) => {
+    const params = new URLSearchParams();
+    if (searching) params.set("q", query);
+    if (p > 1) params.set("page", String(p));
+    const s = params.toString();
+    return s ? `/search?${s}` : "/search";
+  };
 
   return (
     <AppShell>
       <div className="lx-board">
         <p className="lx-kicker">Qidiruv</p>
-        <h2>{query ? `"${query}" natijalari` : "Kurs yoki o‘qituvchi"}</h2>
+        <h2>{searching ? `"${query}" natijalari` : "E’lon qilingan kurslar"}</h2>
         <p className="muted small lx-lead">
-          Yuqoridagi qidiruvdan kurs, fan yoki o‘qituvchi nomini yozing.
+          {query && !searching
+            ? "Kamida 2 ta belgi yozing."
+            : "Yuqoridagi qidiruvdan kurs, fan yoki o‘qituvchi nomini yozing."}
         </p>
 
-        {!query ? (
+        {data.items.length === 0 ? (
           <EmptyGuide
-            title="Qidiruvni boshlang"
-            text="Kamida 2 ta belgi yozing. Yoki o‘z kurslaringizga qayting."
-            href="/my-courses"
-            cta="Kurslarim"
-          />
-        ) : courses.length === 0 ? (
-          <EmptyGuide
-            title="Hech narsa topilmadi"
-            text={`"${query}" bo‘yicha nashr qilingan kurs yo‘q.`}
+            title={searching ? "Hech narsa topilmadi" : "Hozircha kurs yo‘q"}
+            text={
+              searching
+                ? `"${query}" bo‘yicha e’lon qilingan kurs yo‘q.`
+                : "Yangi kurslar e’lon qilinganda shu yerda paydo bo‘ladi."
+            }
             href="/my-courses"
             cta="Kurslarim"
           />
         ) : (
           <>
-            <p className="muted small" style={{ marginTop: -8 }}>
-              {courses.length} ta kurs
-            </p>
-            <div className="lx-stack">
-              {courses.map((c) => (
-                <Link key={c.id} href={`/courses/${c.id}`} className="lx-row">
-                  <div>
-                    <p className="lx-kicker">
-                      {c.teacher.fullName} · {c.subject.nameUz}
-                    </p>
-                    <h3>{c.titleUz}</h3>
-                    <p className="small muted" style={{ margin: 0 }}>
-                      {c.faculty.nameUz} · {c._count.lessons} dars · {formatSom(c.priceT1)} dan
-                    </p>
-                  </div>
-                  <span className="lx-go">Ochish</span>
-                </Link>
+            <p className="muted small">{data.total} ta kurs</p>
+            <div className="lx-course-grid" data-testid="search-course-grid">
+              {data.items.map((course) => (
+                <PublicCourseCard key={course.id} course={course} showPrice={shouldHideStudentTariffUi()} />
               ))}
             </div>
+            <PublicCoursePager page={data.page} pages={data.pages} hrefFor={hrefFor} />
           </>
         )}
       </div>

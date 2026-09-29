@@ -6,8 +6,9 @@ import { CreateCoursePlanForm } from "@/components/teacher/CreateCoursePlanForm"
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
-import { formatDateTime } from "@/lib/utils";
-import { hasPlayableRecording, statusLabel, type PlanStatus } from "@/lib/plan";
+import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
+import { clockLabel, dayTitle, hasPlayableRecording, statusLabel, type PlanStatus } from "@/lib/plan";
+import { Icon } from "@/components/ui/Icon";
 import { isSubscriptionActive } from "@/lib/tariffs";
 import {
   getEnrollmentAccessMode,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/feature-flags";
 import { hasCourseStarted } from "@/lib/refund-policy";
 import { CancelCourseButton } from "@/components/teacher/CancelCourseButton";
-import { isLiveAllowedForCourse } from "@/lib/course-review-policy";
+import { isLiveAllowedForCourse, liveGate } from "@/lib/course-review-policy";
 import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
 import { CompleteCourseButton } from "@/components/teacher/CompleteCourseButton";
 import { isOpenLessonStatus } from "@/lib/course-completion-policy";
@@ -48,12 +49,15 @@ export default async function TeacherHomePage() {
   if (!profile) {
     return (
       <AppShell active="teacher">
-        <div className="lx-board">
-          <p className="lx-kicker">Studio</p>
-          <h2>O&apos;qituvchi studiosi</h2>
-          <p className="muted small lx-lead">
-            Hisob ochildi. Admin sizni fan bilan bog&apos;lagach reja va efir shu yerda ochiladi.
-          </p>
+        <div className="lx-today">
+          <header className="lx-today-head">
+            <p className="lx-kicker">Studio</p>
+            <h1 className="lx-today-title">Salom!</h1>
+          </header>
+          <div className="lx-mc-empty">
+            <h2>Hisobingiz ochildi</h2>
+            <p>Admin sizni fan bilan bog‘lagach, kurslar, reja va efir shu yerda ochiladi.</p>
+          </div>
         </div>
       </AppShell>
     );
@@ -93,8 +97,11 @@ export default async function TeacherHomePage() {
   );
 
   const running = allLessons.filter((l) => l.status === "live" || l.status === "lobby");
+  const gatedCourseIds = new Set(
+    teacher.courses.filter((c) => liveGate(c.lifecycleStatus, reviewFlow)).map((c) => c.id),
+  );
   const nextUp = allLessons
-    .filter((l) => l.status === "scheduled")
+    .filter((l) => l.status === "scheduled" && !gatedCourseIds.has(l.courseId))
     .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())[0];
 
   const pending = await prisma.submission.count({
@@ -166,210 +173,293 @@ export default async function TeacherHomePage() {
     };
   });
 
+  const focus = running[0] ?? nextUp ?? null;
+  const focusLive = Boolean(running[0]);
+  const studentTotal = new Set(
+    teacher.courses.flatMap((c) => [
+      ...(accessMode !== "enrollment"
+        ? c.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).map((s) => s.userId)
+        : []),
+      ...(accessMode === "enrollment" || accessMode === "dual" ? c.enrollments.map((e) => e.userId) : []),
+    ]),
+  ).size;
+  const activeCourseCount = courseCards.filter((c) => !c.completed && !c.cancelled && !c.inReview).length;
+  const unapprovedCount = courseCards.filter((c) => c.inReview).length;
+  // No lesson can go live yet — point at the step that unblocks it instead of an empty "no lessons" card.
+  const gatedStep = focus
+    ? null
+    : (() => {
+        const card =
+          courseCards.find((c) => c.inReview && c.total > 0 && liveGate(c.lifecycleStatus, reviewFlow)?.canSubmit) ??
+          courseCards.find((c) => c.inReview && c.total > 0);
+        const gate = card ? liveGate(card.lifecycleStatus, reviewFlow) : null;
+        return card && gate ? { card, gate } : null;
+      })();
+  const reviewCount = courseCards.reduce((n, c) => n + c.toReview.length, 0);
+  const firstName = teacher.fullName.trim().split(/\s+/)[0] || teacher.fullName;
+
   return (
     <AppShell active="teacher">
-      <div className="lx-board teacher-focus">
-        <p className="lx-kicker">Studio</p>
-        <h2>Salom, {teacher.fullName}</h2>
-        <p className="muted small lx-lead">
-          Avval <strong>kursni</strong> tanlang — keyin shu kursning darsi uchun kutish/efir ochiladi.
-        </p>
+      <div className="lx-today lx-studio">
+        <header className="lx-today-head">
+          <p className="lx-kicker">Studio</p>
+          <h1 className="lx-today-title">Salom, {firstName}!</h1>
+          <p className="lx-today-sub">
+            {activeCourseCount} ta faol kurs
+            {unapprovedCount > 0 ? ` · ${unapprovedCount} tasi tasdiqlanmagan` : ""} · {studentTotal} ta o‘quvchi
+          </p>
+        </header>
 
-        <div className="studio-kpis">
-          <div className="studio-kpi">
-            <span className="small muted">Kurs</span>
-            <b>{teacher.courses.length}</b>
-          </div>
-          <div className="studio-kpi">
-            <span className="small muted">Keyingi</span>
-            <b style={{ fontSize: 14 }}>{nextUp ? countdownLabel(nextUp.scheduledAt) : "—"}</b>
-          </div>
-          <div className="studio-kpi">
-            <span className="small muted">Tekshiruv</span>
-            <b>{pending}</b>
-          </div>
-          <div className="studio-kpi">
-            <span className="small muted">Faol efir</span>
-            <b>{running.length}</b>
-          </div>
-        </div>
-
-        {running.length > 0 ? (
-          <div className="studio-alert-stack" style={{ marginTop: 14 }}>
-            {running.map((l) => (
-              <Link key={l.id} href={`/teacher/live/${l.id}`} className="lx-row is-live">
-                <div>
-                  <p className="lx-kicker">
-                    {l.status === "live" ? "Jonli efir ketmoqda" : "Kutish xonasi ochiq"}
-                  </p>
-                  <h3>
-                    {l.titleUz}{" "}
-                    <span className={`badge ${l.status === "live" ? "danger" : "accent"}`}>
-                      {statusLabel(l.status as PlanStatus)}
-                    </span>
-                  </h3>
-                  <p className="small muted" style={{ margin: 0 }}>
-                    {l.courseTitle} · {formatDateTime(l.scheduledAt)}
-                  </p>
-                </div>
-                <span className="lx-go">Davom etish</span>
-              </Link>
-            ))}
-          </div>
-        ) : null}
-
-        {pending > 0 ? (
-          <Link href="/teacher/assignments" className="lx-row" style={{ marginTop: 10 }}>
-            <div>
-              <p className="lx-kicker">Topshiriq</p>
-              <h3>{pending} ta ish baholanmagan</h3>
+        {focus ? (
+          <section
+            className={`lx-mc-next lx-today-focus${focusLive ? " is-live" : ""}`}
+            aria-label={focusLive ? "Jonli efir" : "Keyingi dars"}
+          >
+            <div className="lx-mc-next-info">
+              <span className="lx-mc-next-label">
+                {focus.status === "live"
+                  ? "Hozir efirdasiz"
+                  : focusLive
+                    ? "Kutish xonasi ochiq"
+                    : "Keyingi darsingiz"}
+              </span>
+              <p className="lx-mc-next-title">{focus.titleUz}</p>
+              <p className="lx-mc-next-meta">
+                {focus.courseTitle} ·{" "}
+                <strong>
+                  {dayTitle(focus.scheduledAt)} · {clockLabel(focus.scheduledAt)}
+                </strong>
+                {!focusLive ? ` · ${countdownLabel(focus.scheduledAt)}` : ""}
+              </p>
+              {running.length > 1 ? (
+                <p className="lx-mc-next-meta">Yana {running.length - 1} ta efir ochiq — kurs kartalarida.</p>
+              ) : null}
             </div>
-            <span className="lx-go">Ochish</span>
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="lx-board" style={{ marginTop: 18 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-          <div>
-            <p className="lx-kicker">1-qadam</p>
-            <h2 style={{ marginBottom: 0 }}>Kursni tanlang</h2>
-          </div>
-          <Link href="/teacher/reja" className="btn btn-sm">
-            Jadval
-          </Link>
-        </div>
-        <p className="muted small lx-lead">
-          «Studioga» — shu kursning navbatdagi darsi. Efir faqat tanlangan dars uchun ochiladi.
-        </p>
-
-        <SoftDisclosure title="Yangi kurs qo‘shish" defaultOpen={courseCards.length === 0}>
-          <CreateCoursePlanForm />
-        </SoftDisclosure>
-
-        {courseCards.length === 0 ? (
-          <p className="muted small">Hali kurs yo‘q — yuqoridan yarating.</p>
+            <Link href={`/teacher/live/${focus.id}`} className="btn btn-primary lx-mc-next-cta">
+              {focus.status === "live" ? "Efirga qaytish" : focusLive ? "Kutish xonasiga" : "Studioga kirish"}
+            </Link>
+          </section>
+        ) : gatedStep ? (
+          <section className="lx-mc-next lx-today-focus" aria-label="Keyingi qadam" data-testid="studio-gated-step">
+            <div className="lx-mc-next-info">
+              <span className="lx-mc-next-label">
+                {gatedStep.gate.canSubmit ? "Keyingi qadam" : `Kurs: ${gatedStep.gate.label}`}
+              </span>
+              <p className="lx-mc-next-title">
+                {gatedStep.gate.canSubmit
+                  ? `«${gatedStep.card.titleUz}» kursini tekshiruvga yuboring`
+                  : gatedStep.card.titleUz}
+              </p>
+              <p className="lx-mc-next-meta">
+                {gatedStep.card.total} ta dars rejada · {gatedStep.gate.hint}
+              </p>
+            </div>
+            <a href="#kurslar" className="btn btn-primary lx-mc-next-cta">
+              {gatedStep.gate.canSubmit ? "Kursga o‘tish" : "Kursni ko‘rish"}
+            </a>
+          </section>
         ) : (
-          <div className="teacher-course-grid">
-            {courseCards.map((card) => (
-              <article
-                key={card.id}
-                className={`teacher-course-card${card.phase === "active" ? " is-active" : ""}`}
-              >
-                {card.inReview ? (
-                  <TeacherCourseReviewPanel
-                    course={{
-                      id: card.id,
-                      titleUz: card.titleUz,
-                      descriptionUz: card.descriptionUz,
-                      topicUz: card.topicUz,
-                      lifecycleStatus: card.lifecycleStatus,
-                      reviewReason: card.reviewReason,
-                      lessonCount: card.total,
-                    }}
-                  />
-                ) : (
-                <>
-                <p className="lx-kicker">
-                  {card.cancelled
-                    ? "Bekor qilingan"
-                    : card.completed
-                    ? "Yakunlangan"
-                    : card.phase === "new"
-                    ? "Yangi"
-                    : card.phase === "active"
-                      ? "Hozir faol"
-                      : card.phase === "ongoing"
-                        ? "Davom etmoqda"
-                        : "Rejada"}
-                </p>
-                <h3>{card.titleUz}</h3>
-                <p className="small muted" style={{ margin: "0 0 10px" }}>
-                  {card.withVideo}/{card.total} yozuv · {card.activeStudents} o‘quvchi
-                </p>
-
-                {card.toReview.length > 0 ? (
-                  <div className="teacher-course-next" data-testid="recording-review-due" style={{ marginBottom: 10 }}>
-                    <p className="lx-kicker">Yozuv tekshiruvingizni kutmoqda</p>
-                    {card.toReview.map((l) => (
-                      <p key={l.id} className="small" style={{ margin: "0 0 4px" }}>
-                        <Link href={`/learn/${l.id}`}>{l.titleUz} — ko‘rib, chop etish</Link>
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-
-                {card.next ? (
-                  <div className="teacher-course-next">
-                    <p className="lx-kicker">Navbatdagi dars</p>
-                    <p style={{ margin: "0 0 4px", fontWeight: 600 }}>{card.next.titleUz}</p>
-                    <p className="small muted" style={{ margin: 0 }}>
-                      {formatDateTime(card.next.scheduledAt)}
-                      {" · "}
-                      {statusLabel(card.next.status as PlanStatus)}
-                      {card.next.status === "scheduled" ? ` · ${countdownLabel(card.next.scheduledAt)}` : ""}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="small muted" style={{ margin: "0 0 12px" }}>
-                    {card.cancelled
-                      ? "Kurs bekor qilingan — xaridorlarga to‘lov qaytarilgan."
-                      : card.completed
-                      ? "Kurs yakunlangan — yozuvlar o‘quvchilarga doimiy ochiq."
-                      : "Keyingi dars yo‘q — Rejada qo‘shing."}
-                  </p>
-                )}
-
-                {card.actionable.length > 1 ? (
-                  <details className="teacher-course-lessons">
-                    <summary>Boshqa darsni tanlash ({card.actionable.length})</summary>
-                    <ul>
-                      {card.actionable.map((l) => (
-                        <li key={l.id}>
-                          <Link href={`/teacher/live/${l.id}`}>
-                            {l.titleUz}
-                            {" · "}
-                            {statusLabel(l.status as PlanStatus)}
-                            {" · "}
-                            {formatDateTime(l.scheduledAt)}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
-
-                <div className="row gap-8" style={{ flexWrap: "wrap", marginTop: 12 }}>
-                  {card.next ? (
-                    <Link href={`/teacher/live/${card.next.id}`} className="btn btn-primary btn-sm">
-                      {card.next.status === "live"
-                        ? "Efirga qaytish"
-                        : card.next.status === "lobby"
-                          ? "Kutishga qaytish"
-                          : "Studioga — shu dars"}
-                    </Link>
-                  ) : card.completed || card.cancelled ? null : (
-                    <Link href="/teacher/reja" className="btn btn-primary btn-sm">
-                      Dars qo‘shish
-                    </Link>
-                  )}
-                  <Link href="/teacher/reja" className="btn btn-sm">
-                    Reja
-                  </Link>
-                  <Link href="/teacher/group" className="btn btn-sm">
-                    Guruh
-                  </Link>
-                  {card.canComplete ? <CompleteCourseButton courseId={card.id} /> : null}
-                  {card.canCancel ? (
-                    <CancelCourseButton courseId={card.id} buyers={card.activeStudents} />
-                  ) : null}
-                </div>
-                </>
-                )}
-              </article>
-            ))}
-          </div>
+          <section className="lx-mc-next lx-today-focus" aria-label="Keyingi dars">
+            <div className="lx-mc-next-info">
+              <span className="lx-mc-next-label">Keyingi darsingiz</span>
+              <p className="lx-mc-next-title">Rejada dars yo‘q</p>
+              <p className="lx-mc-next-meta">Kursga dars qo‘shing — shu yerda chiqadi.</p>
+            </div>
+            <Link href="/teacher/reja" className="btn btn-primary lx-mc-next-cta">
+              Dars qo‘shish
+            </Link>
+          </section>
         )}
+
+        <div className="lx-today-stats">
+          <Link href="/teacher/group" className="lx-today-stat">
+            <span className="lx-today-stat-icon">
+              <Icon name="users" size={18} />
+            </span>
+            <span className="lx-today-stat-num">{studentTotal}</span>
+            <span className="lx-today-stat-label">O‘quvchi</span>
+          </Link>
+          <Link href="/teacher/assignments" className={`lx-today-stat${pending > 0 ? " is-alert" : ""}`}>
+            <span className="lx-today-stat-icon">
+              <Icon name="file" size={18} />
+            </span>
+            <span className="lx-today-stat-num">{pending}</span>
+            <span className="lx-today-stat-label">Baholanmagan ish</span>
+          </Link>
+          <a href="#kurslar" className={`lx-today-stat${reviewCount > 0 ? " is-alert" : ""}`}>
+            <span className="lx-today-stat-icon">
+              <Icon name="video" size={18} />
+            </span>
+            <span className="lx-today-stat-num">{reviewCount}</span>
+            <span className="lx-today-stat-label">Yozuv tekshiruvda</span>
+          </a>
+        </div>
+
+        <section id="kurslar" className="lx-studio-courses">
+          <div className="lx-cd-blockhead">
+            <h2 className="lx-cd-h2">Kurslarim</h2>
+            <Link href="/teacher/reja" className="lx-today-more">
+              Dars rejasi →
+            </Link>
+          </div>
+
+          <SoftDisclosure title="Yangi kurs qo‘shish" defaultOpen={courseCards.length === 0}>
+            <CreateCoursePlanForm />
+          </SoftDisclosure>
+
+          {courseCards.length === 0 ? (
+            <p className="lx-today-empty">Hali kurs yo‘q — yuqoridan yarating.</p>
+          ) : (
+            <div className="lx-tc-grid">
+              {courseCards.map((card) => {
+                const phase = card.cancelled
+                  ? { text: "Bekor qilingan", tone: "muted" }
+                  : card.completed
+                    ? { text: "Yakunlangan", tone: "done" }
+                    : card.phase === "active"
+                      ? { text: "Hozir efirda", tone: "live" }
+                      : card.phase === "ongoing"
+                        ? { text: "Davom etmoqda", tone: "open" }
+                        : card.phase === "new"
+                          ? { text: "Yangi", tone: "open" }
+                          : { text: "Rejada", tone: "open" };
+                const nextOpen = card.next && card.next.status !== "scheduled";
+                const nextDate = card.next ? tashkentParts(card.next.scheduledAt) : null;
+                const pct = card.total ? Math.round((card.withVideo / card.total) * 100) : 0;
+                return (
+                  <article
+                    key={card.id}
+                    className={`lx-tc-card${card.phase === "active" ? " is-live" : ""}${
+                      card.cancelled ? " is-cancelled" : ""
+                    }`}
+                  >
+                    {card.inReview ? (
+                      <TeacherCourseReviewPanel
+                        course={{
+                          id: card.id,
+                          titleUz: card.titleUz,
+                          descriptionUz: card.descriptionUz,
+                          topicUz: card.topicUz,
+                          lifecycleStatus: card.lifecycleStatus,
+                          reviewReason: card.reviewReason,
+                          lessonCount: card.total,
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <div className="lx-tc-top">
+                          <span className={`lx-tc-phase is-${phase.tone}`}>{phase.text}</span>
+                          <span className="lx-tc-count">
+                            <Icon name="users" size={14} /> {card.activeStudents}
+                          </span>
+                        </div>
+                        <h3 className="lx-tc-title">{card.titleUz}</h3>
+                        <div className="lx-mc-progress">
+                          <div className="lx-mc-progress-row">
+                            <span>Yozuvlar</span>
+                            <span>
+                              {card.withVideo} / {card.total}
+                            </span>
+                          </div>
+                          <div className="lx-mc-bar">
+                            <span style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+
+                        {card.toReview.length > 0 ? (
+                          <div className="lx-tc-review" data-testid="recording-review-due">
+                            <p className="lx-tc-label">Yozuv tekshiruvingizni kutmoqda</p>
+                            {card.toReview.map((l) => (
+                              <Link key={l.id} href={`/learn/${l.id}`}>
+                                {l.titleUz} — ko‘rib, chop etish →
+                              </Link>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {card.next && nextDate ? (
+                          <div className={`lx-tc-next${nextOpen ? " is-live" : ""}`}>
+                            <span className="lx-cd-date">
+                              <strong>{Number(nextDate.day)}</strong>
+                              <span>{UZ_MONTHS_SHORT[nextDate.monthIndex]}</span>
+                            </span>
+                            <span className="lx-tc-next-info">
+                              <span className="lx-tc-label">
+                                {nextOpen ? statusLabel(card.next.status as PlanStatus) : "Navbatdagi dars"}
+                              </span>
+                              <span className="lx-tc-next-title">{card.next.titleUz}</span>
+                              <span className="lx-tc-next-sub">
+                                {dayTitle(card.next.scheduledAt)} · {clockLabel(card.next.scheduledAt)}
+                                {card.next.status === "scheduled" ? ` · ${countdownLabel(card.next.scheduledAt)}` : ""}
+                              </span>
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="lx-tc-note">
+                            {card.cancelled
+                              ? "Kurs bekor qilingan — xaridorlarga to‘lov qaytarilgan."
+                              : card.completed
+                                ? "Kurs yakunlangan — yozuvlar o‘quvchilarga doimiy ochiq."
+                                : "Keyingi dars yo‘q — rejaga dars qo‘shing."}
+                          </p>
+                        )}
+
+                        {card.actionable.length > 1 ? (
+                          <details className="lx-tc-more">
+                            <summary>Boshqa darsni tanlash ({card.actionable.length})</summary>
+                            <ul>
+                              {card.actionable.map((l) => (
+                                <li key={l.id}>
+                                  <Link href={`/teacher/live/${l.id}`}>
+                                    <span>{l.titleUz}</span>
+                                    <span>
+                                      {statusLabel(l.status as PlanStatus)} · {dayTitle(l.scheduledAt)},{" "}
+                                      {clockLabel(l.scheduledAt)}
+                                    </span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : null}
+
+                        <div className="lx-tc-actions">
+                          {card.next ? (
+                            <Link href={`/teacher/live/${card.next.id}`} className="btn btn-primary">
+                              {card.next.status === "live"
+                                ? "Efirga qaytish"
+                                : card.next.status === "lobby"
+                                  ? "Kutishga qaytish"
+                                  : "Studioga kirish"}
+                            </Link>
+                          ) : card.completed || card.cancelled ? null : (
+                            <Link href="/teacher/reja" className="btn btn-primary">
+                              Dars qo‘shish
+                            </Link>
+                          )}
+                          <Link href="/teacher/reja" className="btn">
+                            Reja
+                          </Link>
+                          <Link href="/teacher/group" className="btn">
+                            Guruh
+                          </Link>
+                        </div>
+                        {card.canComplete || card.canCancel ? (
+                          <div className="lx-tc-danger">
+                            {card.canComplete ? <CompleteCourseButton courseId={card.id} /> : null}
+                            {card.canCancel ? (
+                              <CancelCourseButton courseId={card.id} buyers={card.activeStudents} />
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </AppShell>
   );

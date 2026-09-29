@@ -215,18 +215,20 @@ export function AdminUsersManager({
 
   return (
     <>
-      <div className="staff-head">
+      <header className="lx-mc-head lx-admin-head">
         <div>
-          <p className="lx-kicker" style={{ marginBottom: 4 }}>O&apos;quvchilar</p>
-          <h2>Talabalar</h2>
-          <p className="small muted" style={{ marginTop: 4 }}>
-            Jami {users.length} · faol obuna {activeCount}. O&apos;qituvchilar alohida sahifada.
+          <p className="lx-kicker">O‘quvchilar</p>
+          <h1 className="lx-mc-title">O‘quvchilar</h1>
+          <p className="lx-mc-sub">
+            Jami {users.length} · faol obuna {activeCount}
+          </p>
+          <p className="lx-admin-note">
             {canSeeSecrets
-              ? " Login ochiq; yangi parol bir marta ko'rinadi."
-              : " Login va parol faqat super adminga."}
+              ? "Login ochiq; yangi parol bir marta ko‘rinadi."
+              : "Login va parol faqat super adminga ko‘rinadi."}
           </p>
         </div>
-      </div>
+      </header>
 
       {error ? <p className="small" style={{ color: "var(--danger)", marginBottom: 12 }}>{error}</p> : null}
 

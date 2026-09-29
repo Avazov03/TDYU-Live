@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { AddToCalendar } from "@/components/lesson/AddToCalendar";
 
 const WATCH_BEFORE_MS = 15 * 60_000;
 const REFRESH_MS = 20_000;
@@ -12,13 +13,25 @@ const EARLY_REFRESH_MS = 60_000;
 export function ScheduledLessonCard({
   lessonId,
   title,
+  courseTitle,
   startsAtIso,
-  startsAtLabel,
+  endsAtIso,
+  dayNum,
+  monthShort,
+  whenLabel,
+  relativeLabel,
+  lessonUrl,
 }: {
   lessonId: string;
   title: string;
+  courseTitle: string;
   startsAtIso: string;
-  startsAtLabel: string;
+  endsAtIso: string;
+  dayNum: string;
+  monthShort: string;
+  whenLabel: string;
+  relativeLabel: string;
+  lessonUrl: string;
 }) {
   const router = useRouter();
 
@@ -37,16 +50,30 @@ export function ScheduledLessonCard({
 
   return (
     <div className="player-wrap">
-      <div className={`player-demo course-thumb tone-${(lessonId.charCodeAt(0) % 6) + 1}`}>
-        <div>
-          <div className="badge pending" style={{ marginBottom: 8 }} data-testid="lesson-scheduled">
-            REJADA
-          </div>
-          <h3>{title}</h3>
-          <p className="muted small">
-            Dars {startsAtLabel} da boshlanadi. O‘qituvchi kutish xonasini ochganda shu yerda o‘zi paydo bo‘ladi.
-          </p>
+      <div
+        className={`player-demo course-thumb tone-${(lessonId.charCodeAt(0) % 6) + 1} lx-soon`}
+        data-testid="lesson-scheduled"
+      >
+        <span className="lx-cd-pill is-accent">Rejada</span>
+        <div className="lx-cd-date lx-soon-date" aria-hidden>
+          <strong>{dayNum}</strong>
+          <span>{monthShort}</span>
         </div>
+        <h3 className="lx-soon-title">{title}</h3>
+        <p className="lx-soon-when">
+          {whenLabel} · <b>{relativeLabel}</b>
+        </p>
+        <p className="lx-soon-note">Dars boshlanganda shu sahifada o‘zi ochiladi.</p>
+        <AddToCalendar
+          className="btn btn-sm lx-soon-cal"
+          lessonId={lessonId}
+          title={title}
+          courseTitle={courseTitle}
+          startsAtIso={startsAtIso}
+          endsAtIso={endsAtIso}
+          lessonUrl={lessonUrl}
+          fileName={`lexify-dars-${dayNum}-${monthShort}.ics`}
+        />
       </div>
     </div>
   );

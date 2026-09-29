@@ -8,7 +8,8 @@ import { SearchBar } from "@/components/layout/SearchBar";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { initials } from "@/lib/utils";
-import { isAdminRole, isTeacherRole } from "@/lib/roles";
+import { ROLE_LABELS, isAdminRole, isTeacherRole, roleKind } from "@/lib/roles";
+import { RoleBadge } from "@/components/layout/RoleBadge";
 import { BRAND } from "@/lib/brand";
 import { StopImpersonateButton } from "@/components/admin/StopImpersonateButton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -88,6 +89,7 @@ export function Topbar({
                 Kabinet
               </Link>
             ) : null}
+            <RoleBadge role={userRole} />
             <NotificationBell unreadCount={unreadCount} />
             <div style={{ position: "relative" }} ref={dropdownRef}>
               <button
@@ -106,6 +108,7 @@ export function Topbar({
                     {displayEmail ? (
                       <div className="small muted">{displayEmail}</div>
                     ) : null}
+                    <div className="small muted">Rol: {ROLE_LABELS[roleKind(userRole)]}</div>
                   </div>
                 </div>
                 <div className="ddx-divider" />
