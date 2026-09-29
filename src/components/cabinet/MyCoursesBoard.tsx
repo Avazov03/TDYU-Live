@@ -102,7 +102,7 @@ export function MyCoursesBoard({
             </p>
           </div>
           <Link href={`/learn/${nextLesson.lessonId}`} className="btn btn-primary lx-mc-next-cta">
-            {nextLesson.live ? "Darsga kirish" : "Darsni ochish"}
+            {nextLesson.live ? "Darsga kirish" : "Dars sahifasi"}
           </Link>
         </section>
       ) : null}
@@ -207,7 +207,8 @@ export function MyCoursesBoard({
                     <div className="lx-ccard-foot">
                       <span />
                       <span className="lx-ccard-go">
-                        {item.active ? "Davom etish" : "Yozuvlarni ko‘rish"} <span aria-hidden>→</span>
+                        {!item.active ? "Yozuvlarni ko‘rish" : item.done > 0 ? "Davom etish" : "Kursni ko‘rish"}{" "}
+                        <span aria-hidden>→</span>
                       </span>
                     </div>
                   </Link>

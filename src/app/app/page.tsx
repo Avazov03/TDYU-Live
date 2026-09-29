@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { canWatchLive } from "@/lib/tariffs";
 import { UZ_MONTHS_LONG, UZ_MONTHS_SHORT, formatDateTime, tashkentParts } from "@/lib/utils";
 import { clockLabel, dayTitle, localDayKey, weekdayUz } from "@/lib/plan";
-import { DEFAULT_LESSON_MINUTES } from "@/lib/schedule-policy";
+import { DEFAULT_LESSON_MINUTES, lessonEnd, overlappingLessons } from "@/lib/schedule-policy";
 import type { LessonStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +25,6 @@ const JOIN_SOON_MS = 15 * 60_000;
 function todayLabel(now: Date) {
   const p = tashkentParts(now);
   return `${weekdayUz(now)}, ${Number(p.day)}-${UZ_MONTHS_LONG[p.monthIndex]}`;
-}
-
-/** "Bugun" / "Ertaga" or the weekday — the date badge already shows the day and month. */
-function nearDayLabel(at: Date) {
-  const title = dayTitle(at);
-  return title === "Bugun" || title === "Ertaga" ? title : weekdayUz(at);
 }
 
 function daysUntil(now: Date, at: Date) {
@@ -116,7 +110,21 @@ export default async function StudentAppPage() {
   // Nothing has happened yet — a row of zeros tells a new student nothing.
   const showStats = lessonsDone > 0 || dueCount > 0;
   const showSide = due.length > 0 || Boolean(lastSeen);
+  const showLessons = Boolean(focusLive || focusNext);
   const multiCourse = courseIds.length > 1;
+  const completedCount = owned.length - activeCourseIds.length;
+  const allCompleted = owned.length > 0 && activeCourseIds.length === 0;
+  const clashes = overlappingLessons(
+    [...live, ...upcoming].map((l) => ({ id: l.id, title: l.titleUz, start: l.scheduledAt, end: lessonEnd(l) })),
+  );
+  const dayGroups: { label: string; items: typeof listLessons }[] = [];
+  for (const lesson of listLessons) {
+    const title = dayTitle(lesson.scheduledAt);
+    const label = title === "Bugun" || title === "Ertaga" ? title : "Keyinroq";
+    const group = dayGroups.find((g) => g.label === label);
+    if (group) group.items.push(lesson);
+    else dayGroups.push({ label, items: [lesson] });
+  }
   const siteBase = (process.env.AUTH_URL || process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
 
   return (
@@ -174,6 +182,11 @@ export default async function StudentAppPage() {
                       ? ` · ${daysUntil(now, focusNext.scheduledAt)}`
                       : ""}
                   </p>
+                  {clashes.has(focusNext.id) ? (
+                    <p className="lx-mc-next-meta lx-clash-note" data-testid="lesson-clash">
+                      Vaqti «{clashes.get(focusNext.id)!.join("», «")}» darsi bilan ustma-ust
+                    </p>
+                  ) : null}
                 </div>
                 <div className="lx-today-focus-actions">
                   {nextStartsSoon ? null : (
@@ -199,6 +212,24 @@ export default async function StudentAppPage() {
                   </Link>
                 </div>
               </section>
+            ) : allCompleted ? (
+              <section className="lx-mc-next lx-today-focus" aria-label="Kurslar yakunlandi">
+                <div className="lx-mc-next-info">
+                  <span className="lx-mc-next-label">
+                    {completedCount > 1 ? "Kurslaringiz yakunlandi" : "Kursingiz yakunlandi"}
+                  </span>
+                  <p className="lx-mc-next-title">Yozuvlar doimiy ochiq</p>
+                  <p className="lx-mc-next-meta">Istalgan darsni qayta ko‘rishingiz yoki yangi kurs tanlashingiz mumkin.</p>
+                </div>
+                <div className="lx-today-focus-actions">
+                  <Link href={hideTariff ? "/#kurslar" : "/#tariflar"} className="btn lx-mc-next-cta">
+                    Yangi kurs topish
+                  </Link>
+                  <Link href="/my-courses" className="btn btn-primary lx-mc-next-cta">
+                    Yozuvlarni ko‘rish
+                  </Link>
+                </div>
+              </section>
             ) : (
               <section className="lx-mc-next lx-today-focus" aria-label="Keyingi dars">
                 <div className="lx-mc-next-info">
@@ -220,8 +251,8 @@ export default async function StudentAppPage() {
                 <span className="lx-today-stat-icon">
                   <Icon name="book" size={18} />
                 </span>
-                <span className="lx-today-stat-num">{activeCourseIds.length}</span>
-                <span className="lx-today-stat-label">Faol kurs</span>
+                <span className="lx-today-stat-num">{allCompleted ? completedCount : activeCourseIds.length}</span>
+                <span className="lx-today-stat-label">{allCompleted ? "Yakunlangan kurs" : "Faol kurs"}</span>
               </Link>
               <Link href="/schedule" className="lx-today-stat">
                 <span className="lx-today-stat-icon">
@@ -243,7 +274,9 @@ export default async function StudentAppPage() {
             </div>
             ) : null}
 
-            <div className={showSide ? "lx-today-grid" : "lx-today-grid is-single"}>
+            {showLessons || showSide ? (
+            <div className={showLessons && showSide ? "lx-today-grid" : "lx-today-grid is-single"}>
+              {showLessons ? (
               <section className="lx-today-block">
                 <div className="lx-cd-blockhead">
                   <h2 className="lx-cd-h2">Yaqin darslar</h2>
@@ -254,37 +287,54 @@ export default async function StudentAppPage() {
                 {listLessons.length === 0 ? (
                   <p className="lx-today-empty">Boshqa rejalashtirilgan dars yo‘q.</p>
                 ) : (
-                  <ol className="lx-cd-lessons">
-                    {listLessons.map((lesson) => {
-                      const p = tashkentParts(lesson.scheduledAt);
-                      const isLive = lesson.status !== "scheduled";
-                      return (
-                        <li key={lesson.id}>
-                          <Link href={`/learn/${lesson.id}`} className="lx-cd-lesson is-link lx-today-lesson">
-                            <span className="lx-cd-date">
-                              <strong>{Number(p.day)}</strong>
-                              <span>{UZ_MONTHS_SHORT[p.monthIndex]}</span>
-                            </span>
-                            <span className="lx-cd-linfo">
-                              <span className="lx-cd-ltitle">{lesson.titleUz}</span>
-                              <span className="lx-cd-lsub">
-                                {nearDayLabel(lesson.scheduledAt)} · {clockLabel(lesson.scheduledAt)}
-                                {multiCourse ? ` · ${lesson.course.titleUz}` : ""}
-                              </span>
-                            </span>
-                            <span className="lx-cd-lend">
-                              {isLive ? <span className="lx-cd-pill is-live">Jonli</span> : null}
-                              <span className="lx-cd-open" aria-hidden>
-                                →
-                              </span>
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ol>
+                  dayGroups.map((group) => (
+                    <div key={group.label} className="lx-today-daygroup">
+                      <h3 className="lx-today-daylabel">{group.label}</h3>
+                      <ol className="lx-cd-lessons">
+                        {group.items.map((lesson) => {
+                          const p = tashkentParts(lesson.scheduledAt);
+                          const isLive = lesson.status !== "scheduled";
+                          const clash = clashes.get(lesson.id);
+                          return (
+                            <li key={lesson.id}>
+                              <Link href={`/learn/${lesson.id}`} className="lx-cd-lesson is-link lx-today-lesson">
+                                <span className="lx-cd-date">
+                                  <strong>{Number(p.day)}</strong>
+                                  <span>{UZ_MONTHS_SHORT[p.monthIndex]}</span>
+                                </span>
+                                <span className="lx-cd-linfo">
+                                  <span className="lx-cd-ltitle">{lesson.titleUz}</span>
+                                  <span className="lx-cd-lsub">
+                                    {group.label === "Keyinroq" ? `${weekdayUz(lesson.scheduledAt)} · ` : ""}
+                                    {clockLabel(lesson.scheduledAt)}
+                                    {multiCourse ? ` · ${lesson.course.titleUz}` : ""}
+                                  </span>
+                                </span>
+                                <span className="lx-cd-lend">
+                                  {isLive ? <span className="lx-cd-pill is-live">Jonli</span> : null}
+                                  {clash ? (
+                                    <span
+                                      className="lx-cd-pill is-clash"
+                                      title={`«${clash.join("», «")}» bilan bir vaqtda`}
+                                      data-testid="lesson-clash"
+                                    >
+                                      Vaqti ustma-ust
+                                    </span>
+                                  ) : null}
+                                  <span className="lx-cd-open" aria-hidden>
+                                    →
+                                  </span>
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  ))
                 )}
               </section>
+              ) : null}
 
               {showSide ? (
               <div className="lx-today-side">
@@ -327,6 +377,7 @@ export default async function StudentAppPage() {
               </div>
               ) : null}
             </div>
+            ) : null}
           </>
         )}
       </div>

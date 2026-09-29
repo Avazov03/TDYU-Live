@@ -27,6 +27,7 @@ export default async function SchedulePage() {
   return (
     <AppShell active="schedule">
       <ScheduleBoard
+        nowIso={now.toISOString()}
         lessons={lessons.map((lesson) => {
           const endsAt =
             lesson.scheduledEndAt ??

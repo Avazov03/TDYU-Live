@@ -6,6 +6,7 @@ import {
   checkNewLessonTime,
   checkReschedule,
   lessonEnd,
+  overlappingLessons,
   type LessonWindow,
 } from "./schedule-policy";
 
@@ -105,6 +106,22 @@ describe("checkReschedule (24h rule)", () => {
       others: [win("other", 5)],
     });
     assert.equal(!clash.ok && clash.code, "CONFLICT");
+  });
+});
+
+describe("overlappingLessons", () => {
+  const item = (id: string, startH: number, minutes = 90) => ({
+    id,
+    title: `Dars ${id}`,
+    start: at(startH),
+    end: new Date(at(startH).getTime() + minutes * 60_000),
+  });
+  it("marks both sides of an overlap, ignores back-to-back", () => {
+    const hits = overlappingLessons([item("a", 10), item("b", 11), item("c", 12.5), item("d", 20)]);
+    assert.deepEqual(hits.get("a"), ["Dars b"]);
+    assert.deepEqual(hits.get("b"), ["Dars a"]);
+    assert.equal(hits.has("c"), false);
+    assert.equal(hits.has("d"), false);
   });
 });
 

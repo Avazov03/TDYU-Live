@@ -13,6 +13,7 @@ import {
   type PlanStatus,
 } from "@/lib/plan";
 import { UZ_MONTHS_LONG, initials, tashkentParts } from "@/lib/utils";
+import { overlappingLessons } from "@/lib/schedule-policy";
 
 export type ScheduleLesson = {
   id: string;
@@ -27,7 +28,7 @@ export type ScheduleLesson = {
   upcoming: boolean;
 };
 
-type Tab = "upcoming" | "past" | "all";
+type Tab = "today" | "week" | "upcoming" | "past" | "all";
 
 const OPEN_STATUSES: PlanStatus[] = ["live", "lobby", "waiting_room", "paused"];
 
@@ -41,7 +42,7 @@ function pillFor(lesson: ScheduleLesson): { text: string; live?: boolean } | nul
   return { text: statusLabel(lesson.status, { hasRecording: false }) };
 }
 
-function LessonCard({ lesson }: { lesson: ScheduleLesson }) {
+function LessonCard({ lesson, clash }: { lesson: ScheduleLesson; clash?: string[] }) {
   const start = new Date(lesson.when);
   const end = new Date(lesson.endsAt);
   const open = OPEN_STATUSES.includes(lesson.status);
@@ -62,7 +63,15 @@ function LessonCard({ lesson }: { lesson: ScheduleLesson }) {
         <p className="lx-sc-meta">
           {weekdayUz(start)}
           {pill ? <span className={`lx-cd-pill${pill.live ? " is-live" : ""}`}>{pill.text}</span> : null}
+          {clash ? (
+            <span className="lx-cd-pill is-clash" data-testid="lesson-clash">
+              Vaqti ustma-ust
+            </span>
+          ) : null}
         </p>
+        {clash ? (
+          <p className="lx-sc-clash">«{clash.join("», «")}» darsi bilan bir vaqtda</p>
+        ) : null}
         <h3 className="lx-sc-title">
           {cancelled ? lesson.title : <Link href={href}>{lesson.title}</Link>}
         </h3>
@@ -96,12 +105,40 @@ function LessonCard({ lesson }: { lesson: ScheduleLesson }) {
   );
 }
 
-export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
+/** Last day (Sunday) of the Tashkent calendar week that contains `todayKey`. */
+function weekEndKey(todayKey: string) {
+  const day = new Date(`${todayKey}T00:00:00Z`);
+  const toSunday = (7 - day.getUTCDay()) % 7;
+  return new Date(day.getTime() + toSunday * 86_400_000).toISOString().slice(0, 10);
+}
+
+export function ScheduleBoard({ lessons, nowIso }: { lessons: ScheduleLesson[]; nowIso: string }) {
   const upcoming = useMemo(() => lessons.filter((l) => l.upcoming), [lessons]);
   const past = useMemo(() => lessons.filter((l) => !l.upcoming).reverse(), [lessons]);
   const [tab, setTab] = useState<Tab>(upcoming.length > 0 || past.length === 0 ? "upcoming" : "past");
 
-  const shown = tab === "upcoming" ? upcoming : tab === "past" ? past : lessons;
+  const { today, week } = useMemo(() => {
+    const todayKey = localDayKey(new Date(nowIso));
+    const endKey = weekEndKey(todayKey);
+    const keyed = upcoming.map((l) => ({ l, key: localDayKey(new Date(l.when)) }));
+    return {
+      today: keyed.filter((x) => x.key <= todayKey).map((x) => x.l),
+      week: keyed.filter((x) => x.key <= endKey).map((x) => x.l),
+    };
+  }, [upcoming, nowIso]);
+
+  const clashes = useMemo(
+    () =>
+      overlappingLessons(
+        upcoming
+          .filter((l) => l.status !== "cancelled")
+          .map((l) => ({ id: l.id, title: l.title, start: new Date(l.when), end: new Date(l.endsAt) })),
+      ),
+    [upcoming],
+  );
+
+  const shown =
+    tab === "today" ? today : tab === "week" ? week : tab === "upcoming" ? upcoming : tab === "past" ? past : lessons;
   const next = upcoming.find((l) => l.status !== "cancelled");
 
   const data = useMemo(() => {
@@ -118,12 +155,12 @@ export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
       content: (
         <div className="lx-sc-day">
           {items.map((lesson) => (
-            <LessonCard key={lesson.id} lesson={lesson} />
+            <LessonCard key={lesson.id} lesson={lesson} clash={clashes.get(lesson.id)} />
           ))}
         </div>
       ),
     }));
-  }, [shown]);
+  }, [shown, clashes]);
 
   const nextStart = next ? new Date(next.when) : null;
   const nextParts = nextStart ? tashkentParts(nextStart) : null;
@@ -161,6 +198,8 @@ export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
               onChange={setTab}
               ariaLabel="Darslar"
               options={[
+                { value: "today", label: "Bugun", count: today.length },
+                { value: "week", label: "Bu hafta", count: week.length },
                 { value: "upcoming", label: "Kelgusi", count: upcoming.length },
                 { value: "past", label: "O‘tgan", count: past.length },
                 { value: "all", label: "Hammasi", count: lessons.length },
@@ -170,13 +209,27 @@ export function ScheduleBoard({ lessons }: { lessons: ScheduleLesson[] }) {
 
           {data.length === 0 ? (
             <div className="lx-mc-empty">
-              <h2>{tab === "upcoming" ? "Kelgusi dars yo‘q" : "O‘tgan dars yo‘q"}</h2>
+              <h2>
+                {tab === "today"
+                  ? "Bugun dars yo‘q"
+                  : tab === "week"
+                    ? "Bu hafta dars yo‘q"
+                    : tab === "upcoming"
+                      ? "Kelgusi dars yo‘q"
+                      : "O‘tgan dars yo‘q"}
+              </h2>
               <p>
-                {tab === "upcoming"
-                  ? "O‘qituvchi yangi dars qo‘shsa, shu yerda chiqadi."
-                  : "Birinchi darsdan keyin yozuvlar shu yerda to‘planadi."}
+                {tab === "past"
+                  ? "Birinchi darsdan keyin yozuvlar shu yerda to‘planadi."
+                  : upcoming.length > 0
+                    ? "Keyingi darslar «Kelgusi» bo‘limida."
+                    : "O‘qituvchi yangi dars qo‘shsa, shu yerda chiqadi."}
               </p>
-              {tab === "upcoming" && past.length > 0 ? (
+              {tab !== "past" && tab !== "upcoming" && upcoming.length > 0 ? (
+                <button type="button" className="btn btn-primary" onClick={() => setTab("upcoming")}>
+                  Kelgusi darslarni ko‘rish
+                </button>
+              ) : tab !== "past" && past.length > 0 ? (
                 <button type="button" className="btn btn-primary" onClick={() => setTab("past")}>
                   O‘tgan darslarni ko‘rish
                 </button>

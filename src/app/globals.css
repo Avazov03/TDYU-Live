@@ -5019,6 +5019,18 @@ html[data-theme="dark"] .acet-pane {
   white-space: nowrap;
 }
 .lx-today-lesson { grid-template-columns: 52px minmax(0, 1fr) auto; }
+.lx-today-daygroup + .lx-today-daygroup { margin-top: 16px; }
+.lx-today-daylabel {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.lx-cd-pill.is-clash { color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); }
+.lx-clash-note { color: var(--warning); }
+.lx-sc-clash { margin: 0 0 4px; font-size: 13px; color: var(--warning); }
 .lx-today-empty {
   margin: 0;
   padding: 24px 20px;

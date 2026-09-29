@@ -44,6 +44,24 @@ export function findScheduleConflict(
   return null;
 }
 
+/** Student view: which listed lessons share time with another one → id → titles of the others. */
+export function overlappingLessons(
+  items: { id: string; title: string; start: Date; end: Date }[],
+): Map<string, string[]> {
+  const hits = new Map<string, string[]>();
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      const a = items[i];
+      const b = items[j];
+      if (a.start < b.end && b.start < a.end) {
+        hits.set(a.id, [...(hits.get(a.id) ?? []), b.title]);
+        hits.set(b.id, [...(hits.get(b.id) ?? []), a.title]);
+      }
+    }
+  }
+  return hits;
+}
+
 function conflictMessage(o: LessonWindow, formatWhen: (d: Date) => string): string {
   return `Vaqt boshqa darsingiz bilan to‘qnashadi: «${o.courseTitleUz}» — «${o.titleUz}», ${formatWhen(o.start)}.`;
 }
