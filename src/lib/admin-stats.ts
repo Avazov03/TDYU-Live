@@ -1,5 +1,9 @@
+import type { Prisma } from "@/generated/prisma/client";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
+
+const OPEN_SEAT: Prisma.EnrollmentWhereInput = { accessOpen: true, status: { in: ["active", "completed"] } };
 
 const TZ = "Asia/Tashkent";
 
@@ -35,6 +39,7 @@ export async function getAdminDashboard() {
   const days30 = startOfDayTashkent(29);
   const expireSoon = new Date(now);
   expireSoon.setDate(expireSoon.getDate() + 7);
+  const seatMode = getEnrollmentAccessMode() === "enrollment";
 
   const [
     studentCount,
@@ -53,6 +58,7 @@ export async function getAdminDashboard() {
     liveNow,
     topCoursesRaw,
     recentRefunds,
+    openSeats,
   ] = await Promise.all([
     prisma.user.count({ where: { role: "student" } }),
     prisma.teacher.count(),
@@ -91,7 +97,7 @@ export async function getAdminDashboard() {
       },
       select: { status: true },
     }),
-    prisma.subscription.findMany({
+    seatMode ? Promise.resolve([]) : prisma.subscription.findMany({
       where: { endsAt: { gt: now, lte: expireSoon } },
       include: {
         user: { select: { fullName: true } },
@@ -125,6 +131,7 @@ export async function getAdminDashboard() {
         titleUz: true,
         teacher: { select: { fullName: true } },
         subscriptions: { select: { endsAt: true } },
+        enrollments: { where: OPEN_SEAT, select: { id: true } },
       },
       take: 40,
       orderBy: { createdAt: "desc" },
@@ -133,7 +140,13 @@ export async function getAdminDashboard() {
       where: { status: "refunded", completedAt: { gte: days30 < monthStart ? days30 : monthStart } },
       select: { amount: true, completedAt: true },
     }),
+    prisma.enrollment.groupBy({ by: ["status"], where: OPEN_SEAT, _count: { _all: true } }),
   ]);
+
+  const seats = { active: 0, completed: 0 };
+  for (const row of openSeats) {
+    if (row.status === "active" || row.status === "completed") seats[row.status] = row._count?._all ?? 0;
+  }
 
   const activeTier = { t1: 0, t2: 0, t3: 0 };
   for (const sub of activeSubs) {
@@ -165,7 +178,9 @@ export async function getAdminDashboard() {
       id: course.id,
       title: course.titleUz,
       teacher: course.teacher.fullName,
-      activeStudents: course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length,
+      activeStudents: seatMode
+        ? course.enrollments.length
+        : course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).length,
     }))
     .filter((c) => c.activeStudents > 0)
     .sort((a, b) => b.activeStudents - a.activeStudents)
@@ -183,10 +198,13 @@ export async function getAdminDashboard() {
       teachersBlocked: teacherBlocked,
       courses: courseCount,
       activeSubs: activeSubs.length,
+      openSeats: seats.active + seats.completed,
       live: liveLessons,
       monthRevenue,
     },
+    seatMode,
     tiers: activeTier,
+    seats,
     registrationsByDay,
     revenueByDay,
     lessonStatus,

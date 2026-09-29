@@ -2,12 +2,13 @@ import Link from "next/link";
 import { AdminCoursesBoard } from "@/components/admin/AdminCoursesBoard";
 import { AdminCreateCourseDialog } from "@/components/admin/AdminCreateCourseDialog";
 import { countPendingReviews, getAdminCourseBoard } from "@/lib/admin-courses";
-import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { getEnrollmentAccessMode, isCourseReviewV1Enabled } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCoursesPage() {
   const reviewFlow = isCourseReviewV1Enabled();
+  const seatMode = getEnrollmentAccessMode() === "enrollment";
   const [board, pending] = await Promise.all([
     getAdminCourseBoard(),
     reviewFlow ? countPendingReviews() : Promise.resolve(0),
@@ -45,6 +46,7 @@ export default async function AdminCoursesPage() {
         subjects={board.subjects}
         summary={board.summary}
         reviewFlow={reviewFlow}
+        seatMode={seatMode}
       />
     </div>
   );

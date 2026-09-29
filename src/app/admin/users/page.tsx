@@ -1,5 +1,6 @@
 import { AdminUsersManager, type AdminUserRow } from "@/components/admin/AdminUsersManager";
 import { auth } from "@/lib/auth";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { viewerCanSeeCredentials } from "@/lib/super-admin";
 import { TARIFF_SHORT, isSubscriptionActive } from "@/lib/tariffs";
@@ -14,6 +15,7 @@ function tariffLabel(tier: TariffTier) {
 export default async function AdminStudentsPage() {
   const session = await auth();
   const canSeeSecrets = await viewerCanSeeCredentials(session?.user?.id, session?.user?.role);
+  const seatMode = getEnrollmentAccessMode() === "enrollment";
 
   const users = await prisma.user.findMany({
     where: { role: "student" },
@@ -21,6 +23,18 @@ export default async function AdminStudentsPage() {
     include: {
       entitlement: true,
       subscriptions: {
+        include: {
+          course: {
+            select: {
+              titleUz: true,
+              teacher: { select: { fullName: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      enrollments: {
+        where: { accessOpen: true, status: { in: ["active", "completed"] } },
         include: {
           course: {
             select: {
@@ -53,11 +67,11 @@ export default async function AdminStudentsPage() {
       isSuperAdmin: false,
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
-      hasSubscription: Boolean(tariffSource),
+      hasSubscription: seatMode ? user.enrollments.length > 0 : Boolean(tariffSource),
       hasEntitlement: Boolean(activeEntitlement),
       tariff: tariffSource ? tariffLabel(tariffSource.tier) : null,
       tariffUntil: tariffSource ? tariffSource.endsAt.toISOString() : null,
-      courseCount: activeSubs.length || user.subscriptions.length,
+      courseCount: seatMode ? user.enrollments.length : activeSubs.length || user.subscriptions.length,
       completedCourses: user.certificates.length,
       lessonCount: user._count.attendance,
       liveCount: 0,
@@ -65,16 +79,26 @@ export default async function AdminStudentsPage() {
       paymentCount: user.payments.length,
       facultyName: null,
       subjectName: null,
-      courses: user.subscriptions.map((sub) => ({
-        subscriptionId: sub.id,
-        title: sub.course.titleUz,
-        lessons: 0,
-        students: 0,
-        tier: tariffLabel(sub.tier),
-        active: isSubscriptionActive(sub.endsAt),
-        endsAt: sub.endsAt.toISOString(),
-        teacher: sub.course.teacher.fullName,
-      })),
+      courses: seatMode
+        ? user.enrollments.map((enr) => ({
+            subscriptionId: enr.id,
+            seat: true,
+            seatStatus: enr.status === "completed" ? "Yakunlangan" : "Faol",
+            title: enr.course.titleUz,
+            lessons: 0,
+            students: 0,
+            teacher: enr.course.teacher.fullName,
+          }))
+        : user.subscriptions.map((sub) => ({
+            subscriptionId: sub.id,
+            title: sub.course.titleUz,
+            lessons: 0,
+            students: 0,
+            tier: tariffLabel(sub.tier),
+            active: isSubscriptionActive(sub.endsAt),
+            endsAt: sub.endsAt.toISOString(),
+            teacher: sub.course.teacher.fullName,
+          })),
     };
 
     if (canSeeSecrets) {
@@ -86,5 +110,5 @@ export default async function AdminStudentsPage() {
     return row;
   });
 
-  return <AdminUsersManager users={rows} canSeeSecrets={canSeeSecrets} />;
+  return <AdminUsersManager users={rows} canSeeSecrets={canSeeSecrets} seatMode={seatMode} />;
 }

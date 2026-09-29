@@ -44,8 +44,11 @@ export function AdminCoursesBoard({
   subjects,
   summary,
   reviewFlow = false,
+  seatMode = false,
 }: {
   reviewFlow?: boolean;
+  /** Enrollment-only access: single list price, seat counts instead of subscriptions. */
+  seatMode?: boolean;
   groups: AdminTeacherCourseGroup[];
   courses: AdminCourseInsight[];
   teachers: { id: string; fullName: string }[];
@@ -76,6 +79,7 @@ export function AdminCoursesBoard({
     priceT1: "",
     priceT2: "",
     priceT3: "",
+    listPrice: "",
   });
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -93,6 +97,7 @@ export function AdminCoursesBoard({
       priceT1: String(course.priceT1),
       priceT2: String(course.priceT2),
       priceT3: String(course.priceT3),
+      listPrice: String(course.listPrice ?? course.priceT2),
     });
     setError("");
   };
@@ -112,11 +117,13 @@ export function AdminCoursesBoard({
         subjectId: editForm.subjectId,
         ...(reviewFlow && course.lifecycleStatus
           ? {}
-          : {
-              priceT1: Number(editForm.priceT1),
-              priceT2: Number(editForm.priceT2),
-              priceT3: Number(editForm.priceT3),
-            }),
+          : seatMode
+            ? { listPrice: Number(editForm.listPrice) }
+            : {
+                priceT1: Number(editForm.priceT1),
+                priceT2: Number(editForm.priceT2),
+                priceT3: Number(editForm.priceT3),
+              }),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -291,7 +298,8 @@ export function AdminCoursesBoard({
                           ) : null}
                         </h4>
                         <p className="small muted" style={{ margin: 0 }}>
-                          {course.subjectName} · {course.lessonCount} dars · {course.activeStudents} faol / {course.totalSubs} obuna
+                          {course.subjectName} · {course.lessonCount} dars · {course.activeStudents} faol / {course.totalSubs}{" "}
+                          {seatMode ? "o‘rin" : "obuna"}
                         </p>
                       </div>
                       <span className={`badge ${healthTone(course.health)}`}>{healthLabel(course.health)}</span>
@@ -337,11 +345,15 @@ export function AdminCoursesBoard({
                             <div className="small muted">To&apos;lov</div>
                             <div>{formatSom(course.paymentSum)} · {course.paymentCount} ta</div>
                           </div>
-                          {reviewFlow && course.lifecycleStatus ? (
+                          {(reviewFlow && course.lifecycleStatus) || seatMode ? (
                             <div>
                               <div className="small muted">Narx</div>
                               <div className="small">
-                                {course.listPrice ? formatSom(course.listPrice) : "Tasdiqlashda belgilanadi"}
+                                {course.listPrice
+                                  ? formatSom(course.listPrice)
+                                  : course.lifecycleStatus
+                                    ? "Tasdiqlashda belgilanadi"
+                                    : "Belgilanmagan"}
                               </div>
                             </div>
                           ) : (
@@ -404,7 +416,16 @@ export function AdminCoursesBoard({
                                   ))}
                               </select>
                             </div>
-                            {reviewFlow && course.lifecycleStatus ? null : (
+                            {reviewFlow && course.lifecycleStatus ? null : seatMode ? (
+                              <div className="field">
+                                <label>Narx (so‘m)</label>
+                                <input
+                                  inputMode="numeric"
+                                  value={editForm.listPrice}
+                                  onChange={(e) => setEdit("listPrice", e.target.value)}
+                                />
+                              </div>
+                            ) : (
                               <div className="row gap-12">
                                 <div className="field" style={{ flex: 1 }}>
                                   <label>1-tarif</label>

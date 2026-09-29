@@ -14,6 +14,7 @@ const patchSchema = z.object({
   priceT1: z.number().int().min(0).optional(),
   priceT2: z.number().int().min(0).optional(),
   priceT3: z.number().int().min(0).optional(),
+  listPrice: z.number().int().min(0).optional(),
   isPublished: z.boolean().optional(),
 });
 
@@ -43,7 +44,7 @@ export async function PATCH(
   if (
     isCourseReviewV1Enabled() &&
     existing.lifecycleStatus != null &&
-    parsed.data.isPublished !== undefined
+    (parsed.data.isPublished !== undefined || parsed.data.listPrice !== undefined)
   ) {
     return NextResponse.json(
       { error: "Bu kurs tekshiruv jarayonida boshqariladi — «Tekshiruv» bo‘limidan foydalaning" },

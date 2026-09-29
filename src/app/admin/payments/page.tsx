@@ -49,6 +49,7 @@ export default async function AdminPaymentsPage() {
           id: true,
           status: true,
           amountPaid: true,
+          legacyBackfill: true,
           refunds: {
             where: { status: "refunded" },
             select: { type: true, amount: true },
@@ -65,7 +66,7 @@ export default async function AdminPaymentsPage() {
 
   const refundInfo = (p: (typeof payments)[number]): AdminRefundInfo | undefined => {
     const purchase = p.purchase;
-    if (!refundsOn || !purchase) return undefined;
+    if (!refundsOn || !purchase || purchase.legacyBackfill) return undefined;
     const done = purchase.refunds[0];
     if (done) return { kind: "refunded", type: done.type, amount: done.amount };
     const lessonStatuses = purchase.course.lessons.map((l) => l.status);
@@ -87,7 +88,7 @@ export default async function AdminPaymentsPage() {
     studentEmail: "email" in p.user && typeof p.user.email === "string" ? p.user.email : undefined,
     courseTitle: p.course?.titleUz ?? null,
     teacherName: p.course?.teacher.fullName ?? null,
-    tier: p.purchase ? null : p.tier,
+    tier: p.purchase && !p.purchase.legacyBackfill ? null : p.tier,
     amount: p.amount,
     status: p.status,
     provider: p.provider,

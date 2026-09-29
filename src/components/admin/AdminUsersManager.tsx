@@ -18,7 +18,10 @@ type UserRole = "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "blocked" | "subscribed" | "none";
 
 export type AdminUserCourse = {
+  /** Subscription id, or Enrollment id when `seat` is true. */
   subscriptionId: string;
+  seat?: boolean;
+  seatStatus?: string;
   title: string;
   lessons: number;
   students: number;
@@ -80,9 +83,12 @@ async function copyText(value: string) {
 export function AdminUsersManager({
   users,
   canSeeSecrets,
+  seatMode = false,
 }: {
   users: AdminUserRow[];
   canSeeSecrets: boolean;
+  /** Enrollment-only access: no Tarif column/actions; courses are seats. */
+  seatMode?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -244,7 +250,7 @@ export function AdminUsersManager({
     router.refresh();
   };
 
-  const colSpan = canSeeSecrets ? 8 : 6;
+  const colSpan = (canSeeSecrets ? 8 : 6) - (seatMode ? 1 : 0);
   const activeCount = users.filter((u) => !u.isBlocked && u.hasSubscription).length;
 
   return (
@@ -254,7 +260,7 @@ export function AdminUsersManager({
           <p className="lx-kicker">O‘quvchilar</p>
           <h1 className="lx-mc-title">O‘quvchilar</h1>
           <p className="lx-mc-sub">
-            Jami {users.length} · faol obuna {activeCount}
+            Jami {users.length} · {seatMode ? "kursi bor" : "faol obuna"} {activeCount}
           </p>
           <p className="lx-admin-note">
             {canSeeSecrets
@@ -281,8 +287,8 @@ export function AdminUsersManager({
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
         >
           <option value="all">Barchasi</option>
-          <option value="subscribed">Faol obuna</option>
-          <option value="none">Obunasiz</option>
+          <option value="subscribed">{seatMode ? "Kursi bor" : "Faol obuna"}</option>
+          <option value="none">{seatMode ? "Kurssiz" : "Obunasiz"}</option>
           <option value="active">Bloklanmagan</option>
           <option value="blocked">Bloklangan</option>
         </select>
@@ -295,7 +301,7 @@ export function AdminUsersManager({
               <th>F.I.SH.</th>
               {canSeeSecrets ? <th>Login</th> : null}
               {canSeeSecrets ? <th>Parol</th> : null}
-              <th>Tarif</th>
+              {seatMode ? null : <th>Tarif</th>}
               <th>Kurslar</th>
               <th>Oxirgi kirish</th>
               <th>Holat</th>
@@ -350,13 +356,15 @@ export function AdminUsersManager({
                         {copied === `pw-${user.id}` ? <div className="small muted">Nusxalandi</div> : null}
                       </td>
                     ) : null}
-                    <td>
-                      {user.hasSubscription ? (
-                        <span className="badge success">{user.tariff}</span>
-                      ) : (
-                        <span className="small muted">Yo&apos;q</span>
-                      )}
-                    </td>
+                    {seatMode ? null : (
+                      <td>
+                        {user.hasSubscription ? (
+                          <span className="badge success">{user.tariff}</span>
+                        ) : (
+                          <span className="small muted">Yo&apos;q</span>
+                        )}
+                      </td>
+                    )}
                     <td className="small muted">{user.courseCount}</td>
                     <td className="small muted">{formatWhen(user.lastLoginAt)}</td>
                     <td>
@@ -420,10 +428,12 @@ export function AdminUsersManager({
                               <div className="small muted">Oxirgi kirish</div>
                               <div>{formatWhen(user.lastLoginAt)}</div>
                             </div>
-                            <div>
-                              <div className="small muted">Tarif</div>
-                              <div>{user.tariff ?? "Yo'q"}{user.tariffUntil ? ` · ${formatWhen(user.tariffUntil)}` : ""}</div>
-                            </div>
+                            {seatMode ? null : (
+                              <div>
+                                <div className="small muted">Tarif</div>
+                                <div>{user.tariff ?? "Yo'q"}{user.tariffUntil ? ` · ${formatWhen(user.tariffUntil)}` : ""}</div>
+                              </div>
+                            )}
                             <div>
                               <div className="small muted">Qatnashgan dars</div>
                               <div>{user.lessonCount}</div>
@@ -437,7 +447,7 @@ export function AdminUsersManager({
                               <div>{user.paymentCount}</div>
                             </div>
                           </div>
-                          {user.hasEntitlement ? (
+                          {user.hasEntitlement && !seatMode ? (
                             <div style={{ marginBottom: 14 }}>
                               <div className="small muted" style={{ marginBottom: 6 }}>Platforma tarifi</div>
                               <div className="lx-row" style={{ padding: 10 }}>
@@ -470,14 +480,16 @@ export function AdminUsersManager({
                           ) : null}
                           {user.courses.length > 0 ? (
                             <div style={{ marginBottom: 14 }}>
-                              <div className="small muted" style={{ marginBottom: 6 }}>Kurs obunalari</div>
+                              <div className="small muted" style={{ marginBottom: 6 }}>
+                                {seatMode ? "Kurslar" : "Kurs obunalari"}
+                              </div>
                               <div className="lx-stack">
                                 {user.courses.map((course) => (
                                   <div key={course.subscriptionId} className="lx-row" style={{ padding: 10 }}>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <p className="lx-kicker" style={{ marginBottom: 2 }}>
-                                        {course.teacher ?? "O'qituvchi"} · {course.tier}
-                                        {course.active ? "" : " · tugagan"}
+                                        {course.teacher ?? "O'qituvchi"} · {course.seat ? course.seatStatus : course.tier}
+                                        {course.seat || course.active ? "" : " · tugagan"}
                                       </p>
                                       <h3 style={{ fontSize: 14 }}>{course.title}</h3>
                                       {course.endsAt ? (
@@ -486,30 +498,34 @@ export function AdminUsersManager({
                                         </p>
                                       ) : null}
                                     </div>
-                                    <div className="staff-detail-actions" style={{ margin: 0, flexShrink: 0 }}>
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm"
-                                        disabled={busyId === course.subscriptionId}
-                                        onClick={() => void subAction(course.subscriptionId, "extend")}
-                                      >
-                                        +30 kun
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-danger"
-                                        disabled={busyId === course.subscriptionId}
-                                        onClick={() => void subAction(course.subscriptionId, "cancel")}
-                                      >
-                                        Bekor
-                                      </button>
-                                    </div>
+                                    {course.seat ? null : (
+                                      <div className="staff-detail-actions" style={{ margin: 0, flexShrink: 0 }}>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm"
+                                          disabled={busyId === course.subscriptionId}
+                                          onClick={() => void subAction(course.subscriptionId, "extend")}
+                                        >
+                                          +30 kun
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-danger"
+                                          disabled={busyId === course.subscriptionId}
+                                          onClick={() => void subAction(course.subscriptionId, "cancel")}
+                                        >
+                                          Bekor
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <p className="small muted" style={{ marginBottom: 14 }}>Kurs obunasi yo&apos;q.</p>
+                            <p className="small muted" style={{ marginBottom: 14 }}>
+                              {seatMode ? "Kurs yo‘q." : "Kurs obunasi yo‘q."}
+                            </p>
                           )}
                           <div className="staff-detail-actions">
                             <button

@@ -1,4 +1,5 @@
 import type { CourseLifecycleStatus } from "@/generated/prisma/client";
+import { getEnrollmentAccessMode } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
@@ -182,6 +183,7 @@ function healthOf(input: {
 
 export async function getAdminCourseBoard() {
   const now = new Date();
+  const mode = getEnrollmentAccessMode();
   const [courses, teachers, faculties, subjects] = await Promise.all([
     prisma.course.findMany({
       include: {
@@ -197,6 +199,7 @@ export async function getAdminCourseBoard() {
         faculty: { select: { nameUz: true } },
         subject: { select: { nameUz: true } },
         subscriptions: { select: { endsAt: true, userId: true } },
+        enrollments: { select: { userId: true, accessOpen: true, status: true } },
         lessons: {
           select: {
             id: true,
@@ -223,8 +226,17 @@ export async function getAdminCourseBoard() {
   ]);
 
   const insights: AdminCourseInsight[] = courses.map((course) => {
-    const activeSubs = course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt));
-    const activeStudentIds = new Set(activeSubs.map((s) => s.userId));
+    const seatUserIds =
+      mode === "enrollment" || mode === "dual"
+        ? course.enrollments
+            .filter((e) => e.accessOpen && (e.status === "active" || e.status === "completed"))
+            .map((e) => e.userId)
+        : [];
+    const subUserIds =
+      mode === "enrollment"
+        ? []
+        : course.subscriptions.filter((s) => isSubscriptionActive(s.endsAt)).map((s) => s.userId);
+    const activeStudentIds = new Set([...seatUserIds, ...subUserIds]);
     const scheduled = course.lessons.filter((l) => l.status === "scheduled" && l.scheduledAt >= now);
     const live = course.lessons.filter((l) => l.status === "live");
     const ended = course.lessons.filter((l) => l.status === "ended");
@@ -269,8 +281,8 @@ export async function getAdminCourseBoard() {
       scheduledCount: scheduled.length,
       liveCount: live.length,
       endedCount: ended.length,
-      activeStudents: activeSubs.length,
-      totalSubs: course.subscriptions.length,
+      activeStudents: activeStudentIds.size,
+      totalSubs: mode === "enrollment" ? course.enrollments.length : course.subscriptions.length,
       attendancePct,
       activeAttendees,
       nextLessonAt: next?.scheduledAt.toISOString() ?? null,

@@ -16,7 +16,7 @@ export default async function AdminDashboardPage() {
     getAdminDashboard(),
     reviewFlow ? getAdminReviewQueue() : Promise.resolve([]),
   ]);
-  const { kpis, tiers, registrationsByDay, revenueByDay, lessonStatus, topCourses, attention } = data;
+  const { kpis, seatMode, tiers, seats, registrationsByDay, revenueByDay, lessonStatus, topCourses, attention } = data;
   const reviewPending = review.filter((c) =>
     c.lifecycleStatus === "submitted" || c.lifecycleStatus === "in_review" || c.lifecycleStatus === "approved",
   );
@@ -62,8 +62,8 @@ export default async function AdminDashboardPage() {
           <span className="lx-today-stat-icon">
             <BadgeCheck size={18} aria-hidden />
           </span>
-          <span className="lx-today-stat-num">{fmt(kpis.activeSubs)}</span>
-          <span className="lx-today-stat-label">Faol obuna</span>
+          <span className="lx-today-stat-num">{fmt(seatMode ? kpis.openSeats : kpis.activeSubs)}</span>
+          <span className="lx-today-stat-label">{seatMode ? "Faol o‘rin" : "Faol obuna"}</span>
         </Link>
         <Link href="/admin/payments" className="lx-today-stat">
           <span className="lx-today-stat-icon">
@@ -169,17 +169,34 @@ export default async function AdminDashboardPage() {
         </section>
 
         <section className="admin-panel">
-          <div className="admin-panel-head">
-            <h3>Faol tariflar</h3>
-            <span className="small muted">{kpis.activeSubs} obuna</span>
-          </div>
-          <AdminDonut
-            segments={[
-              { label: "1 — Yozuv", value: tiers.t1, tone: "t1" },
-              { label: "2 — Jonli", value: tiers.t2, tone: "t2" },
-              { label: "3 — Premium", value: tiers.t3, tone: "t3" },
-            ]}
-          />
+          {seatMode ? (
+            <>
+              <div className="admin-panel-head">
+                <h3>Kurs o‘rinlari</h3>
+                <span className="small muted">{kpis.openSeats} o‘rin</span>
+              </div>
+              <AdminDonut
+                segments={[
+                  { label: "Faol", value: seats.active, tone: "t2" },
+                  { label: "Yakunlangan", value: seats.completed, tone: "t3" },
+                ]}
+              />
+            </>
+          ) : (
+            <>
+              <div className="admin-panel-head">
+                <h3>Faol tariflar</h3>
+                <span className="small muted">{kpis.activeSubs} obuna</span>
+              </div>
+              <AdminDonut
+                segments={[
+                  { label: "1 — Yozuv", value: tiers.t1, tone: "t1" },
+                  { label: "2 — Jonli", value: tiers.t2, tone: "t2" },
+                  { label: "3 — Premium", value: tiers.t3, tone: "t3" },
+                ]}
+              />
+            </>
+          )}
         </section>
 
         <section className="admin-panel">

@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { getStudentOwnedCourses } from "@/lib/access";
+import { shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { TARIFF_SHORT, isSubscriptionActive } from "@/lib/tariffs";
 import { formatDateTime } from "@/lib/utils";
 import { statusLabel, type PlanStatus } from "@/lib/plan";
@@ -15,12 +17,12 @@ export type BotUserContext = {
     email: string;
   } | null;
   entitlementTier: string | null;
+  /** Owned courses per enrollment access mode; `tier` is null for Enrollment seats or when Tarif UI is hidden. */
   subscriptions: {
     courseId: string;
     courseTitle: string;
     teacherName: string;
-    tier: string;
-    endsAt: Date;
+    tier: string | null;
   }[];
   teacher: {
     id: string;
@@ -46,16 +48,6 @@ export async function loadBotContext(chatId: string | number): Promise<BotUserCo
       role: true,
       email: true,
       entitlement: { select: { tier: true, endsAt: true } },
-      subscriptions: {
-        where: { endsAt: { gt: new Date() } },
-        include: {
-          course: {
-            include: { teacher: { select: { fullName: true } } },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
       teacherProfile: {
         select: {
           id: true,
@@ -86,10 +78,12 @@ export async function loadBotContext(chatId: string | number): Promise<BotUserCo
     };
   }
 
+  const hideTariff = shouldHideStudentTariffUi();
   const entOk =
-    user.entitlement && isSubscriptionActive(user.entitlement.endsAt)
+    !hideTariff && user.entitlement && isSubscriptionActive(user.entitlement.endsAt)
       ? user.entitlement.tier
       : null;
+  const owned = user.role === "student" ? await getStudentOwnedCourses(user.id) : [];
 
   let pendingGrades = 0;
   let nextLesson: {
@@ -131,12 +125,11 @@ export async function loadBotContext(chatId: string | number): Promise<BotUserCo
       email: user.email,
     },
     entitlementTier: entOk,
-    subscriptions: user.subscriptions.map((s) => ({
-      courseId: s.courseId,
-      courseTitle: s.course.titleUz,
-      teacherName: s.course.teacher.fullName,
-      tier: s.tier,
-      endsAt: s.endsAt,
+    subscriptions: owned.slice(0, 20).map((o) => ({
+      courseId: o.courseId,
+      courseTitle: o.course.titleUz,
+      teacherName: o.course.teacher.fullName,
+      tier: !hideTariff && o.status === "legacy_subscription" ? o.tier : null,
     })),
     teacher: user.teacherProfile
       ? {
@@ -198,13 +191,15 @@ export function formatStatus(ctx: BotUserContext) {
     lines.push("");
     lines.push("<b>Kurslar:</b>");
     for (const s of ctx.subscriptions.slice(0, 8)) {
-      lines.push(
-        `• ${esc(s.courseTitle)} — ${esc(s.teacherName)} · ${TARIFF_SHORT[s.tier as keyof typeof TARIFF_SHORT] ?? s.tier}`,
-      );
+      lines.push(`• ${esc(s.courseTitle)} — ${esc(s.teacherName)}${tierSuffix(s.tier)}`);
     }
   } else if (ctx.user.role === "student") {
     lines.push("");
-    lines.push("Hali kurs obunasi yo‘q. Onboardingda o‘qituvchi tanlang.");
+    lines.push(
+      shouldHideStudentTariffUi()
+        ? "Hali kurs yo‘q. Lexify’da kurs tanlang."
+        : "Hali kurs obunasi yo‘q. Onboardingda o‘qituvchi tanlang.",
+    );
   }
 
   if (ctx.teacher) {
@@ -267,9 +262,13 @@ export async function formatToday(ctx: BotUserContext) {
 
   const courseIds = ctx.subscriptions.map((s) => s.courseId);
   if (!courseIds.length) {
+    const hideTariff = shouldHideStudentTariffUi();
     return {
-      text: "Kurs yo‘q. Lexify’da o‘qituvchi tanlang.",
-      keyboard: [[{ text: "Tariflar", url: `${base}/#tariflar` }], [{ text: "🏠 Menyu", callback_data: "m:home" }]],
+      text: hideTariff ? "Kurs yo‘q. Lexify’da kurs tanlang." : "Kurs yo‘q. Lexify’da o‘qituvchi tanlang.",
+      keyboard: [
+        [hideTariff ? { text: "Kurslar", url: `${base}/#kurslar` } : { text: "Tariflar", url: `${base}/#tariflar` }],
+        [{ text: "🏠 Menyu", callback_data: "m:home" }],
+      ],
     };
   }
 
@@ -326,10 +325,11 @@ export function formatCourses(ctx: BotUserContext) {
     };
   }
   if (!ctx.subscriptions.length) {
+    const hideTariff = shouldHideStudentTariffUi();
     return {
-      text: "Obuna bo‘lgan kurs yo‘q.",
+      text: hideTariff ? "Kurs yo‘q." : "Obuna bo‘lgan kurs yo‘q.",
       keyboard: [
-        [{ text: "Kurs tanlash", url: `${base}/onboard` }],
+        [{ text: "Kurs tanlash", url: hideTariff ? `${base}/#kurslar` : `${base}/onboard` }],
         [{ text: "🏠 Menyu", callback_data: "m:home" }],
       ],
     };
@@ -337,9 +337,7 @@ export function formatCourses(ctx: BotUserContext) {
   const lines = ["<b>Kurslarim</b>", ""];
   const keys: InlineKeyboard = [];
   for (const s of ctx.subscriptions) {
-    lines.push(
-      `• <b>${esc(s.courseTitle)}</b>\n  ${esc(s.teacherName)} · ${TARIFF_SHORT[s.tier as keyof typeof TARIFF_SHORT] ?? s.tier}`,
-    );
+    lines.push(`• <b>${esc(s.courseTitle)}</b>\n  ${esc(s.teacherName)}${tierSuffix(s.tier)}`);
     keys.push([{ text: s.courseTitle.slice(0, 32), url: `${base}/courses/${s.courseId}` }]);
   }
   keys.push([{ text: "🏠 Menyu", callback_data: "m:home" }]);
@@ -351,7 +349,7 @@ export function formatHelp(ctx: BotUserContext) {
     "<b>Lexify bot — yordam</b>",
     "",
     "/start — menyu / ulash",
-    "/status — tarif, kurslar, rol",
+    shouldHideStudentTariffUi() ? "/status — kurslar, rol" : "/status — tarif, kurslar, rol",
     "/bugun — yaqin darslar",
     "/kurslar — kurslarim",
     "/unlink — Telegramni uzish",
@@ -359,6 +357,11 @@ export function formatHelp(ctx: BotUserContext) {
     "Eslatmalar: dars oldidan, kutish xonasi, jonli efir, yozuv.",
     ctx.teacher ? "Ustoz: Studio va Reja tugmalari ochiq." : "Talaba: faqat o‘z kurslaringiz bo‘yicha xabar.",
   ].join("\n");
+}
+
+function tierSuffix(tier: string | null) {
+  if (!tier) return "";
+  return ` · ${TARIFF_SHORT[tier as keyof typeof TARIFF_SHORT] ?? tier}`;
 }
 
 function roleLabel(role: string) {
