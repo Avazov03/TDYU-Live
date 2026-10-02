@@ -59,6 +59,45 @@ export const STAGING_FIXTURE = {
   liveMuxLessonTitle: "Phase 8.5 Mux live lesson",
 } as const;
 
+const flowId = (suffix: string) => `f2700001-0000-4000-8000-0000000000${suffix}`;
+
+/**
+ * Hermetic-only flow fixtures (seed: scripts/lib/e2e-flow-seed.ts). The flows mutate state
+ * (refund, cancel, complete, certificates), so each has its own students and courses
+ * owned by the fixture teacher, isolated from the shared fixture.active1 data.
+ */
+export const FLOW_FIXTURES = {
+  password: process.env.E2E_FLOW_PASSWORD?.trim() || "demo1234",
+  users: {
+    refund1: { id: flowId("01"), email: "fixture.refund1@lexify.local", name: "Fixture Refund One" },
+    cancel1: { id: flowId("02"), email: "fixture.cancel1@lexify.local", name: "Fixture Cancel One" },
+    assign1: { id: flowId("03"), email: "fixture.assign1@lexify.local", name: "Fixture Assign One" },
+    assign2: { id: flowId("04"), email: "fixture.assign2@lexify.local", name: "Fixture Assign Two" },
+    cert1: { id: flowId("05"), email: "fixture.cert1@lexify.local", name: "Fixture Cert One" },
+    teacher2: { id: flowId("06"), email: "fixture.teacher2@lexify.local", name: "Fixture Teacher Two" },
+  },
+  teacher2Id: flowId("07"),
+  refund: {
+    courseId: flowId("11"),
+    courseTitle: "Flow Refund Half Course",
+    lessonId: flowId("12"),
+    lessonTitle: "Flow refund ended lesson",
+    purchaseId: flowId("71"),
+    amountPaid: 200000,
+  },
+  keep: { courseId: flowId("19"), courseTitle: "Flow Refund Keep Course", lessonId: flowId("1a") },
+  cancel: {
+    courseId: flowId("21"),
+    courseTitle: "Flow Cancel Course",
+    purchaseId: flowId("72"),
+    amountPaid: 150000,
+  },
+  assignments: { courseId: flowId("31"), courseTitle: "Flow Assignments Course", lessonId: flowId("32") },
+  completion: { courseId: flowId("41"), courseTitle: "Flow Completion Course" },
+  certificate: { courseId: flowId("51"), courseTitle: "Flow Certificate Course" },
+  otherTeacherCourse: { courseId: flowId("61"), courseTitle: "Flow Other Teacher Course" },
+} as const;
+
 /**
  * Enrollment-authoritative access fixtures for fixture.active1 (seed: scripts/lib/e2e-access-seed.ts).
  * All lessons are `ended` with no recording, so allowed = replay card, denied = paywall.

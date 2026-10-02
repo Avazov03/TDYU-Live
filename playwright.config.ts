@@ -40,8 +40,14 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: ["**/live/**", "**/recording/**"],
+      testIgnore: ["**/live/**", "**/recording/**", "**/mobile/**"],
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Read-only specs re-run on a phone viewport (Chromium engine — no extra browser download).
+      name: "mobile",
+      testMatch: ["**/mobile/**/*.spec.ts", "**/smoke/public.spec.ts", "**/shell/**/*.spec.ts", "**/catalog/**/*.spec.ts"],
+      use: { ...devices["Pixel 7"] },
     },
     {
       // Live/recording specs share the one fixture teacher; schedule rules allow one running lesson per teacher.

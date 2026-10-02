@@ -13,6 +13,7 @@ import { createSeedClient } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/password";
 import { STAGING_FIXTURE } from "../e2e/helpers/test-data";
 import { seedAccessFixtures } from "./lib/e2e-access-seed";
+import { seedFlowFixtures } from "./lib/e2e-flow-seed";
 import { E2E_FIXTURE_TEACHER_ID, E2E_OWNED_LESSON_IDS } from "../src/lib/e2e-fixture-reset";
 
 const DAY = 86_400_000;
@@ -202,6 +203,7 @@ async function main() {
     });
 
     const access = await seedAccessFixtures(prisma, now);
+    await seedFlowFixtures(prisma, { facultyId: IDS.faculty, subjectId: IDS.subject1, subject2Id: IDS.subject2, now });
     console.log(
       JSON.stringify({ ok: true, db, truncatedTables: tables.length, accessSeats: access.seats.length }, null, 2),
     );

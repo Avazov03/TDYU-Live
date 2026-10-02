@@ -269,9 +269,27 @@ npm run test:e2e:access
 
 API statuses are probed from a second, unmonitored tab: the session cookie is `Secure`, so only the browser sends it to `http://127.0.0.1:3101`, and expected 4xx answers must not count as console errors.
 
-## CI
+## Mutating flows (`e2e/flows`, hermetic only)
 
-`.github/workflows/ci.yml` — job `checks` (lint, type-check, unit suites) then job `e2e` (`npm run test:e2e:full`). See "Hermetic full run" above.
+Gated by `E2E_FLOWS=1` (set in `e2e/hermetic.env`). They change data, so they run only against the throwaway hermetic DB, seeded by `scripts/lib/e2e-flow-seed.ts` (IDs `f2700001-…`, users `fixture.{refund1,cancel1,assign1,assign2,cert1,teacher2}@lexify.local`, see `FLOW_FIXTURES`). Every role gets its own monitored browser context (`e2e/flows/flow-helpers.ts`).
+
+| Flow | Browser path | Server-side checks |
+|------|--------------|--------------------|
+| Admin 50% refund | `/admin/payments` → "50% qaytarish" (33% watched) → reason → "50% qaytarilgan", 100 000 so'm | student 403 on the refund API, repeat 409, legacy purchase 409; refunded course leaves My Courses, lesson paywalled, chat 403; the student's other course stays |
+| Teacher cancels upcoming course | studio card → "Kursni bekor qilish" → reason → "Bekor qilingan" | student 403; admin sees "Kurs bekor — 100% qaytarilgan", 150 000 so'm; course leaves My Courses |
+| Assignment | teacher creates → student submits text + PDF → teacher grades 87 + note → student sees grade | outsider submit 403; file: teacher/submitter/admin 200, classmate/other student/other teacher 403, anonymous 401; other teacher grade 404; create on foreign course 404, student 403 |
+| Course completion | studio card → "Kursni yakunlash" → "Yakunlangan" | student sees the course as completed |
+| Certificate | `/teacher/group` → issue PDF → student views/downloads → teacher revokes with reason | non-PDF 422, student without seat 409, repeat 409; file: owner/teacher/admin 200, others 404, anonymous 401; other teacher revoke 404; after revoke the student loses card + file (404); admin table and teacher view show the reason; page has no duplicate ids |
+
+## Mobile project
+
+Playwright project `mobile` (Pixel 7, Chromium engine) re-runs `e2e/mobile`, `smoke/public`, `shell` and `catalog`. `e2e/mobile/layout.spec.ts` fails on horizontal overflow (lists the overflowing elements) and duplicate ids on public and student pages, and checks the drawer reaches navigation.
+
+## CI and deploy gate
+
+`.github/workflows/ci.yml` — job `checks` (lint, type-check, unit suites) then job `e2e` (`npm run test:e2e:full`, all projects). See "Hermetic full run" above.
+
+Before a production deploy run `npm run ci:gate` (or `npx tsx scripts/require-green-ci.ts <sha> --wait`): it exits non-zero unless the CI workflow succeeded for that commit.
 
 ## Phase 2.3C foundation status
 
@@ -307,8 +325,8 @@ With `.env.e2e.staging.example` values + SSH tunnel to `:3101`:
 - Outside `test:e2e:full`, role / course / lesson smokes **skip** until `E2E_DB_READY=1` and the `E2E_*` credentials are set
 - `/search` is authenticated — public suite only asserts redirect to login
 - Live Mux playback runs only on staging (real Mux credentials)
-- Refund request/decision, certificate issuing and assignment submit/grade flows are **not** covered by browser tests yet (only their access outcome is)
-- Chromium only (Desktop Chrome project)
+- Mutating flows (`e2e/flows`) run only in the hermetic suite, never against staging
+- Chromium engine only (desktop + Pixel 7 viewport); no Firefox/WebKit
 - Monitor does not auto-fail on 401/403 (by design)
 
 ## Former application gaps (resolved)

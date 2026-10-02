@@ -14,6 +14,7 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:smoke": "playwright test e2e/smoke e2e/landing.spec.ts",
     "test:e2e:full": "tsx scripts/e2e-hermetic.ts",
+    "ci:gate": "tsx scripts/require-green-ci.ts",
     "db:e2e-seed": "tsx scripts/e2e-seed-local.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
