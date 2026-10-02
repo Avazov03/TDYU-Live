@@ -8,7 +8,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <div className={styles.page}>
       <div className={styles.wrapper}>
         <Link href="/" className={styles.brand}>
-          {BRAND.name}
+          {BRAND.logo.text}
         </Link>
         {children}
       </div>

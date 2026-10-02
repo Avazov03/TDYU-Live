@@ -97,10 +97,11 @@ export function SiteFooter() {
 
         <div className="lx-footer-grid">
           <div className="lx-footer-col lx-footer-brand">
-            <Link href="/" className="lx-footer-logo" aria-label={BRAND.name}>
-              <span className="lx-footer-logo-mark">{BRAND.short}</span>
+            <Link href="/" className="lx-footer-logo" aria-label={BRAND.logo.text}>
+              <span className="lx-footer-logo-mark">{BRAND.logo.mark}</span>
               <span className="lx-footer-logo-text">
-                Lex<span>ify</span>
+                {BRAND.logo.head}
+                <span>{BRAND.logo.tail}</span>
               </span>
             </Link>
             <p>

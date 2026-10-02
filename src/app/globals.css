@@ -153,6 +153,7 @@ html {
 .iconbtn:hover { background: var(--surface-hover); }
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; white-space: nowrap; }
 .logo .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+@media (max-width: 419px) { .topbar-brand-text { display: none; } }
 /* —— Search bar (YouTube-style) —— */
 .search-bar {
   flex: 1;

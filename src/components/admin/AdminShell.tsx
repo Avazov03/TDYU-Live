@@ -55,8 +55,8 @@ export function AdminShell({ children, userName = "Admin", reviewCount = null }:
       <div className="topbar admin-topbar lx-admin-topbar">
         <div className="topbar-left">
           <Link href="/admin" className="logo lx-admin-logo">
-            <span className="mark">{BRAND.short}</span>
-            <span className="lx-admin-brand">{BRAND.name}</span>
+            <span className="mark">{BRAND.logo.mark}</span>
+            <span className="lx-admin-brand">{BRAND.logo.text}</span>
           </Link>
         </div>
         <div className="topbar-right">

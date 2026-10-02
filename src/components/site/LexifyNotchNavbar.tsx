@@ -219,7 +219,7 @@ export function LexifyNotchNavbar({ cabinetHref, user, hideTariffNav = false }: 
               <Link
                 href="/#bosh"
                 className="vn-logo"
-                aria-label={BRAND.name}
+                aria-label={BRAND.logo.text}
                 onClick={(e) => {
                   if (pathname === "/") {
                     e.preventDefault();
@@ -227,8 +227,8 @@ export function LexifyNotchNavbar({ cabinetHref, user, hideTariffNav = false }: 
                   }
                 }}
               >
-                <span className="vn-logo-mark">{BRAND.short}</span>
-                <span className="vn-logo-text">{BRAND.name}</span>
+                <span className="vn-logo-mark">{BRAND.logo.mark}</span>
+                <span className="vn-logo-text">{BRAND.logo.text}</span>
               </Link>
             </div>
 

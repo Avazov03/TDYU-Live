@@ -55,8 +55,8 @@ export function Topbar({
           <Icon name="menu" />
         </button>
         <Link href="/" className="logo topbar-brand md:hidden">
-            <span className="mark">{BRAND.short}</span>
-            <span>{BRAND.name}</span>
+            <span className="mark">{BRAND.logo.mark}</span>
+            <span className="topbar-brand-text">{BRAND.logo.text}</span>
         </Link>
       </div>
       <SearchBar />
