@@ -26,7 +26,7 @@ const ENV_FLAGS = {
   E2E_FULL_NO_DOCKER: "--no-docker",
 } as const;
 /** Shell variables with these prefixes are dropped unless e2e/hermetic.env sets them. */
-const SCRUBBED_PREFIXES = ["E2E_", "FF_", "MUX_", "AI_", "GEMINI_", "AUTH_", "NEXTAUTH_", "LEXIFY_", "RECORDING_"];
+const SCRUBBED_PREFIXES = ["E2E_", "FF_", "MUX_", "AI_", "GEMINI_", "AUTH_", "NEXTAUTH_", "LEXIFY_", "RECORDING_", "OPS_", "TELEGRAM_"];
 const SCRUBBED_KEYS = ["DATABASE_URL", "TEST_BASE_URL", "PLAYWRIGHT_BASE_URL", "NODE_ENV", "PORT", "STAGING"];
 
 function parseEnvFile(file: string): Record<string, string> {

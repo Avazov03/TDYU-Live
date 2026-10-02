@@ -280,6 +280,11 @@ Gated by `E2E_FLOWS=1` (set in `e2e/hermetic.env`). They change data, so they ru
 | Assignment | teacher creates → student submits text + PDF → teacher grades 87 + note → student sees grade | outsider submit 403; file: teacher/submitter/admin 200, classmate/other student/other teacher 403, anonymous 401; other teacher grade 404; create on foreign course 404, student 403 |
 | Course completion | studio card → "Kursni yakunlash" → "Yakunlangan" | student sees the course as completed |
 | Certificate | `/teacher/group` → issue PDF → student views/downloads → teacher revokes with reason | non-PDF 422, student without seat 409, repeat 409; file: owner/teacher/admin 200, others 404, anonymous 401; other teacher revoke 404; after revoke the student loses card + file (404); admin table and teacher view show the reason; page has no duplicate ids |
+| Ops alert route | — | `POST /api/admin/ops/test-alert`: admin 500 (deliberate), student/anonymous 403, app keeps serving |
+
+## Production error alerts
+
+`src/instrumentation.ts` (`onRequestError`) → `src/lib/ops-alert.ts` sends every server 500 to Telegram: recipients are `OPS_ALERT_TELEGRAM_CHAT_IDS` or, if unset, admins with a linked Telegram chat. On by default only in production (`OPS_ALERTS=0|1` overrides). Rules live in `src/lib/ops-alert-policy.ts` (unit-tested in `test:security`): secrets and query strings are redacted, Next control-flow errors ignored, one alert per route+message per 10 min (repeats counted), at most 20 per hour. Verify the chain on production as admin: `POST /api/admin/ops/test-alert` (logs `{"scope":"ops","event":"alert_sent",…}` or `alert_no_recipients`).
 
 ## Mobile project
 
