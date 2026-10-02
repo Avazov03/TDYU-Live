@@ -11,26 +11,33 @@ import { suggestionsFor } from "./suggestions";
 type Msg = { role: "user" | "model"; text: string; error?: boolean };
 type Pos = { x: number; y: number };
 
-const FAB = 64;
-const EDGE = 16;
+const EDGE = 12;
 const POS_KEY = "lx-ai-pos";
 const GREETED_KEY = "lx-ai-greeted";
 const GUEST_KEY = "lx-ai-guest";
 const DRAG_SLOP = 6;
 
+/** Must match `.lx-ai-fab` width/height (desktop / ≤640px). */
+function fabSize() {
+  return window.innerWidth <= 640 ? { w: 64, h: 84 } : { w: 80, h: 106 };
+}
+
 function clampPos(p: Pos): Pos {
-  const maxX = window.innerWidth - FAB - EDGE;
-  const maxY = window.innerHeight - FAB - EDGE;
+  const { w, h } = fabSize();
+  const maxX = window.innerWidth - w - EDGE;
+  const maxY = window.innerHeight - h - EDGE;
   return { x: Math.min(Math.max(EDGE, p.x), maxX), y: Math.min(Math.max(EDGE, p.y), maxY) };
 }
 
 function defaultPos(): Pos {
-  return { x: window.innerWidth - FAB - 24, y: window.innerHeight - FAB - 24 };
+  const { w, h } = fabSize();
+  return { x: window.innerWidth - w - 20, y: window.innerHeight - h - 16 };
 }
 
 function snap(p: Pos): Pos {
+  const { w } = fabSize();
   const mid = window.innerWidth / 2;
-  return clampPos({ x: p.x + FAB / 2 < mid ? EDGE : window.innerWidth - FAB - EDGE, y: p.y });
+  return clampPos({ x: p.x + w / 2 < mid ? EDGE : window.innerWidth - w - EDGE, y: p.y });
 }
 
 export function AiMentor({ status, pathname }: { status: AiStatus; pathname: string }) {
@@ -325,7 +332,8 @@ export function AiMentor({ status, pathname }: { status: AiStatus; pathname: str
 
   if (hiddenByPage) return null;
 
-  const side = pos.x + FAB / 2 < window.innerWidth / 2 ? "left" : "right";
+  const fab = fabSize();
+  const side = pos.x + fab.w / 2 < window.innerWidth / 2 ? "left" : "right";
   const above = pos.y > window.innerHeight / 2;
   const name = status.firstName;
   const visibleTips = moreTips ? suggestions : suggestions.slice(0, 3);
@@ -339,9 +347,9 @@ export function AiMentor({ status, pathname }: { status: AiStatus; pathname: str
           data-side={side}
           data-above={above ? "" : undefined}
           style={{
-            top: above ? undefined : pos.y + FAB + 10,
-            bottom: above ? window.innerHeight - pos.y + 10 : undefined,
-            [side]: side === "left" ? pos.x : window.innerWidth - pos.x - FAB,
+            top: above ? undefined : pos.y + fab.h + 8,
+            bottom: above ? window.innerHeight - pos.y + 4 : undefined,
+            [side]: side === "left" ? pos.x : window.innerWidth - pos.x - fab.w,
           }}
           data-testid="ai-greet"
         >
@@ -376,7 +384,7 @@ export function AiMentor({ status, pathname }: { status: AiStatus; pathname: str
         onKeyDown={onFabKey}
         data-testid="ai-fab"
       >
-        <RobotMark />
+        <RobotMark animate />
       </button>
 
       <section

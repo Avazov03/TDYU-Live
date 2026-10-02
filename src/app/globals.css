@@ -5948,22 +5948,18 @@ html[data-theme="dark"] .acet-pane {
 
 /* ── AI mentor (floating assistant) ── */
 .lx-ai-fab {
-  position: fixed; z-index: 150; width: 64px; height: 64px; padding: 0;
-  display: grid; place-items: center; border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: radial-gradient(circle at 30% 25%, var(--surface-2), var(--surface));
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+  position: fixed; z-index: 150; width: 80px; height: 106px; padding: 0;
+  display: block; border: 0; border-radius: 18px; background: transparent;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
   touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab;
-  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
     left 0.38s cubic-bezier(0.22, 1, 0.36, 1), top 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lx-ai-fab:hover { transform: translateY(-2px); }
-.lx-ai-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.lx-ai-fab[data-dragging] { cursor: grabbing; transform: scale(1.06); transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.lx-ai-fab[data-open] { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 4px color-mix(in srgb, var(--accent) 32%, transparent); }
-.lx-ai-robot { width: 46px; height: 46px; pointer-events: none; }
-.lx-ai-fab .lx-ai-eye { transform-box: fill-box; transform-origin: center; animation: lx-ai-blink 5s infinite; }
-@keyframes lx-ai-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.15); } }
+.lx-ai-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lx-ai-fab[data-dragging] { cursor: grabbing; transform: scale(1.06); transition: transform 0.2s ease; }
+.lx-ai-robot { display: block; width: 100%; height: 100%; pointer-events: none; }
+.lx-ai-robot svg { display: block; }
 
 .lx-ai-greet {
   position: fixed; z-index: 150; width: min(280px, calc(100vw - 32px));
@@ -6004,8 +6000,7 @@ html[data-theme="dark"] .acet-pane {
   padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--border);
 }
 .lx-ai-head-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
-.lx-ai-head-mark { display: grid; place-items: center; width: 28px; height: 28px; }
-.lx-ai-head-mark .lx-ai-robot { width: 26px; height: 26px; }
+.lx-ai-head-mark { display: block; width: 24px; height: 32px; }
 .lx-ai-head-actions { display: inline-flex; gap: 2px; }
 .lx-ai-icon-btn {
   display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0;
@@ -6084,8 +6079,7 @@ html[data-theme="dark"] .acet-pane {
 .lx-ai-disclaimer { margin: 6px 0 0; text-align: center; font-size: 11.5px; color: var(--text-3); }
 
 @media (max-width: 640px) {
-  .lx-ai-fab { width: 56px; height: 56px; }
-  .lx-ai-robot { width: 40px; height: 40px; }
+  .lx-ai-fab { width: 64px; height: 84px; }
   .lx-ai-panel, .lx-ai-panel[data-side="left"], .lx-ai-panel[data-full] {
     inset: 0; width: 100%; height: 100dvh; border-radius: 0; border: 0; transform: translateY(24px);
   }
@@ -6095,6 +6089,6 @@ html[data-theme="dark"] .acet-pane {
 }
 @media (prefers-reduced-motion: reduce) {
   .lx-ai-fab, .lx-ai-panel, .lx-ai-panel[data-open], .lx-ai-chip, .lx-ai-send { transition: none; }
-  .lx-ai-greet, .lx-ai-fab .lx-ai-eye, .lx-ai-typing i { animation: none; }
+  .lx-ai-greet, .lx-ai-typing i { animation: none; }
   .lx-ai-fab:hover, .lx-ai-fab[data-dragging] { transform: none; }
 }
