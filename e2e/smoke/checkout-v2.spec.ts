@@ -118,7 +118,7 @@ test.describe("Checkout V2", () => {
     monitor.noteAction(`Open Course B detail ${COURSE_B.id}`);
     const detailRes = await page.goto(`/courses/${COURSE_B.id}`);
     expect(detailRes?.status(), "course detail status").toBeLessThan(500);
-    await expect(page.getByRole("heading", { name: COURSE_B.title, level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: COURSE_B.title, level: 1 })).toBeVisible();
 
     const alreadyOwned = (await page.getByTestId("course-owned").count()) > 0;
     let purchaseId: string;
@@ -190,7 +190,7 @@ test.describe("Checkout V2", () => {
     await page.locator(`a[href="/courses/${COURSE_B.id}"]`).first().click();
     await expect(page).toHaveURL(new RegExp(`/courses/${COURSE_B.id}`));
     await expect(page.getByTestId("course-owned")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Darslar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dars rejasi" })).toBeVisible();
 
     monitor.noteAction(`Open lesson ${COURSE_B.lessonId}`);
     const lessonRes = await page.goto(`/learn/${COURSE_B.lessonId}`);
