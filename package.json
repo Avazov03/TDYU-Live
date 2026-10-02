@@ -27,7 +27,7 @@
     "db:phase2:fixture": "tsx scripts/phase2-access-fixture.ts",
     "db:phase2:backfill-dry-run": "tsx scripts/phase2-backfill-dry-run-report.ts",
     "test:access": "tsx --test src/lib/enrollment-access.test.ts src/lib/access-mode.test.ts src/lib/student-catalog.test.ts src/lib/student-shell.test.ts src/lib/wave4-legacy-enroll.test.ts src/lib/live-wave1.test.ts src/lib/live-wave2-av.test.ts src/lib/live-wave3-attendance.test.ts src/lib/recording-wave1.test.ts src/lib/recording-wave2-signed.test.ts src/lib/recording-wave3-legacy.test.ts src/lib/recording-mux-inventory.test.ts src/lib/recording-phase81.test.ts",
-    "test:security": "tsx --test src/lib/security-hardening.test.ts",
+    "test:security": "tsx --test src/lib/security-hardening.test.ts src/lib/ai/ai-mentor.test.ts",
     "test:catalog": "tsx --test src/lib/student-catalog.test.ts",
     "test:course-review": "tsx --test src/lib/course-review.test.ts src/lib/schedule-time.test.ts src/lib/schedule-policy.test.ts src/lib/course-completion-policy.test.ts src/lib/refund-policy.test.ts src/lib/tariffs.test.ts src/lib/certificate-policy.test.ts src/lib/notify-policy.test.ts src/lib/revenue.test.ts",
     "test:shell": "tsx --test src/lib/student-shell.test.ts",

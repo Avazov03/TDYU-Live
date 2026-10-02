@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { AiMentorMount } from "@/components/ai/AiMentorMount";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ConfirmDialogHost } from "@/components/ui/ConfirmDialog";
@@ -27,7 +28,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }}
         />
         <ThemeProvider>
-          <SessionProvider>{children}</SessionProvider>
+          <SessionProvider>
+            {children}
+            <AiMentorMount />
+          </SessionProvider>
           <ConfirmDialogHost />
         </ThemeProvider>
       </body>

@@ -236,6 +236,19 @@ export function isRefundsV1Enabled(): boolean {
   return envFlag("FF_REFUNDS_V1", false);
 }
 
+/** AI mentor (floating assistant). Default false. Requires GEMINI_API_KEY at runtime. */
+export function isAiMentorEnabled(): boolean {
+  return envFlag("FF_AI_MENTOR_V1", false);
+}
+
+export type AiMentorAudience = "admin" | "staff" | "students" | "all";
+
+/** Rollout stage: admin → staff (+teacher) → students → all (+guests). Default admin. */
+export function getAiMentorAudience(): AiMentorAudience {
+  const v = process.env.FF_AI_MENTOR_AUDIENCE?.trim().toLowerCase();
+  return v === "staff" || v === "students" || v === "all" ? v : "admin";
+}
+
 /**
  * Never emit public Mux VOD player URLs when Wave 2 or Wave 3 security flags are on.
  */

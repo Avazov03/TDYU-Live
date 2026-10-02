@@ -194,7 +194,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   return (
     <AppShell active="my-courses">
       <div className="watch-layout">
-        <div className="watch-main">
+        <div className="watch-main" data-ai-mentor-hide={liveMux?.ok || canJoinLive ? "" : undefined}>
           {liveMux?.ok ? (
             <LiveMuxStage
               lessonId={lesson.id}

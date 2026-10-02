@@ -215,8 +215,52 @@ model User {
   coursesPublished    Course[]             @relation("CoursePublishedBy")
   courseReviewEvents  CourseReviewEvent[]  @relation("CourseReviewActor")
   incidentsAcked      Incident[]           @relation("IncidentAcknowledgedBy")
+  aiConversations     AiConversation[]
 
   @@map("users")
+}
+
+/// AI mentor chat history (logged-in users only; user may delete).
+model AiConversation {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  /// user | model
+  role           String
+  text           String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+/// Daily AI request/token counters per subject (`user:<id>` or `anon:<hash>`) for limits and budget.
+model AiUsage {
+  id         String @id @default(uuid())
+  subjectKey String @map("subject_key")
+  /// YYYY-MM-DD (Asia/Tashkent)
+  day        String
+  requests   Int    @default(0)
+  tokens     Int    @default(0)
+
+  @@unique([subjectKey, day])
+  @@index([day])
+  @@map("ai_usage")
 }
 
 model PasswordResetToken {

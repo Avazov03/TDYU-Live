@@ -190,7 +190,7 @@ export function LiveStudio({
       ) : null}
 
       {inRoom ? (
-        <div className="live-meet">
+        <div className="live-meet" data-ai-mentor-hide="">
           <MeetRoom
             key={`${lessonId}-${status}`}
             ref={meetRef}
