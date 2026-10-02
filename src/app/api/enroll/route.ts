@@ -6,18 +6,11 @@ import { getActiveEntitlement, getAnyActiveSubscription } from "@/lib/access";
 import { featureFlags } from "@/lib/feature-flags";
 import { ensureTeacherWorkspace } from "@/lib/teacher-workspace";
 import { isStudentRole } from "@/lib/roles";
+import { shouldExpireOtherSubscriptionsOnEnroll } from "@/lib/legacy-enroll";
 
 const schema = z.object({
   teacherId: z.string().trim().min(1),
 });
-
-/**
- * Wave 4 — V1 enroll must NEVER expire other course Subscriptions.
- * Pure helper documents the invariant (also unit-tested).
- */
-export function shouldExpireOtherSubscriptionsOnEnroll(): boolean {
-  return false;
-}
 
 export async function POST(req: Request) {
   if (featureFlags.disableOnboardEnroll) {

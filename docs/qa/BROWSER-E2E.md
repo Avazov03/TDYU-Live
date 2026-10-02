@@ -25,7 +25,23 @@ This is **not** the same as unit/service tests:
 npx playwright install chromium
 ```
 
-## Run
+## Hermetic full run (recommended, same as CI)
+
+One command, no staging, no tunnel, no hand-set env. Needs Docker and `npx playwright install chromium`:
+
+```bash
+npm run test:e2e:full
+```
+
+`scripts/e2e-hermetic.ts` does: throwaway Postgres (`docker-compose.e2e.yml`, port 54329, tmpfs) → `prisma migrate deploy` → `scripts/e2e-hermetic-seed.ts` (every fixture the specs use; refuses any DB not named `*_e2e`) → `next build` → `next start` on **:3200** → all Playwright projects → stop server and container.
+
+- Environment comes **only** from `e2e/hermetic.env` (test values, committed). Local `.env` / `.env.production.local` are not loaded (`__NEXT_PROCESSED_ENV`), so real Mux/Gemini keys never reach the run; matching shell variables (`E2E_*`, `FF_*`, `MUX_*`, …) are dropped.
+- Runs everything except `live/mux-playback.spec.ts`, which needs real Mux credentials (staging only).
+- Flags: `--skip-build`, `--keep-db`, `--no-docker`, or the env vars `E2E_FULL_SKIP_BUILD=1`, `E2E_FULL_KEEP_DB=1`, `E2E_FULL_NO_DOCKER=1`. Other arguments go to `playwright test`. PowerShell drops `--`, so there use the env vars or `npx tsx scripts/e2e-hermetic.ts --skip-build e2e/access`.
+- Windows builds use `--webpack` and retry up to 3 times on the sporadic native crash (`0xC0000005`).
+- CI: `.github/workflows/ci.yml` runs lint, type-check, unit suites, then this command on every push to `main` and every PR; the Playwright report is uploaded when it fails.
+
+## Run against an existing server
 
 ```bash
 # Headless Chromium (starts `npm run dev` if nothing is on :3000)
@@ -227,7 +243,7 @@ Login is UI-based (`/login` → Email / Parol → Kirish → `/go` redirect). No
 
 ## Enrollment-authoritative access suite (`e2e/access`)
 
-Needs staging `FF_ENROLLMENT_ACCESS_MODE=enrollment` and the access fixtures. Seed them once (idempotent; refuses any DB not named `*_staging` unless it is a local dev DB):
+Included in `npm run test:e2e:full`. Against staging it needs `FF_ENROLLMENT_ACCESS_MODE=enrollment` and the access fixtures (`scripts/lib/e2e-access-seed.ts`). Refresh them after pulling new scenarios (idempotent; refuses any DB not named `*_staging` unless it is a local dev DB):
 
 ```bash
 cd /var/www/tdyu-live-staging && npx tsx scripts/e2e-access-fixtures.ts
@@ -243,7 +259,7 @@ npm run test:e2e:access
 |------|---------------------------|----------|
 | A | Course A, active seat — My Courses → Course → Lesson | page open, chat API 200 |
 | E/F/L | Deny probe course, no seat | paywall, chat 403, no media |
-| G/K | Course A + Checkout V2 Course B seats | both open |
+| G/K | Course A + second active seat (Access Fixture Second Active Course) | both open |
 | B/H/I | Completed course, completed seat, legacy subscription expired | replay open |
 | D | Refunded seat (`accessOpen=false`) | paywall, chat 403 |
 | C | Cancelled seat (`accessOpen=false`) | paywall, chat 403 |
@@ -255,7 +271,7 @@ API statuses are probed from a second, unmonitored tab: the session cookie is `S
 
 ## CI
 
-`npm run test:e2e` is the future-safe command. **Do not gate deploy on E2E until the suite is stable.** No GitHub Actions workflow was added/changed for this foundation.
+`.github/workflows/ci.yml` — job `checks` (lint, type-check, unit suites) then job `e2e` (`npm run test:e2e:full`). See "Hermetic full run" above.
 
 ## Phase 2.3C foundation status
 
@@ -288,18 +304,13 @@ With `.env.e2e.staging.example` values + SSH tunnel to `:3101`:
 
 ## Known limitations
 
-- Role / course / lesson smokes are **skipped** until `E2E_DB_READY=1` (schema must match Prisma)
-- Role tests also **skip** when `E2E_*` credentials are unset
-- Course/lesson smoke depends on seed (or env overrides); `npm run db:seed` currently fails without `entitlements` table — use `npm run db:e2e-seed` only as a local fixture helper
+- Outside `test:e2e:full`, role / course / lesson smokes **skip** until `E2E_DB_READY=1` and the `E2E_*` credentials are set
 - `/search` is authenticated — public suite only asserts redirect to login
-- Checkout V2 / live / refund / certificate flows are **not** covered yet
+- Live Mux playback runs only on staging (real Mux credentials)
+- Refund request/decision, certificate issuing and assignment submit/grade flows are **not** covered by browser tests yet (only their access outcome is)
 - Chromium only (Desktop Chrome project)
 - Monitor does not auto-fail on 401/403 (by design)
 
-## Known application gaps discovered during foundation work
+## Former application gaps (resolved)
 
-Documented only — not fixed here (schema/Checkout V2 track owns them):
-
-1. Prisma model `Entitlement` / table `entitlements` is in schema but not created by applied migrations → `npm run db:seed` fails
-2. Prisma field `User.lastLoginAt` (`users.last_login_at`) is in schema but not in migrations → credentials login throws and surfaces as failed sign-in
-3. Prisma field `Lesson.recordingUrl` (`lessons.recording_url`) missing from applied DB → course/lesson pages can 500
+`entitlements`, `users.last_login_at` and `lessons.recording_url` are created by migration `20260924110000_align_legacy_runtime_schema`; the hermetic run migrates an empty DB and logs in, so they are verified on every CI run.

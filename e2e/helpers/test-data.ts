@@ -60,7 +60,7 @@ export const STAGING_FIXTURE = {
 } as const;
 
 /**
- * Enrollment-authoritative access fixtures for fixture.active1 (seed: scripts/e2e-access-fixtures.ts).
+ * Enrollment-authoritative access fixtures for fixture.active1 (seed: scripts/lib/e2e-access-seed.ts).
  * All lessons are `ended` with no recording, so allowed = replay card, denied = paywall.
  */
 export const ACCESS_FIXTURES = {
@@ -87,5 +87,12 @@ export const ACCESS_FIXTURES = {
     courseTitle: "Access Fixture Legacy Subscription Course",
     lessonId: "e2600001-0000-4000-8000-000000000092",
     lessonTitle: "Access fixture legacy-only lesson",
+  },
+  /** Second open seat next to Course A, so Checkout V2 Course B can stay unowned. */
+  second: {
+    courseId: "e2600001-0000-4000-8000-0000000000a1",
+    courseTitle: "Access Fixture Second Active Course",
+    lessonId: "e2600001-0000-4000-8000-0000000000a2",
+    lessonTitle: "Access fixture second active lesson",
   },
 } as const;

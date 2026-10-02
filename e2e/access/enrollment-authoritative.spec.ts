@@ -106,15 +106,12 @@ test.describe("Enrollment authoritative access", () => {
     await expectLessonDenied(page, DENY_LESSON, DENY_LESSON_TITLE, NOT_ENROLLED);
   });
 
-  test("G/K: multiple enrollments — Course A and Course B both open", async ({ page, monitor }) => {
+  test("G/K: multiple enrollments — Course A and a second course both open", async ({ page, monitor }) => {
     monitor.noteAction("Course A lesson");
     await expectLessonAllowed(page, LESSON_A, LESSON_A_TITLE);
-    monitor.noteAction("Course B lesson (Checkout V2 seat)");
-    await expectLessonAllowed(
-      page,
-      STAGING_FIXTURE.checkoutV2LessonId,
-      STAGING_FIXTURE.checkoutV2LessonTitle,
-    );
+    const f = ACCESS_FIXTURES.second;
+    monitor.noteAction(`Second active seat lesson ${f.lessonId}`);
+    await expectLessonAllowed(page, f.lessonId, f.lessonTitle);
   });
 
   test("B/H/I: completed course replays even though the legacy subscription expired", async ({

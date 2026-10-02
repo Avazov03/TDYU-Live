@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it, afterEach } from "node:test";
-import { shouldExpireOtherSubscriptionsOnEnroll } from "../app/api/enroll/route";
+import { shouldExpireOtherSubscriptionsOnEnroll } from "./legacy-enroll";
 import { shouldHideStudentTariffUi } from "./feature-flags";
 
 describe("Wave 4 legacy enroll + Tarif UI", () => {
