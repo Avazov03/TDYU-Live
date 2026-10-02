@@ -19,7 +19,7 @@ const DRAG_SLOP = 6;
 
 /** Must match `.lx-ai-fab` width/height (desktop / ≤640px). */
 function fabSize() {
-  return window.innerWidth <= 640 ? { w: 64, h: 84 } : { w: 80, h: 106 };
+  return window.innerWidth <= 640 ? { w: 72, h: 95 } : { w: 92, h: 122 };
 }
 
 function clampPos(p: Pos): Pos {

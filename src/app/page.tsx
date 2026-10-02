@@ -82,7 +82,11 @@ export default async function LandingPage({
       <section id="bosh" className="site-hero">
         <HeroSparkles />
         <div className="site-hero-content">
-          <h1 className="site-hero-name">{BRAND.name}</h1>
+          <h1
+            className={`site-hero-name${BRAND.heroTitle.length > BRAND.name.length ? " site-hero-name--long" : ""}`}
+          >
+            {BRAND.heroTitle}
+          </h1>
           <p className="site-hero-tag">TDYU professorlaridan jonli huquqiy kurslar</p>
           <p className="site-hero-lead">
             {hideTariff

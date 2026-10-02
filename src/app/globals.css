@@ -3035,6 +3035,10 @@ html[data-theme="dark"] .acet-pane {
   background-clip: text;
   color: transparent;
 }
+.site-hero-name--long {
+  font-size: min(14.9vw, 26.5vh);
+  white-space: nowrap;
+}
 .site-hero-tag {
   max-width: 560px;
   margin: 0 0 10px;
@@ -3856,6 +3860,7 @@ html[data-theme="dark"] .acet-pane {
 @media (max-width: 700px) {
   .site-hero { min-height: 70vh; padding-inline: 12px; padding-top: 80px; }
   .site-hero-name { font-size: min(22vw, 18vh); margin-bottom: 20px; }
+  .site-hero-name--long { font-size: min(14vw, 14.9vh); }
   .lx-section,
   .lx-band-inner { padding: 72px 20px; }
   .lx-step { grid-template-columns: 48px 1fr; gap: 12px; padding: 22px 0; }
@@ -5948,7 +5953,7 @@ html[data-theme="dark"] .acet-pane {
 
 /* ── AI mentor (floating assistant) ── */
 .lx-ai-fab {
-  position: fixed; z-index: 150; width: 80px; height: 106px; padding: 0;
+  position: fixed; z-index: 150; width: 92px; height: 122px; padding: 0;
   display: block; border: 0; border-radius: 18px; background: transparent;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
   touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab;
@@ -6079,7 +6084,7 @@ html[data-theme="dark"] .acet-pane {
 .lx-ai-disclaimer { margin: 6px 0 0; text-align: center; font-size: 11.5px; color: var(--text-3); }
 
 @media (max-width: 640px) {
-  .lx-ai-fab { width: 64px; height: 84px; }
+  .lx-ai-fab { width: 72px; height: 95px; }
   .lx-ai-panel, .lx-ai-panel[data-side="left"], .lx-ai-panel[data-full] {
     inset: 0; width: 100%; height: 100dvh; border-radius: 0; border: 0; transform: translateY(24px);
   }

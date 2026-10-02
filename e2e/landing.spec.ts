@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures";
+import { BRAND } from "../src/lib/brand";
 
 /**
  * Landing smoke kept from the original suite.
@@ -12,7 +13,7 @@ test.describe("Lexify landing", () => {
 
     const heroName = page.locator(".site-hero-name");
     await expect(heroName).toBeVisible();
-    await expect(heroName).toHaveText(/Lexify/i);
+    await expect(heroName).toHaveText(BRAND.heroTitle);
 
     await expect(page.locator(".site-hero-tag")).toContainText(
       "TDYU professorlaridan jonli huquqiy kurslar",

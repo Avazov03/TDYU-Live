@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import { SEED } from "../helpers/test-data";
 import { isE2EDbReady, skipReasonDbNotReady } from "../helpers/env";
+import { BRAND } from "../../src/lib/brand";
 
 test.describe("Public smoke", () => {
   test("Homepage loads without critical browser errors", async ({ page, monitor }) => {
@@ -8,7 +9,7 @@ test.describe("Public smoke", () => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Lexify/i);
     await expect(page.locator(".site-hero-name")).toBeVisible();
-    await expect(page.locator(".site-hero-name")).toHaveText(/Lexify/i);
+    await expect(page.locator(".site-hero-name")).toHaveText(BRAND.heroTitle);
   });
 
   test("Login page loads", async ({ page, monitor }) => {
