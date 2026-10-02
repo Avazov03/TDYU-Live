@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { CERTIFICATE_MAX_BYTES, isLowAttendance } from "@/lib/certificate-policy";
@@ -26,6 +26,7 @@ export function IssueCertificateButton({
 }) {
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
+  const uid = useId();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,9 +66,9 @@ export function IssueCertificateButton({
       <button className="btn btn-sm" type="button" onClick={open} data-testid="certificate-issue">
         {reissue ? "Qayta berish" : "Sertifikat berish"}
       </button>
-      <dialog ref={ref} className="lx-dialog" aria-labelledby={`cert-${userId}-title`}>
+      <dialog ref={ref} className="lx-dialog" aria-labelledby={`${uid}-title`}>
         <div className="lx-dialog-head">
-          <h2 id={`cert-${userId}-title`}>Sertifikat — {studentName}</h2>
+          <h2 id={`${uid}-title`}>Sertifikat — {studentName}</h2>
           <button type="button" className="iconbtn" onClick={close} aria-label="Yopish">
             <X size={18} aria-hidden />
           </button>
@@ -91,9 +92,9 @@ export function IssueCertificateButton({
             </p>
           ) : null}
           <div className="field">
-            <label htmlFor={`cert-${userId}-file`}>Sertifikat fayli (PDF, JPG yoki PNG, 10 MB gacha)</label>
+            <label htmlFor={`${uid}-file`}>Sertifikat fayli (PDF, JPG yoki PNG, 10 MB gacha)</label>
             <input
-              id={`cert-${userId}-file`}
+              id={`${uid}-file`}
               type="file"
               accept="application/pdf,image/png,image/jpeg"
               onChange={(e) => {
