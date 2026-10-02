@@ -1,10 +1,11 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { loginAs } from "../auth/login";
 import {
   isE2EDbReady,
   skipReasonDbNotReady,
   studentCreds,
+  teacherCreds,
   skipReasonMissingCreds,
 } from "../helpers/env";
 import { ACCESS_FIXTURES, STAGING_FIXTURE } from "../helpers/test-data";
@@ -141,6 +142,96 @@ test.describe("Enrollment authoritative access", () => {
     const f = ACCESS_FIXTURES.legacy;
     monitor.noteAction(`Legacy-only course lesson ${f.lessonId}`);
     await expectLessonDenied(page, f.lessonId, f.lessonTitle, NOT_ENROLLED);
+  });
+});
+
+/** Status + body of a gated upload URL, opened in a fresh tab of the given context. */
+async function fileStatus(context: BrowserContext, fileUrl: string) {
+  const probe = await context.newPage();
+  try {
+    const res = await probe.goto(fileUrl);
+    return { status: res?.status() ?? 0, body: (await res?.text().catch(() => "")) ?? "" };
+  } finally {
+    await probe.close();
+  }
+}
+
+test.describe("Enrollment authoritative access — lesson materials", () => {
+  test("M: material file downloads only for enrolled students and staff", async ({
+    page,
+    monitor,
+    browser,
+  }) => {
+    test.skip(!isE2EDbReady(), skipReasonDbNotReady());
+    test.skip(!enrollmentAuthoritativeEnabled(), "Skipped: E2E_ENROLLMENT_AUTHORITATIVE not set");
+    const student = studentCreds();
+    const teacher = teacherCreds();
+    test.skip(!student, skipReasonMissingCreds("student"));
+    test.skip(!teacher, skipReasonMissingCreds("teacher"));
+
+    const baseURL = test.info().project.use.baseURL;
+    const teacherCtx = await browser.newContext({ baseURL });
+    const anonCtx = await browser.newContext({ baseURL });
+    const teacherPage = await teacherCtx.newPage();
+    const marker = `e2e-material-${Date.now()}`;
+    const uploaded: { lessonId: string; assetId: string }[] = [];
+
+    try {
+      monitor.noteAction("Teacher uploads a material to an owned and an unowned lesson");
+      await loginAs(teacherPage, teacher!, { expectPath: /\/teacher/ });
+      const upload = (lessonId: string) =>
+        teacherPage.evaluate(
+          async ({ lessonId, marker }) => {
+            const form = new FormData();
+            form.append("file", new File([marker], `${marker}.txt`, { type: "text/plain" }));
+            const res = await fetch(`/api/teacher/lessons/${lessonId}/assets`, {
+              method: "POST",
+              body: form,
+            });
+            const data = await res.json();
+            return { status: res.status, id: data.item?.id as string, fileUrl: data.item?.fileUrl as string };
+          },
+          { lessonId, marker },
+        );
+      const owned = await upload(LESSON_A);
+      expect(owned.status, "upload to Course A lesson").toBe(200);
+      uploaded.push({ lessonId: LESSON_A, assetId: owned.id });
+      const unowned = await upload(DENY_LESSON);
+      expect(unowned.status, "upload to deny-probe lesson").toBe(200);
+      uploaded.push({ lessonId: DENY_LESSON, assetId: unowned.id });
+      expect(owned.fileUrl).toMatch(/^\/uploads\/lessons\//);
+
+      monitor.noteAction("Teacher (course owner) can open both files");
+      expect((await fileStatus(teacherCtx, owned.fileUrl)).status).toBe(200);
+      expect((await fileStatus(teacherCtx, unowned.fileUrl)).status).toBe(200);
+
+      monitor.noteAction("Enrolled student opens the Course A material");
+      await loginAs(page, student!, { monitor });
+      const mine = await fileStatus(page.context(), owned.fileUrl);
+      expect(mine.status, "enrolled student download").toBe(200);
+      expect(mine.body).toBe(marker);
+
+      monitor.noteAction("Student without enrollment is refused the other material");
+      expect((await fileStatus(page.context(), unowned.fileUrl)).status).toBe(403);
+
+      monitor.noteAction("Anonymous visitor is refused");
+      expect((await fileStatus(anonCtx, owned.fileUrl)).status).toBe(401);
+    } finally {
+      for (const a of uploaded) {
+        if (!a.assetId) continue;
+        await teacherPage
+          .evaluate(
+            ({ lessonId, assetId }) =>
+              fetch(`/api/teacher/lessons/${lessonId}/assets/${assetId}`, { method: "DELETE" }).then(
+                (r) => r.status,
+              ),
+            a,
+          )
+          .catch(() => 0);
+      }
+      await teacherCtx.close();
+      await anonCtx.close();
+    }
   });
 });
 

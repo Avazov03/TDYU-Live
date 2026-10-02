@@ -233,7 +233,7 @@ Needs staging `FF_ENROLLMENT_ACCESS_MODE=enrollment` and the access fixtures. Se
 cd /var/www/tdyu-live-staging && npx tsx scripts/e2e-access-fixtures.ts
 ```
 
-Run with `E2E_DB_READY=1 E2E_ENROLLMENT_AUTHORITATIVE=1` plus the student credentials:
+Run with `E2E_DB_READY=1 E2E_ENROLLMENT_AUTHORITATIVE=1` plus the student and teacher credentials:
 
 ```bash
 npm run test:e2e:access
@@ -248,6 +248,7 @@ npm run test:e2e:access
 | D | Refunded seat (`accessOpen=false`) | paywall, chat 403 |
 | C | Cancelled seat (`accessOpen=false`) | paywall, chat 403 |
 | J | Active legacy subscription (t3), no seat | paywall, chat 403 |
+| M | Teacher uploads a `.txt` material to Course A and to the deny probe lesson (deleted afterwards) | teacher 200 on both, student 200 on Course A / 403 on deny probe, anonymous 401 |
 | L (anonymous) | Course A lesson without a session | login paywall, APIs 401 |
 
 API statuses are probed from a second, unmonitored tab: the session cookie is `Secure`, so only the browser sends it to `http://127.0.0.1:3101`, and expected 4xx answers must not count as console errors.
