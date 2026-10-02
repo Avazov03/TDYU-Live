@@ -58,3 +58,34 @@ export const STAGING_FIXTURE = {
   liveMuxLessonId: "d2500001-0000-4000-8000-000000000050",
   liveMuxLessonTitle: "Phase 8.5 Mux live lesson",
 } as const;
+
+/**
+ * Enrollment-authoritative access fixtures for fixture.active1 (seed: scripts/e2e-access-fixtures.ts).
+ * All lessons are `ended` with no recording, so allowed = replay card, denied = paywall.
+ */
+export const ACCESS_FIXTURES = {
+  completed: {
+    courseId: "e2600001-0000-4000-8000-000000000061",
+    courseTitle: "Access Fixture Completed Course",
+    lessonId: "e2600001-0000-4000-8000-000000000062",
+    lessonTitle: "Access fixture completed replay lesson",
+  },
+  refunded: {
+    courseId: "e2600001-0000-4000-8000-000000000071",
+    courseTitle: "Access Fixture Refunded Course",
+    lessonId: "e2600001-0000-4000-8000-000000000072",
+    lessonTitle: "Access fixture refunded lesson",
+  },
+  closed: {
+    courseId: "e2600001-0000-4000-8000-000000000081",
+    courseTitle: "Access Fixture Closed Course",
+    lessonId: "e2600001-0000-4000-8000-000000000082",
+    lessonTitle: "Access fixture closed lesson",
+  },
+  legacy: {
+    courseId: "e2600001-0000-4000-8000-000000000091",
+    courseTitle: "Access Fixture Legacy Subscription Course",
+    lessonId: "e2600001-0000-4000-8000-000000000092",
+    lessonTitle: "Access fixture legacy-only lesson",
+  },
+} as const;

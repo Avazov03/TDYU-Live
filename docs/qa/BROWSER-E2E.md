@@ -225,6 +225,33 @@ Login is UI-based (`/login` → Email / Parol → Kirish → `/go` redirect). No
 
 **Checkout V2:** placeholder, skipped
 
+## Enrollment-authoritative access suite (`e2e/access`)
+
+Needs staging `FF_ENROLLMENT_ACCESS_MODE=enrollment` and the access fixtures. Seed them once (idempotent; refuses any DB not named `*_staging` unless it is a local dev DB):
+
+```bash
+cd /var/www/tdyu-live-staging && npx tsx scripts/e2e-access-fixtures.ts
+```
+
+Run with `E2E_DB_READY=1 E2E_ENROLLMENT_AUTHORITATIVE=1` plus the student credentials:
+
+```bash
+npm run test:e2e:access
+```
+
+| Test | Fixture (fixture.active1) | Expected |
+|------|---------------------------|----------|
+| A | Course A, active seat — My Courses → Course → Lesson | page open, chat API 200 |
+| E/F/L | Deny probe course, no seat | paywall, chat 403, no media |
+| G/K | Course A + Checkout V2 Course B seats | both open |
+| B/H/I | Completed course, completed seat, legacy subscription expired | replay open |
+| D | Refunded seat (`accessOpen=false`) | paywall, chat 403 |
+| C | Cancelled seat (`accessOpen=false`) | paywall, chat 403 |
+| J | Active legacy subscription (t3), no seat | paywall, chat 403 |
+| L (anonymous) | Course A lesson without a session | login paywall, APIs 401 |
+
+API statuses are probed from a second, unmonitored tab: the session cookie is `Secure`, so only the browser sends it to `http://127.0.0.1:3101`, and expected 4xx answers must not count as console errors.
+
 ## CI
 
 `npm run test:e2e` is the future-safe command. **Do not gate deploy on E2E until the suite is stable.** No GitHub Actions workflow was added/changed for this foundation.

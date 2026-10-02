@@ -1,6 +1,6 @@
 /**
  * Files under public/uploads are served with a Content-Type derived from the extension
- * (nginx for /uploads/lessons, Next static for the rest), so anything the browser would
+ * (gated /api/files routes, or nginx where it still maps /uploads/lessons), so anything the browser would
  * render as a document or script (html, svg, xml, js…) must never be written there.
  */
 const SAFE_EXTENSIONS = new Set([

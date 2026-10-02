@@ -1,18 +1,15 @@
-import { createReadStream } from "fs";
-import { stat } from "fs/promises";
-import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLessonAccess } from "@/lib/access";
-import { lessonFileMime, lessonUploadPath } from "@/lib/lesson-file";
+import { lessonUploadPath, streamUploadFile } from "@/lib/lesson-file";
 import { isAdminRole, isTeacherRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Lesson material download — Enrollment/legacy access gated (Phase 2.6).
- * Filename maps to LessonAsset.fileUrl.
+ * Lesson material download. Public URL `/uploads/lessons/:filename` is rewritten here by
+ * middleware so build-time files under public/ are never served statically.
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ filename: string }> }) {
   const session = await auth();
@@ -26,14 +23,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ filenam
     return NextResponse.json({ error: "Fayl topilmadi" }, { status: 404 });
   }
 
-  const fileUrl = `/uploads/lessons/${filename}`;
   const asset = await prisma.lessonAsset.findFirst({
-    where: { fileUrl },
-    include: {
-      lesson: {
-        include: { course: { include: { teacher: true } } },
-      },
-    },
+    where: { fileUrl: `/uploads/lessons/${filename}` },
+    include: { lesson: { include: { course: { include: { teacher: true } } } } },
   });
   if (!asset) {
     return NextResponse.json({ error: "Fayl topilmadi" }, { status: 404 });
@@ -51,22 +43,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ filenam
     }
   }
 
-  let fileStat;
-  try {
-    fileStat = await stat(filePath);
-    if (!fileStat.isFile()) throw new Error("not file");
-  } catch {
-    return NextResponse.json({ error: "Fayl topilmadi" }, { status: 404 });
-  }
-
-  const stream = createReadStream(filePath);
-  const web = Readable.toWeb(stream) as ReadableStream;
-  return new NextResponse(web, {
-    headers: {
-      "Content-Type": lessonFileMime(filename),
-      "Content-Length": String(fileStat.size),
-      "Cache-Control": "private, max-age=0, must-revalidate",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+  return streamUploadFile(filePath, filename);
 }

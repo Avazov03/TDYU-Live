@@ -6,6 +6,38 @@ import { getClientIp, isRateLimited, rateLimit } from "./rate-limit";
 import { cronAuthError } from "./cron-auth";
 import { acceptsRecordingUpload, lessonMayEnterReview } from "./recording-lifecycle";
 import { nextTashkentHourInput } from "./utils";
+import { NextRequest } from "next/server";
+import { middleware } from "../middleware";
+import { assignmentUploadPath, lessonUploadPath } from "./lesson-file";
+
+function routeUpload(pathname: string) {
+  const res = middleware(new NextRequest(`http://localhost${pathname}`));
+  return { status: res.status, rewrite: res.headers.get("x-middleware-rewrite") };
+}
+
+describe("Protected uploads never reach public/ static serving", () => {
+  it("rewrites lesson materials and assignment files to gated routes", () => {
+    const lesson = routeUpload("/uploads/lessons/abc-notes.pdf");
+    assert.equal(new URL(lesson.rewrite!).pathname, "/api/files/lessons/abc-notes.pdf");
+    const assignment = routeUpload("/uploads/assignments/u1-123-hw.docx");
+    assert.equal(new URL(assignment.rewrite!).pathname, "/api/files/assignments/u1-123-hw.docx");
+  });
+
+  it("blocks recordings and nested upload paths outright", () => {
+    assert.equal(routeUpload("/uploads/recordings/x.webm").status, 403);
+    const nested = routeUpload("/uploads/lessons/a/b.pdf");
+    assert.equal(nested.status, 404);
+    assert.equal(nested.rewrite, null);
+  });
+
+  it("rejects path traversal in upload filenames", () => {
+    for (const bad of ["", "..", "../x.pdf", "a/b.pdf", "a\\b.pdf", "..%2Fx"]) {
+      assert.equal(lessonUploadPath(bad), null);
+      assert.equal(assignmentUploadPath(bad), null);
+    }
+    assert.ok(lessonUploadPath("ok.pdf")?.endsWith("ok.pdf"));
+  });
+});
 
 const USER = "a6666666-6666-4666-8666-666666666611";
 

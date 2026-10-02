@@ -18,7 +18,7 @@ Compat: `FF_ENROLLMENT_ACCESS=shadow|true|dual|enrollment` still parsed via `get
 - `src/lib/enrollment-access.ts` — NEW seat evaluator `(userId, courseId)`; no `endsAt` denial; no expire-other-courses
 - `src/lib/access.ts` — `getLegacyLessonAccess` + `getLessonAccess` mode switch; cabinet accepts open Enrollment in dual/enrollment
 - `src/lib/feature-flags.ts` — mode helper
-- `src/middleware.ts` — blocks direct `/uploads/recordings/*` (use gated API)
+- `src/middleware.ts` — blocks direct `/uploads/recordings/*` (use gated API); rewrites `/uploads/lessons/:file` and `/uploads/assignments/:file` to gated `/api/files/*` routes before `public/` static serving can answer
 
 ## Access call graph (CURRENT callers)
 
@@ -30,12 +30,13 @@ All lesson-gated paths go through `getLessonAccess` (except cabinet “any activ
 | `src/app/api/live/signal/route.ts` | `liveGate` → `getLessonAccess` | Uses mode |
 | `src/app/api/media/recording/[id]/route.ts` | `getLessonAccess` | Uses mode; middleware blocks static bypass |
 | `src/app/api/lessons/[id]/chat/route.ts` GET+POST | `getLessonAccess` | GET gated in 2.6 |
-| `src/app/uploads/lessons/[filename]/route.ts` | `getLessonAccess` | Gated in 2.6 |
+| `src/app/api/files/lessons/[filename]/route.ts` (via middleware rewrite of `/uploads/lessons/*`) | `getLessonAccess` | Gated; build-time files no longer served statically |
 | `src/app/api/assignments/submit/route.ts` | `hasCourseContentAccess` | Migrated off Subscription-only |
 | `src/app/courses/[id]/page.tsx` | `getActiveSubscription` + `getOpenEnrollment` | Display |
 | Cabinet: `/app`, `/schedule`, `/assignments`, `/my-courses`, `/certificates` | `requireStudentCabinet` | Accepts open Enrollment when dual/enrollment |
 | `/history`, `/search`, `/shorts` | `requireAppUser` | Same |
-| Assignment **file** URLs under `/uploads/assignments/` | public static | **Remaining** — teacher download path; not lesson SoT |
+| `src/app/api/files/assignments/[filename]/route.ts` (via middleware rewrite of `/uploads/assignments/*`) | submitter / course teacher / admin | Gated |
+| Production nginx `location /uploads/lessons/` | none (nginx `try_files`, CORS `*`) | **Open on production** — bypasses Next entirely; remove the block when deploying the gate |
 | `home-path.ts`, landing, onboard, enroll | Entitlement/Subscription | Unchanged (legacy commerce) |
 
 **Authority goal (enrollment mode):** Enrollment `status` + `accessOpen` is lesson/content SoT. Subscription/Entitlement remain for migration compatibility only.
