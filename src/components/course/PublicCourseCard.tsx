@@ -41,7 +41,11 @@ export function PublicCourseCard({
         </p>
       </div>
       <div className="lx-ccard-foot">
-        {showPrice ? <span className="lx-ccard-price">{formatSom(course.price)}</span> : <span />}
+        {showPrice && course.price != null ? (
+          <span className="lx-ccard-price">{formatSom(course.price)}</span>
+        ) : (
+          <span />
+        )}
         <span className="lx-ccard-go">
           Batafsil <span aria-hidden>→</span>
         </span>

@@ -80,9 +80,11 @@ describe("Recording Wave 1 feature flag", () => {
     const prev24 = process.env.FF_RECORDING_REVIEW_24H;
     delete process.env.FF_RECORDING_REVIEW_V1;
     delete process.env.FF_RECORDING_REVIEW_24H;
-    assert.equal(isRecordingReviewV1Enabled(), false);
-    process.env.FF_RECORDING_REVIEW_V1 = prevV1;
-    process.env.FF_RECORDING_REVIEW_24H = prev24;
+    assert.equal(isRecordingReviewV1Enabled(), true);
+    if (prevV1 === undefined) delete process.env.FF_RECORDING_REVIEW_V1;
+    else process.env.FF_RECORDING_REVIEW_V1 = prevV1;
+    if (prev24 === undefined) delete process.env.FF_RECORDING_REVIEW_24H;
+    else process.env.FF_RECORDING_REVIEW_24H = prev24;
   });
 
   it("reads FF_RECORDING_REVIEW_V1", () => {

@@ -189,6 +189,27 @@ async function loadReplayPayload(
   });
 }
 
+async function loadReplayByIdempotencyKey(
+  client: PrismaClient,
+  idempotencyKey: string,
+  userId: string,
+  courseId: string,
+): Promise<CheckoutV2Success | null> {
+  const payment = await client.payment.findUnique({ where: { idempotencyKey } });
+  const purchase =
+    payment?.purchaseId != null
+      ? await client.purchase.findUnique({
+          where: { id: payment.purchaseId },
+          select: { id: true, userId: true, courseId: true },
+        })
+      : await client.purchase.findUnique({
+          where: { idempotencyKey },
+          select: { id: true, userId: true, courseId: true },
+        });
+  if (!purchase || purchase.userId !== userId || purchase.courseId !== courseId) return null;
+  return loadReplayPayload(client as unknown as Tx, purchase.id);
+}
+
 /**
  * Atomic checkout. Caller must enforce auth + feature flag.
  */
@@ -410,6 +431,8 @@ export async function checkoutCourseV2(
       "code" in err &&
       (err as { code?: string }).code === "P2002"
     ) {
+      const raced = await loadReplayByIdempotencyKey(client, idempotencyKey, input.userId, input.courseId);
+      if (raced) return raced;
       throw new CheckoutV2Error(
         "IDEMPOTENCY_CONFLICT",
         409,

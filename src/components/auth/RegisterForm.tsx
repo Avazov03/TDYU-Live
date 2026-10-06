@@ -55,18 +55,7 @@ export function RegisterForm({ googleEnabled = false }: RegisterFormProps) {
         return;
       }
 
-      const signinRes = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      if (signinRes?.error) {
-        setError(
-          "Hisob yaratildi, lekin avtomatik kirish amalga oshmadi. Kirish sahifasidan kiring.",
-        );
-        return;
-      }
-      router.push("/go");
+      router.push("/login");
       router.refresh();
     } catch {
       setError("Tarmoq xatosi. Internetni tekshirib qayta urinib ko'ring.");

@@ -17,7 +17,7 @@ type SettingsData = {
 export function SettingsForm({ initial }: { initial: SettingsData }) {
   const fid = useId();
   const { theme, setTheme } = useTheme();
-  const [chatId, setChatId] = useState(initial.telegramChatId ?? "");
+  const [linked, setLinked] = useState(Boolean(initial.telegramChatId));
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +33,7 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
     const res = await fetch("/api/settings/telegram", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegramChatId: chatId }),
+      body: JSON.stringify({ telegramChatId: "" }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
@@ -41,7 +41,8 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
       setMsg(data.error || "Saqlanmadi");
       return;
     }
-    setMsg("Telegram saqlandi.");
+    setLinked(false);
+    setMsg("Telegram uzildi.");
   };
 
   return (
@@ -60,13 +61,13 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
           <label htmlFor={`${fid}-3`}>Rol</label>
           <input id={`${fid}-3`} readOnly value={initial.role} />
         </div>
-        <p className="small muted">Ism, email va parolni tahrirlash keyingi yangilanishda qo&apos;shiladi.</p>
+        <p className="small muted">Ism va email shu yerda o‘zgarmaydi.</p>
       </div>
 
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 12 }}>Telegram bildirishnomalar</h3>
         <p className="small muted" style={{ marginBottom: 12 }}>
-          Professional bot: /start menyu, bugungi dars, kurslar, tarif. Eslatmalarda «Darsga kirish» tugmasi.
+          Telegram ixtiyoriy. Ulash faqat bot orqali. Sayt bildirishnomalari asosiy kanal.
         </p>
         {deepLink ? (
           <p style={{ marginBottom: 12 }}>
@@ -76,20 +77,15 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
           </p>
         ) : (
           <p className="small muted" style={{ marginBottom: 12 }}>
-            Bot username hali yo‘q — Chat ID ni qo‘lda kiriting yoki admin `TELEGRAM_BOT_TOKEN` ni ulang.
+            Bot hozircha ulanmagan. Sayt bildirishnomalari ishlayveradi.
           </p>
         )}
-        <div className="field">
-          <label htmlFor={`${fid}-4`}>Telegram Chat ID</label>
-          <input id={`${fid}-4`}
-            value={chatId}
-            onChange={(e) => setChatId(e.target.value)}
-            placeholder="Masalan: 123456789"
-          />
-        </div>
-        <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void saveTelegram()}>
-          {busy ? "Saqlanmoqda..." : "Saqlash"}
-        </button>
+        <p className="small">{linked ? "Telegram ulangan." : "Telegram ulanmagan."}</p>
+        {linked ? (
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void saveTelegram()}>
+            {busy ? "Saqlanmoqda..." : "Uzish"}
+          </button>
+        ) : null}
         {msg ? <p className="small muted" style={{ marginTop: 8 }}>{msg}</p> : null}
       </div>
 

@@ -43,7 +43,7 @@ describe("resolveReplayPlaybackId", () => {
 
 describe("shouldMarkRecordingReadyOnUpload", () => {
   it("interim uploads during live/waiting never move the lesson into review", () => {
-    for (const lessonStatus of ["live", "lobby", "waiting_room"]) {
+    for (const lessonStatus of ["live", "paused", "lobby", "waiting_room"]) {
       assert.equal(shouldMarkRecordingReadyOnUpload({ reviewFlagOn: true, lessonStatus }), false, lessonStatus);
     }
   });

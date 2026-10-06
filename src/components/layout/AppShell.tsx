@@ -34,6 +34,7 @@ export async function AppShell({ children, active, mainClassName }: AppShellProp
         userRole={shell.userRole}
         userName={shell.userName}
         tariffTier={tariffTier}
+        loggedIn={shell.loggedIn}
       />
       <div className="acet-pane">
         <Topbar

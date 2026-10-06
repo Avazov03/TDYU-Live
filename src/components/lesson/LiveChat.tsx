@@ -87,7 +87,7 @@ export function LiveChat({ lessonId, canSend }: { lessonId: string; canSend: boo
         </form>
       ) : (
         <p className="small muted" style={{ marginBottom: 14 }}>
-          Chat faqat 2 va 3-tarif uchun.
+          Izoh yozish uchun shu kursga yozilgan bo‘lish kerak.
         </p>
       )}
       <div className="chat-list">
@@ -100,7 +100,6 @@ export function LiveChat({ lessonId, canSend }: { lessonId: string; canSend: boo
               <div>
                 <div className="small" style={{ fontWeight: 600 }}>
                   {m.user.fullName}
-                  {m.priority ? <span className="badge accent" style={{ marginLeft: 6 }}>3-tarif</span> : null}
                 </div>
                 <div>{m.text}</div>
               </div>

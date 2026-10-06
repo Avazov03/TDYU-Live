@@ -136,7 +136,9 @@ export async function POST(
 
   if (
     isCourseReviewV1Enabled() &&
-    (lesson.course.lifecycleStatus === "published" || lesson.course.lifecycleStatus === "upcoming")
+    (lesson.course.lifecycleStatus === "published" ||
+      lesson.course.lifecycleStatus === "upcoming" ||
+      (lesson.course.lifecycleStatus === null && lesson.course.isPublished))
   ) {
     await prisma.course.updateMany({
       where: { id: lesson.courseId, lifecycleStatus: lesson.course.lifecycleStatus },

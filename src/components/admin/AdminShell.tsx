@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BRAND } from "@/lib/brand";
 import {
+  Activity,
   Award,
   BookOpen,
   ClipboardCheck,
@@ -31,11 +32,12 @@ type NavItem = { href: string; label: string; hint: string; icon: LucideIcon; ex
 const NAV: NavItem[] = [
   { href: "/admin", label: "Bugun", hint: "KPI · diqqat", icon: LayoutDashboard, exact: true },
   { href: "/admin/review", label: "Tekshiruv", hint: "Tasdiqlash · nashr", icon: ClipboardCheck },
-  { href: "/admin/users", label: "O‘quvchilar", hint: "Blok · obuna · parol", icon: GraduationCap },
+  { href: "/admin/users", label: "O‘quvchilar", hint: "Hisob · blok · parol", icon: GraduationCap },
   { href: "/admin/teachers", label: "O‘qituvchilar", hint: "Taklif · blok", icon: Presentation },
   { href: "/admin/courses", label: "Kurslar", hint: "Ro‘yxat · tahrir", icon: BookOpen },
   { href: "/admin/payments", label: "To‘lovlar", hint: "Kirim · qaytarish", icon: Wallet },
   { href: "/admin/certificates", label: "Sertifikatlar", hint: "Berilgan · bekor", icon: Award },
+  { href: "/admin/health", label: "Holat", hint: "Baza · efir · yozuv", icon: Activity },
 ];
 
 function isActive(pathname: string, item: { href: string; exact?: boolean }) {

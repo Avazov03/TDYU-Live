@@ -20,7 +20,7 @@ export function isWaitingLessonStatus(status: string): boolean {
 }
 
 export function isJoinableLiveLessonStatus(status: string): boolean {
-  return status === "live" || isWaitingLessonStatus(status);
+  return status === "live" || status === "paused" || isWaitingLessonStatus(status);
 }
 
 export async function findActiveLiveSession(

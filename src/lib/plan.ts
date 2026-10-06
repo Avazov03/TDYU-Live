@@ -134,5 +134,5 @@ export function statusTone(
 }
 
 export function isJoinableLiveStatus(status: PlanStatus | string) {
-  return status === "live" || status === "lobby" || status === "waiting_room";
+  return status === "live" || status === "paused" || status === "lobby" || status === "waiting_room";
 }

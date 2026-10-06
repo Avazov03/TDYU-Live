@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { LiveClassBar } from "@/components/live/LiveClassBar";
 
 type MeetRoomProps = {
   lessonId: string;
@@ -1595,6 +1596,13 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             </span>
           )}
           {recording ? <span className="meet-rec">REC</span> : null}
+          <LiveClassBar
+            lessonId={lessonId}
+            displayName={displayName}
+            moderator={moderator}
+            phase={phase}
+            sharing={sharing}
+          />
           {moderator ? "Ustoz" : "Talaba"} · {remotes.length + 1} kishi
           {raisedCount ? ` · ${raisedCount} qo‘l` : ""}
           {studentAvLabel ? (

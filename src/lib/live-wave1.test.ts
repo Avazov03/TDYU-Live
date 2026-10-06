@@ -30,6 +30,7 @@ describe("Live Wave 1 lifecycle mapping", () => {
   it("joinable when waiting or live", () => {
     assert.equal(isJoinableLiveLessonStatus("lobby"), true);
     assert.equal(isJoinableLiveLessonStatus("live"), true);
+    assert.equal(isJoinableLiveLessonStatus("paused"), true);
     assert.equal(isJoinableLiveLessonStatus("ended"), false);
     assert.equal(isJoinableLiveLessonStatus("cancelled"), false);
   });
@@ -116,10 +117,10 @@ describe("Live Wave 1 join token", () => {
 });
 
 describe("Live Wave 1 feature flag", () => {
-  it("defaults off", () => {
+  it("defaults on", () => {
     const prev = process.env.FF_LIVE_WAITING_ROOM_V2;
     delete process.env.FF_LIVE_WAITING_ROOM_V2;
-    assert.equal(isLiveWaitingRoomV2Enabled(), false);
+    assert.equal(isLiveWaitingRoomV2Enabled(), true);
     if (prev !== undefined) process.env.FF_LIVE_WAITING_ROOM_V2 = prev;
   });
 

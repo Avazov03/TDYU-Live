@@ -11,6 +11,7 @@ import { UZ_MONTHS_SHORT, tashkentParts } from "@/lib/utils";
 import { isLiveAllowedForCourse, lifecycleLabel } from "@/lib/course-review-policy";
 import { Icon } from "@/components/ui/Icon";
 import { confirmAction } from "@/components/ui/ConfirmDialog";
+import { CourseLifecycleActions } from "@/components/admin/CourseLifecycleActions";
 
 function healthLabel(h: CourseHealth) {
   if (h === "live") return "Jonli";
@@ -495,6 +496,18 @@ export function AdminCoursesBoard({
                                 </button>
                               )}
                             </div>
+                            {reviewFlow ? (
+                              <CourseLifecycleActions
+                                courseId={course.id}
+                                activeStudents={course.activeStudents}
+                                canUnpublish={
+                                  course.lifecycleStatus === "upcoming" ||
+                                  course.lifecycleStatus === "published" ||
+                                  course.lifecycleStatus === "active" ||
+                                  (course.lifecycleStatus == null && course.isPublished)
+                                }
+                              />
+                            ) : null}
                             {error && openCourse === course.id ? (
                               <p className="small" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>
                             ) : null}

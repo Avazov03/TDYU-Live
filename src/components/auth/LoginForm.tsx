@@ -26,6 +26,13 @@ type LoginFormProps = {
   googleEnabled?: boolean;
 };
 
+/** Same-origin path only. Login never follows an external callback. */
+function safeCallback(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/go";
+  if (raw.startsWith("/login") || raw.startsWith("/register")) return "/go";
+  return raw;
+}
+
 export function LoginForm({ googleEnabled = false }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,7 +62,7 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
       setError("Login yoki parol noto'g'ri");
       return;
     }
-    router.push("/go");
+    router.push(safeCallback(searchParams.get("callbackUrl")));
     router.refresh();
   }
 
@@ -63,7 +70,7 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
     if (!googleEnabled) return;
     setError(null);
     setGoogleLoading(true);
-    await signIn("google", { callbackUrl: "/go" });
+    await signIn("google", { callbackUrl: safeCallback(searchParams.get("callbackUrl")) });
   }
 
   return (

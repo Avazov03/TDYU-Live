@@ -52,10 +52,23 @@ export async function PATCH(
     );
   }
 
-  const course = await prisma.course.update({
-    where: { id },
+  const claimed = await prisma.course.updateMany({
+    where: {
+      id,
+      lifecycleStatus: existing.lifecycleStatus,
+      listPrice: existing.listPrice,
+      teacherId: existing.teacherId,
+      isPublished: existing.isPublished,
+    },
     data: parsed.data,
   });
+  if (claimed.count !== 1) {
+    return NextResponse.json(
+      { error: "Kurs holati o‘zgardi — sahifani yangilang", code: "CONFLICT" },
+      { status: 409 },
+    );
+  }
+  const course = await prisma.course.findUniqueOrThrow({ where: { id } });
 
   await writeAuditLog({
     actorId: session.user.id,

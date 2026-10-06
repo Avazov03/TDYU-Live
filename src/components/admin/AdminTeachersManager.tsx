@@ -191,15 +191,15 @@ export function AdminTeachersManager({
       setOpenId(teacherId);
       return;
     }
-    const password = await resetPassword(teacherId);
-    if (password) {
-      await copyText(password);
-      markCopied(`pw-${teacherId}`);
-    }
+    setError("Avval «Yangi parol» tugmasini bosing. Ko‘z yangi parol yaratmaydi.");
   };
 
   const copyPassword = async (teacherId: string) => {
-    const password = revealed[teacherId] || (await resetPassword(teacherId));
+    const password = revealed[teacherId];
+    if (!password) {
+      setError("Avval «Yangi parol» tugmasini bosing.");
+      return;
+    }
     if (!password) return;
     await copyText(password);
     markCopied(`pw-${teacherId}`);

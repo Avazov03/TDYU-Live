@@ -4,10 +4,11 @@ import { auth } from "@/lib/auth";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { issueRecordingPlaybackToken } from "@/lib/recording-playback-auth";
 import { isRecordingSignedPlaybackV1Enabled } from "@/lib/feature-flags";
+import { entityIdSchema } from "@/lib/entity-id";
 
 const bodySchema = z.object({
-  recordingId: z.string().trim().uuid().optional(),
-  lessonId: z.string().trim().uuid().optional(),
+  recordingId: entityIdSchema.optional(),
+  lessonId: entityIdSchema.optional(),
   /** Forbidden — server rejects if present. */
   playbackId: z.string().optional(),
 });

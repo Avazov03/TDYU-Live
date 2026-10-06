@@ -262,16 +262,16 @@ describe("Recording Wave 3 feature flags", () => {
     process.env.FF_RECORDING_LEGACY_MIGRATION_V1 = prev;
   });
 
-  it("mustUseSecureMuxPlayback when wave2 or wave3 on", () => {
+  it("secure playback is on when signed playback defaults on, or when legacy migration is on", () => {
     const prev2 = process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
     const prev3 = process.env.FF_RECORDING_LEGACY_MIGRATION_V1;
     delete process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
     delete process.env.FF_RECORDING_LEGACY_MIGRATION_V1;
-    assert.equal(mustUseSecureMuxPlayback(), false);
-    process.env.FF_RECORDING_LEGACY_MIGRATION_V1 = "true";
     assert.equal(mustUseSecureMuxPlayback(), true);
-    delete process.env.FF_RECORDING_LEGACY_MIGRATION_V1;
-    process.env.FF_RECORDING_SIGNED_PLAYBACK_V1 = "true";
+    process.env.FF_RECORDING_SIGNED_PLAYBACK_V1 = "false";
+    assert.equal(mustUseSecureMuxPlayback(), false);
+    delete process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
+    process.env.FF_RECORDING_LEGACY_MIGRATION_V1 = "true";
     assert.equal(mustUseSecureMuxPlayback(), true);
     process.env.FF_RECORDING_SIGNED_PLAYBACK_V1 = prev2;
     process.env.FF_RECORDING_LEGACY_MIGRATION_V1 = prev3;

@@ -49,6 +49,7 @@ type SidebarProps = {
   userRole?: string;
   userName?: string;
   tariffTier?: string | null;
+  loggedIn?: boolean;
 };
 
 type NavItem = SidebarLinks & {
@@ -92,7 +93,7 @@ function studentNav(props: SidebarProps): { primary: NavItem[]; more: NavItem[] 
   const { active, tariffTier } = props;
   const isHome = active === "home";
   const isSubs = active === "playlists" || active === "my-courses";
-  const shortsLocked = tariffTier === "t1";
+  const showShorts = tariffTier === "t2" || tariffTier === "t3";
 
   const primary: NavItem[] = [
     { ...nav("Bugun", "/app", LayoutDashboard), key: "app", current: isHome },
@@ -101,15 +102,15 @@ function studentNav(props: SidebarProps): { primary: NavItem[]; more: NavItem[] 
   ];
 
   const more: NavItem[] = [
-    ...(shortsLocked
-      ? []
-      : [
+    ...(showShorts
+      ? [
           {
             ...nav("Shorts", "/shorts", Clapperboard),
             key: "shorts",
             current: active === "shorts",
           } as NavItem,
-        ]),
+        ]
+      : []),
     { ...nav("Ko'rilganlar", "/history", History), key: "history", current: active === "history" },
     { ...nav("Topshiriqlar", "/assignments", ClipboardList), key: "tasks", current: active === "assignments" },
     { ...nav("Sertifikatlar", "/certificates", Award), key: "certs", current: active === "certificates" },
@@ -119,8 +120,18 @@ function studentNav(props: SidebarProps): { primary: NavItem[]; more: NavItem[] 
   return { primary, more };
 }
 
+function guestNav(): NavItem[] {
+  return [
+    { ...nav("Bosh sahifa", "/", Home), key: "site", current: false },
+    { ...nav("Kirish", "/login", LayoutDashboard), key: "login" },
+    { ...nav("Ro'yxat", "/register", Users), key: "register" },
+  ];
+}
+
 function linksFor(props: SidebarProps): NavItem[] {
-  const { active, userRole } = props;
+  const { active, userRole, loggedIn } = props;
+
+  if (!loggedIn) return guestNav();
 
   if (isTeacherRole(userRole)) {
     return [
@@ -273,11 +284,13 @@ function SidebarNav({
   userName,
   profileLabel,
   logoHref,
+  profileHref = "/settings",
 }: {
   items: NavItem[];
   userName: string;
   profileLabel: string;
   logoHref: string;
+  profileHref?: string;
 }) {
   const { setOpen } = useSidebar();
   return (
@@ -292,7 +305,7 @@ function SidebarNav({
         <SidebarLink
           link={{
             label: profileLabel,
-            href: "/settings",
+            href: profileHref,
             icon: (
               <span className="h-7 w-7 flex-shrink-0 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-[10px] font-medium inline-flex items-center justify-center">
                 {initials(userName)}
@@ -311,18 +324,26 @@ export function Sidebar({
   userRole,
   userName,
   tariffTier,
+  loggedIn = false,
 }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const reduced = useReducedMotion();
-  const displayName = userName?.trim() || "Profil";
-  const profileLabel = `${displayName} · ${ROLE_LABELS[roleKind(userRole)]}`;
-  const logoHref = isTeacherRole(userRole) ? "/teacher" : isAdminRole(userRole) ? "/admin" : "/app";
-  const isStudent = !isTeacherRole(userRole) && !isAdminRole(userRole);
+  const guest = !loggedIn;
+  const displayName = guest ? "Mehmon" : userName?.trim() || "Profil";
+  const profileLabel = guest ? "Kirish" : `${displayName} · ${ROLE_LABELS[roleKind(userRole)]}`;
+  const logoHref = guest
+    ? "/"
+    : isTeacherRole(userRole)
+      ? "/teacher"
+      : isAdminRole(userRole)
+        ? "/admin"
+        : "/app";
+  const isStudent = loggedIn && !isTeacherRole(userRole) && !isAdminRole(userRole);
   const student = useMemo(
     () => (isStudent ? studentNav({ active, userRole, tariffTier }) : null),
     [active, isStudent, tariffTier, userRole],
   );
-  const items = linksFor({ active, userRole, tariffTier });
+  const items = linksFor({ active, userRole, tariffTier, loggedIn });
 
   useEffect(() => {
     const handler = () => {
@@ -345,7 +366,13 @@ export function Sidebar({
             logoHref={logoHref}
           />
         ) : (
-          <SidebarNav items={items} userName={displayName} profileLabel={profileLabel} logoHref={logoHref} />
+          <SidebarNav
+            items={items}
+            userName={displayName}
+            profileLabel={profileLabel}
+            logoHref={logoHref}
+            profileHref={guest ? "/login" : "/settings"}
+          />
         )}
       </DesktopSidebar>
       <MobileSidebar className="justify-between gap-10">
@@ -357,7 +384,13 @@ export function Sidebar({
             logoHref={logoHref}
           />
         ) : (
-          <SidebarNav items={items} userName={displayName} profileLabel={profileLabel} logoHref={logoHref} />
+          <SidebarNav
+            items={items}
+            userName={displayName}
+            profileLabel={profileLabel}
+            logoHref={logoHref}
+            profileHref={guest ? "/login" : "/settings"}
+          />
         )}
       </MobileSidebar>
     </SidebarProvider>

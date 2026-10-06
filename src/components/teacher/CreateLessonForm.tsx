@@ -21,6 +21,7 @@ export function CreateLessonForm({
   const [summaryUz, setSummaryUz] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [scheduledAt, setScheduledAt] = useState(defaultSlot);
+  const [additional, setAdditional] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -46,6 +47,7 @@ export function CreateLessonForm({
           summaryUz,
           coverUrl,
           scheduledAt: localInputToIso(scheduledAt),
+          additional,
         }),
       });
       data = await res.json().catch(() => ({}));
@@ -63,6 +65,7 @@ export function CreateLessonForm({
     setSummaryUz("");
     setCoverUrl("");
     setScheduledAt(defaultSlot());
+    setAdditional(false);
     const course = courses.find((c) => c.id === courseId);
     setDone({ courseTitle: course?.titleUz ?? "", needsReview: Boolean(course?.needsReview) });
     router.refresh();
@@ -119,6 +122,20 @@ export function CreateLessonForm({
       <div className="field">
         <label htmlFor={`${fid}-4`}>Sana va vaqt</label>
         <input id={`${fid}-4`} type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
+      </div>
+      <div className="field">
+        <label htmlFor={`${fid}-add`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            id={`${fid}-add`}
+            type="checkbox"
+            checked={additional}
+            onChange={(e) => setAdditional(e.target.checked)}
+          />
+          Qo‘shimcha dars
+        </label>
+        <span className="small muted" style={{ display: "block", marginTop: 6 }}>
+          Nashr qilingan kursda reja yopiq bo‘lsa, qo‘shimcha dars sifatida qo‘shiladi. Oddiy dars rejasiga kirmaydi.
+        </span>
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
       {done ? (

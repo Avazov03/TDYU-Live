@@ -16,7 +16,8 @@ export type CourseReviewAction =
   | "request_changes"
   | "reject"
   | "approve"
-  | "publish";
+  | "publish"
+  | "unpublish";
 
 export type CourseReviewActor = "owner_teacher" | "admin";
 
@@ -30,6 +31,7 @@ const TRANSITIONS: Record<
   reject: { from: ["submitted", "in_review"], actor: "admin" },
   approve: { from: ["submitted", "in_review"], actor: "admin" },
   publish: { from: ["approved"], actor: "admin" },
+  unpublish: { from: ["upcoming", "published", "active"], actor: "admin" },
 };
 
 export const COURSE_MIN_DESCRIPTION = 20;
@@ -123,6 +125,12 @@ export function checkCourseReviewAction(input: ReviewCheckInput): ReviewCheck {
     }
     case "publish":
       return { ok: true, to: input.hasFutureLesson ? "upcoming" : "published" };
+    case "unpublish": {
+      if ((input.reason ?? "").trim().length < COURSE_MIN_REASON) {
+        return { ok: false, code: "VALIDATION", message: "Nashrdan olish sababini yozing (kamida 5 belgi)" };
+      }
+      return { ok: true, to: "unpublished" };
+    }
   }
 }
 

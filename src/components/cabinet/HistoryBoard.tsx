@@ -25,6 +25,15 @@ type HistoryItem = {
   hasRecording: boolean;
 };
 
+type CompletedCourse = {
+  id: string;
+  courseId: string;
+  title: string;
+  teacher: string;
+  completedAt: string | null;
+  recordings: number;
+};
+
 const OPEN_STATUSES: PlanStatus[] = ["live", "lobby", "waiting_room", "paused"];
 
 function pillFor(item: HistoryItem): { text: string; live?: boolean } | null {
@@ -36,7 +45,13 @@ function pillFor(item: HistoryItem): { text: string; live?: boolean } | null {
   return { text: statusLabel(item.status, { hasRecording: false }) };
 }
 
-export function HistoryBoard({ items }: { items: HistoryItem[] }) {
+export function HistoryBoard({
+  items,
+  completedCourses = [],
+}: {
+  items: HistoryItem[];
+  completedCourses?: CompletedCourse[];
+}) {
   const [courseId, setCourseId] = useState("all");
 
   const courses = useMemo(() => {
@@ -73,7 +88,42 @@ export function HistoryBoard({ items }: { items: HistoryItem[] }) {
         </div>
       </header>
 
-      {items.length === 0 ? (
+      {completedCourses.length > 0 ? (
+        <section className="lx-hist-day" data-testid="history-completed">
+          <h2 className="lx-hist-dayhead">Yakunlangan kurslar</h2>
+          <div className="lx-sc-day">
+            {completedCourses.map((course) => (
+              <article key={course.id} className="lx-sc-card" data-testid="history-completed-course">
+                <div className="lx-sc-info">
+                  <p className="lx-sc-meta">
+                    <span className="lx-cd-pill">Yakunlangan</span>
+                  </p>
+                  <h3 className="lx-sc-title">
+                    <Link href={`/courses/${course.courseId}`}>{course.title}</Link>
+                  </h3>
+                  <p className="lx-sc-course">
+                    {course.recordings} ta yozuv · doimiy ochiq
+                    {course.completedAt ? ` · ${shortDayTitle(new Date(course.completedAt))}` : ""}
+                  </p>
+                  <p className="lx-sc-teacher">
+                    <span className="avatar sm" aria-hidden>
+                      {initials(course.teacher)}
+                    </span>
+                    {course.teacher}
+                  </p>
+                </div>
+                <div className="lx-sc-action">
+                  <Link href={`/courses/${course.courseId}`} className="btn">
+                    Yozuvlarni ko‘rish
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {items.length === 0 && completedCourses.length === 0 ? (
         <div className="lx-mc-empty">
           <h2>Hali dars ochilmagan</h2>
           <p>Darsga kirganingizdan keyin u shu yerda saqlanadi — yozuvga qaytish oson bo‘ladi.</p>

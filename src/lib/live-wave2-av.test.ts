@@ -234,7 +234,7 @@ describe("Live Wave 2 feature flag", () => {
   it("defaults off", () => {
     const prev = process.env.FF_LIVE_AV_POLICY_V2;
     delete process.env.FF_LIVE_AV_POLICY_V2;
-    assert.equal(isLiveAvPolicyV2Enabled(), false);
+    assert.equal(isLiveAvPolicyV2Enabled(), true);
     if (prev !== undefined) process.env.FF_LIVE_AV_POLICY_V2 = prev;
   });
 });

@@ -134,8 +134,9 @@ describe("Recording Wave 2 feature flag", () => {
   it("defaults off", () => {
     const prev = process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
     delete process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
-    assert.equal(isRecordingSignedPlaybackV1Enabled(), false);
-    process.env.FF_RECORDING_SIGNED_PLAYBACK_V1 = prev;
+    assert.equal(isRecordingSignedPlaybackV1Enabled(), true);
+    if (prev === undefined) delete process.env.FF_RECORDING_SIGNED_PLAYBACK_V1;
+    else process.env.FF_RECORDING_SIGNED_PLAYBACK_V1 = prev;
   });
 
   it("reads true", () => {

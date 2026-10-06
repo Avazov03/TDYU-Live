@@ -25,10 +25,16 @@ export async function PATCH(req: Request) {
   }
 
   const telegramChatId = parsed.data.telegramChatId?.trim() || null;
+  if (telegramChatId) {
+    return NextResponse.json(
+      { error: "Chat ID ni qo‘lda yozib bo‘lmaydi. Botdagi ulash tugmasidan foydalaning." },
+      { status: 400 },
+    );
+  }
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { telegramChatId },
+    data: { telegramChatId: null },
   });
 
-  return NextResponse.json({ ok: true, telegramChatId });
+  return NextResponse.json({ ok: true, telegramChatId: null });
 }

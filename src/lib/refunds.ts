@@ -260,3 +260,81 @@ export async function issueSpecialRefund(input: {
 
   return { ok: true, refundId, amount: check.amount, progressPercent };
 }
+
+export type BeforeStartRefundResult =
+  | { ok: true; refundId: string; amount: number }
+  | Failure<"NOT_FOUND" | "FORBIDDEN" | "ALREADY_STARTED" | "NOT_REFUNDABLE" | "CONFLICT">;
+
+/** Student demo refund before the course has started. Closes live, recording and materials. */
+export async function requestBeforeStartRefund(input: {
+  purchaseId: string;
+  userId: string;
+}): Promise<BeforeStartRefundResult> {
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: input.purchaseId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      amountPaid: true,
+      legacyBackfill: true,
+      course: {
+        select: { id: true, titleUz: true, lifecycleStatus: true, lessons: { select: { status: true } } },
+      },
+    },
+  });
+  if (!purchase || purchase.userId !== input.userId) {
+    return { ok: false, status: 404, code: "NOT_FOUND", message: "Xarid topilmadi" };
+  }
+  if (purchase.status !== "completed" || purchase.legacyBackfill) {
+    return { ok: false, status: 409, code: "NOT_REFUNDABLE", message: "Bu xarid qaytarilmaydi" };
+  }
+  const lessonStatuses = purchase.course.lessons.map((l) => l.status);
+  if (hasCourseStarted({ lifecycleStatus: purchase.course.lifecycleStatus, lessonStatuses })) {
+    return {
+      ok: false,
+      status: 409,
+      code: "ALREADY_STARTED",
+      message: "Kurs boshlangan — oddiy qaytarish yo‘q. Muammo bo‘lsa yordamga yozing.",
+    };
+  }
+  const now = new Date();
+  const refundId = await prisma.$transaction(async (tx) => {
+    const updated = await tx.purchase.updateMany({
+      where: { id: purchase.id, status: "completed" },
+      data: { status: "refunded" },
+    });
+    if (updated.count !== 1) return null;
+    const refund = await tx.refund.create({
+      data: {
+        purchaseId: purchase.id,
+        requestedById: input.userId,
+        decidedById: input.userId,
+        type: "full_100",
+        status: "refunded",
+        amount: purchase.amountPaid,
+        reason: "Kurs boshlanishidan oldin 100% qaytarish",
+        progressPercent: 0,
+        decidedAt: now,
+        completedAt: now,
+        idempotencyKey: `before_start:${purchase.id}`,
+      },
+    });
+    await tx.enrollment.updateMany({
+      where: { purchaseId: purchase.id, accessOpen: true },
+      data: { status: "refunded", accessOpen: false, closedAt: now },
+    });
+    return refund.id;
+  });
+  if (!refundId) {
+    return { ok: false, status: 409, code: "CONFLICT", message: "So‘rov takrorlandi" };
+  }
+  await notifyUser({
+    userId: input.userId,
+    type: "refund_completed",
+    titleUz: "To‘lov qaytarildi",
+    messageUz: `«${purchase.course.titleUz}» uchun to‘lov qaytarildi. Kursga kirish yopildi.`,
+    relatedId: refundId,
+  }).catch(() => undefined);
+  return { ok: true, refundId, amount: purchase.amountPaid };
+}

@@ -8,11 +8,10 @@ import { featureFlags } from "@/lib/feature-flags";
 import { CheckoutV2Error, checkoutErrorBody } from "./errors";
 
 describe("Checkout V2 feature flag", () => {
-  it("FF_COURSE_CHECKOUT_V2 defaults OFF", () => {
-    // Env may be set in some shells; assert module default path when unset.
+  it("FF_COURSE_CHECKOUT_V2 defaults ON", () => {
     const raw = process.env.FF_COURSE_CHECKOUT_V2;
     if (raw === undefined || raw === "") {
-      assert.equal(featureFlags.courseCheckoutV2, false);
+      assert.equal(featureFlags.courseCheckoutV2, true);
     }
   });
 

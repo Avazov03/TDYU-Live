@@ -14,6 +14,23 @@ import { prisma } from "@/lib/prisma";
 import { isRecordingReviewV1Enabled } from "@/lib/feature-flags";
 import { writeAuditLog } from "@/lib/audit-log";
 import { notifyCourseStudents } from "@/lib/notify";
+import { isUniqueConstraint } from "@/lib/prisma-error";
+
+/** One non-failed/non-hidden Recording per lesson (DB partial unique index). */
+const ACTIVE_RECORDING_STATUSES: RecordingStatus[] = [
+  "not_started",
+  "processing",
+  "ready",
+  "teacher_review",
+  "published",
+];
+
+function findActiveRecording(lessonId: string) {
+  return prisma.recording.findFirst({
+    where: { lessonId, status: { in: ACTIVE_RECORDING_STATUSES } },
+    orderBy: { createdAt: "desc" },
+  });
+}
 
 export const RECORDING_REVIEW_HOURS = 24;
 export const RECORDING_REVIEW_MS = RECORDING_REVIEW_HOURS * 60 * 60 * 1000;
@@ -115,14 +132,30 @@ export async function startRecordingAfterLiveEnd(input: {
   const readyAt = goReady ? now : null;
   const reviewDeadlineAt = goReady ? reviewDeadlineFromReadyAt(now) : null;
 
-  const existing = await prisma.recording.findFirst({
-    where: {
-      lessonId: input.lessonId,
-      ...(input.liveSessionId ? { liveSessionId: input.liveSessionId } : {}),
-      status: { in: ["not_started", "processing", "ready", "teacher_review", "published"] },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  let existing = await findActiveRecording(input.lessonId);
+
+  let recording;
+  let created = false;
+  if (!existing) {
+    try {
+      recording = await prisma.recording.create({
+        data: {
+          lessonId: input.lessonId,
+          liveSessionId: input.liveSessionId ?? null,
+          status,
+          storageKey: input.recordingUrl ?? null,
+          muxPlaybackId: muxId,
+          readyAt,
+          reviewDeadlineAt,
+        },
+      });
+      created = true;
+    } catch (err) {
+      if (!isUniqueConstraint(err)) throw err;
+      existing = await findActiveRecording(input.lessonId);
+      if (!existing) throw err;
+    }
+  }
 
   if (existing?.status === "published") {
     await prisma.lesson.update({
@@ -132,9 +165,7 @@ export async function startRecordingAfterLiveEnd(input: {
     return { recording: existing, lessonStatus: "published", created: false };
   }
 
-  let recording;
-  let created = false;
-  if (existing && existing.status !== "failed" && existing.status !== "hidden") {
+  if (existing) {
     recording = await prisma.recording.update({
       where: { id: existing.id },
       data: {
@@ -149,19 +180,6 @@ export async function startRecordingAfterLiveEnd(input: {
         liveSessionId: input.liveSessionId ?? existing.liveSessionId,
       },
     });
-  } else {
-    recording = await prisma.recording.create({
-      data: {
-        lessonId: input.lessonId,
-        liveSessionId: input.liveSessionId ?? null,
-        status,
-        storageKey: input.recordingUrl ?? null,
-        muxPlaybackId: muxId,
-        readyAt,
-        reviewDeadlineAt,
-      },
-    });
-    created = true;
   }
 
   const lessonStatus = goReady ? ("teacher_review" as const) : ("recording_processing" as const);
@@ -175,7 +193,7 @@ export async function startRecordingAfterLiveEnd(input: {
     },
   });
 
-  return { recording, lessonStatus, created };
+  return { recording: recording ?? null, lessonStatus, created };
 }
 
 /**
@@ -189,7 +207,7 @@ export function shouldMarkRecordingReadyOnUpload(input: {
 }): boolean {
   if (!input.reviewFlagOn) return false;
   const s = input.lessonStatus;
-  return s !== "live" && s !== "lobby" && s !== "waiting_room";
+  return s !== "live" && s !== "paused" && s !== "lobby" && s !== "waiting_room";
 }
 
 /** Live-recorder uploads: never for a lesson that has not started, was cancelled, or is already published. */
@@ -234,26 +252,32 @@ export async function markRecordingReady(input: {
   });
 
   if (!recording) {
-    recording = await prisma.recording.create({
-      data: {
-        lessonId: input.lessonId,
-        status: "teacher_review",
-        muxPlaybackId: input.muxPlaybackId ?? null,
-        storageKey: input.storageKey ?? null,
-        durationSeconds: input.durationSeconds ?? null,
-        readyAt: now,
-        reviewDeadlineAt: reviewDeadlineFromReadyAt(now),
-      },
-    });
-    await prisma.lesson.update({
-      where: { id: input.lessonId },
-      data: {
-        ...reviewStatus,
-        ...(input.muxPlaybackId ? { muxVodPlaybackId: input.muxPlaybackId } : {}),
-        ...(input.storageKey ? { recordingUrl: input.storageKey } : {}),
-      },
-    });
-    return { recording, advanced: true };
+    try {
+      recording = await prisma.recording.create({
+        data: {
+          lessonId: input.lessonId,
+          status: "teacher_review",
+          muxPlaybackId: input.muxPlaybackId ?? null,
+          storageKey: input.storageKey ?? null,
+          durationSeconds: input.durationSeconds ?? null,
+          readyAt: now,
+          reviewDeadlineAt: reviewDeadlineFromReadyAt(now),
+        },
+      });
+      await prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: {
+          ...reviewStatus,
+          ...(input.muxPlaybackId ? { muxVodPlaybackId: input.muxPlaybackId } : {}),
+          ...(input.storageKey ? { recordingUrl: input.storageKey } : {}),
+        },
+      });
+      return { recording, advanced: true };
+    } catch (err) {
+      if (!isUniqueConstraint(err)) throw err;
+      recording = await findActiveRecording(input.lessonId);
+      if (!recording) throw err;
+    }
   }
 
   if (recording.status === "published") {

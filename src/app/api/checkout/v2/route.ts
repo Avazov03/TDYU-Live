@@ -6,12 +6,13 @@ import { isStudentRole } from "@/lib/roles";
 import { checkoutCourseV2 } from "@/lib/checkout-v2/service";
 import { CheckoutV2Error, checkoutErrorBody } from "@/lib/checkout-v2/errors";
 import { notifyPurchaseSuccess } from "@/lib/notify";
+import { entityIdSchema } from "@/lib/entity-id";
 
 export const dynamic = "force-dynamic";
 
 const bodySchema = z
   .object({
-    courseId: z.string().trim().uuid(),
+    courseId: entityIdSchema,
     provider: z.enum(["demo", "payme", "click"]).optional(),
   })
   .strict();

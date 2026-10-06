@@ -1,7 +1,8 @@
 /**
- * Lexify feature / compatibility flags (Phase 1–2).
+ * Lexify feature flags.
  *
- * Defaults keep CURRENT behavior.
+ * Unset env = target product (enrollment, course checkout, review, live, recording, refunds).
+ * Set a flag to false/off only to roll that slice back. Users never configure these.
  * Documented in docs/architecture/PHASE1-FEATURE-FLAGS.md
  */
 
@@ -19,7 +20,7 @@ function envFlag(name: string, defaultValue: boolean): boolean {
 /**
  * Enrollment access mode.
  *
- * Preferred env: FF_ENROLLMENT_ACCESS_MODE=off|shadow|dual|enrollment (default off)
+ * Preferred env: FF_ENROLLMENT_ACCESS_MODE=off|shadow|dual|enrollment (default enrollment)
  *
  * Compatibility with Phase 1 boolean FF_ENROLLMENT_ACCESS:
  * - unset / false / off → off
@@ -44,13 +45,11 @@ export function getEnrollmentAccessMode(): EnrollmentAccessMode {
   }
 
   const legacy = process.env.FF_ENROLLMENT_ACCESS?.trim().toLowerCase();
-  if (!legacy || legacy === "" || ["0", "false", "no", "off"].includes(legacy)) {
-    return "off";
-  }
   if (legacy === "shadow") return "shadow";
   if (legacy === "enrollment") return "enrollment";
-  if (["1", "true", "yes", "on", "dual"].includes(legacy)) return "dual";
-  return "off";
+  if (legacy === "off" || legacy === "false" || legacy === "0" || legacy === "no") return "off";
+  if (legacy && ["1", "true", "yes", "on", "dual"].includes(legacy)) return "dual";
+  return "enrollment";
 }
 
 /** Admin subscription/entitlement edits belong to the tariff model; enrollment mode has no such access. */
@@ -77,38 +76,50 @@ export const featureFlags = {
    * When true: checkout writes Purchase+Enrollment (Phase 3).
    * Default false — legacy demo payment + entitlement path.
    */
-  courseCheckoutV2: envFlag("FF_COURSE_CHECKOUT_V2", false),
+  get courseCheckoutV2() {
+    return envFlag("FF_COURSE_CHECKOUT_V2", true);
+  },
 
   /**
    * When true: hide/disable Student Tarif UI entry points.
    * Default false — Phase 1 does not change UI.
    * Also auto-hidden when FF_ENROLLMENT_ACCESS_MODE=enrollment (Wave 4).
    */
-  disableTariffUi: envFlag("FF_DISABLE_TARIFF_UI", false),
+  get disableTariffUi() {
+    return envFlag("FF_DISABLE_TARIFF_UI", true);
+  },
 
   /**
    * When true: disable /onboard + POST /api/enroll for students.
    * Default false.
    */
-  disableOnboardEnroll: envFlag("FF_DISABLE_ONBOARD_ENROLL", false),
+  get disableOnboardEnroll() {
+    return envFlag("FF_DISABLE_ONBOARD_ENROLL", true);
+  },
 
   /**
    * When true: waiting-room signal allowed + target live SM (Phase 7–8).
    * Default false — current lobby/live behavior.
    */
-  liveWaitingRoomV2: envFlag("FF_LIVE_WAITING_ROOM_V2", false),
+  get liveWaitingRoomV2() {
+    return envFlag("FF_LIVE_WAITING_ROOM_V2", true);
+  },
 
   /**
    * When true: server-enforced student A/V permission (Wave 2).
    * Default false.
    */
-  liveAvPolicyV2: envFlag("FF_LIVE_AV_POLICY_V2", false),
+  get liveAvPolicyV2() {
+    return envFlag("FF_LIVE_AV_POLICY_V2", true);
+  },
 
   /**
    * When true: AttendanceInterval for LIVE participation (Wave 3).
    * Waiting room ≠ attendance. Default false.
    */
-  liveAttendanceV3: envFlag("FF_LIVE_ATTENDANCE_V3", false),
+  get liveAttendanceV3() {
+    return envFlag("FF_LIVE_ATTENDANCE_V3", true);
+  },
 
   /**
    * When true: shared live room store (Redis etc.). Default false.
@@ -120,18 +131,23 @@ export const featureFlags = {
    * Prefer FF_RECORDING_REVIEW_V1; FF_RECORDING_REVIEW_24H remains an alias.
    * Default false.
    */
-  recordingReview24h:
-    envFlag("FF_RECORDING_REVIEW_V1", false) || envFlag("FF_RECORDING_REVIEW_24H", false),
+  get recordingReview24h() {
+    return envFlag("FF_RECORDING_REVIEW_V1", true) || envFlag("FF_RECORDING_REVIEW_24H", false);
+  },
 
   /**
    * When true: refund APIs/policies active. Default false.
    */
-  refundsV1: envFlag("FF_REFUNDS_V1", false),
+  get refundsV1() {
+    return envFlag("FF_REFUNDS_V1", true);
+  },
 
   /**
    * When true: Mux VOD uses signed playback tokens (Wave 2). Default false.
    */
-  recordingSignedPlaybackV1: envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false),
+  get recordingSignedPlaybackV1() {
+    return envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", true);
+  },
 
   /**
    * When true: legacy public VOD migration tooling + suppress public VOD player URLs.
@@ -149,17 +165,17 @@ export function isFeatureEnabled(name: FeatureFlagName): boolean {
 
 /** Live Wave 1 — read env each call so tests/staging flips apply after restart. */
 export function isLiveWaitingRoomV2Enabled(): boolean {
-  return envFlag("FF_LIVE_WAITING_ROOM_V2", false);
+  return envFlag("FF_LIVE_WAITING_ROOM_V2", true);
 }
 
 /** Live Wave 2 — A/V permission policy. */
 export function isLiveAvPolicyV2Enabled(): boolean {
-  return envFlag("FF_LIVE_AV_POLICY_V2", false);
+  return envFlag("FF_LIVE_AV_POLICY_V2", true);
 }
 
 /** Live Wave 3 — AttendanceInterval for LIVE only. */
 export function isLiveAttendanceV3Enabled(): boolean {
-  return envFlag("FF_LIVE_ATTENDANCE_V3", false);
+  return envFlag("FF_LIVE_ATTENDANCE_V3", true);
 }
 
 /**
@@ -167,14 +183,12 @@ export function isLiveAttendanceV3Enabled(): boolean {
  * FF_RECORDING_REVIEW_V1 (preferred) or legacy alias FF_RECORDING_REVIEW_24H.
  */
 export function isRecordingReviewV1Enabled(): boolean {
-  return (
-    envFlag("FF_RECORDING_REVIEW_V1", false) || envFlag("FF_RECORDING_REVIEW_24H", false)
-  );
+  return envFlag("FF_RECORDING_REVIEW_V1", true) || envFlag("FF_RECORDING_REVIEW_24H", false);
 }
 
 /** Phase 8 Recording Wave 2 — signed Mux playback tokens. */
 export function isRecordingSignedPlaybackV1Enabled(): boolean {
-  return envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", false);
+  return envFlag("FF_RECORDING_SIGNED_PLAYBACK_V1", true);
 }
 
 /** Phase 8 Recording Wave 3 — legacy public VOD migration. */
@@ -206,34 +220,34 @@ export function isLiveMuxPlaybackV1Enabled(): boolean {
 
 /**
  * Course lifecycle — teacher draft → submit → admin review → approve (price) → publish.
- * Off: teacher-created courses publish immediately (legacy). Default false.
+ * Off: teacher-created courses publish immediately (legacy). Default on.
  */
 export function isCourseReviewV1Enabled(): boolean {
-  return envFlag("FF_COURSE_REVIEW_V1", false);
+  return envFlag("FF_COURSE_REVIEW_V1", true);
 }
 
 /**
  * Schedule rules — no past times, no Teacher overlaps, reschedule/delete only ≥24h ahead,
- * early start only without conflict, students notified on change. Default false.
+ * early start only without conflict, students notified on change. Default on.
  */
 export function isScheduleRulesV1Enabled(): boolean {
-  return envFlag("FF_SCHEDULE_RULES_V1", false);
+  return envFlag("FF_SCHEDULE_RULES_V1", true);
 }
 
 /**
  * Course completion — teacher finishes an active course once no lesson is scheduled/waiting/live;
- * open seats become completed and stay open (permanent replay). Default false.
+ * open seats become completed and stay open (permanent replay). Default on.
  */
 export function isCourseCompletionV1Enabled(): boolean {
-  return envFlag("FF_COURSE_COMPLETION_V1", false);
+  return envFlag("FF_COURSE_COMPLETION_V1", true);
 }
 
 /**
  * Refunds (demo record — no money movement): teacher cancels before start → 100% for every
- * purchase; after start only admin special 50% while progress < 50% with a reason. Default false.
+ * purchase; after start only admin special 50% while progress < 50% with a reason. Default on.
  */
 export function isRefundsV1Enabled(): boolean {
-  return envFlag("FF_REFUNDS_V1", false);
+  return envFlag("FF_REFUNDS_V1", true);
 }
 
 /** AI mentor (floating assistant). Default false. Requires GEMINI_API_KEY at runtime. */
@@ -262,6 +276,6 @@ export function mustUseSecureMuxPlayback(): boolean {
  * Reads env each call so tests can flip flags.
  */
 export function shouldHideStudentTariffUi(): boolean {
-  if (envFlag("FF_DISABLE_TARIFF_UI", false)) return true;
+  if (envFlag("FF_DISABLE_TARIFF_UI", true)) return true;
   return getEnrollmentAccessMode() === "enrollment";
 }

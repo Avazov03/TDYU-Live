@@ -37,8 +37,12 @@ describe("course review flag", () => {
   afterEach(() => {
     delete process.env.FF_COURSE_REVIEW_V1;
   });
-  it("defaults off", () => {
+  it("defaults on", () => {
     delete process.env.FF_COURSE_REVIEW_V1;
+    assert.equal(isCourseReviewV1Enabled(), true);
+  });
+  it("explicit false rolls back", () => {
+    process.env.FF_COURSE_REVIEW_V1 = "false";
     assert.equal(isCourseReviewV1Enabled(), false);
   });
   it("reads env per call", () => {
@@ -190,6 +194,25 @@ describe("lifecycle helpers", () => {
     for (const s of [null, "draft", "changes_requested", "published", "upcoming", "active"] as const) {
       assert.equal(lessonPlanLock(s, true), null, String(s));
     }
+  });
+  it("unpublish needs a reason and only from a live catalog status", () => {
+    const denied = check({ action: "unpublish", actor: "admin", current: "published", reason: "yo" });
+    assert.equal(denied.ok, false);
+    const ok = check({
+      action: "unpublish",
+      actor: "admin",
+      current: "active",
+      reason: "O‘qituvchi darsni davom ettira olmaydi",
+    });
+    assert.equal(ok.ok, true);
+    if (ok.ok) assert.equal(ok.to, "unpublished");
+    const teacher = check({
+      action: "unpublish",
+      actor: "owner_teacher",
+      current: "published",
+      reason: "Sabab yetarli uzunlikda",
+    });
+    assert.equal(teacher.ok, false);
   });
   it("isPreAudienceLifecycle only for drafts under the review flow", () => {
     assert.equal(isPreAudienceLifecycle("draft", true), true);

@@ -5,7 +5,7 @@ import {
   getAnyOpenEnrollment,
   resolveStudentHomePath,
 } from "@/lib/access";
-import { getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
+import { featureFlags, getEnrollmentAccessMode, shouldHideStudentTariffUi } from "@/lib/feature-flags";
 import { PLATFORM_PRICES, TARIFF_BLURBS, TARIFF_FEATURES, TARIFF_LABELS, TARIFF_SHORT, formatSom } from "@/lib/tariffs";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
@@ -36,10 +36,16 @@ const STEPS_COURSE = [
   { n: "04", title: "Dars", text: "Reja, jonli efir va yozuv — Kurslarim orqali." },
 ] as const;
 
-const ROLES = [
+const ROLES_LEGACY = [
   { title: "Talaba", text: "O'z o'qituvchisiga yoziladi." },
   { title: "O'qituvchi", text: "Guruh va efirni ko'radi." },
   { title: "Admin", text: "O'qituvchilarni taklif qiladi." },
+] as const;
+
+const ROLES_COURSE = [
+  { title: "Talaba", text: "Kursni tanlaydi, sotib oladi va darsga kiradi." },
+  { title: "O'qituvchi", text: "Kurs, jadval va jonli darsni olib boradi." },
+  { title: "Admin", text: "Kursni ko'rib chiqadi, narx belgilaydi va e'lon qiladi." },
 ] as const;
 
 export default async function LandingPage({
@@ -65,10 +71,12 @@ export default async function LandingPage({
         hasOpenEnrollment: Boolean(enr),
         hasActiveSubscription: Boolean(sub),
         hasActiveEntitlement: Boolean(entitlement),
+        onboardDisabled: featureFlags.disableOnboardEnroll,
       })
     : null;
   const hideTariff = shouldHideStudentTariffUi();
   const STEPS = hideTariff ? STEPS_COURSE : STEPS_LEGACY;
+  const ROLES = hideTariff ? ROLES_COURSE : ROLES_LEGACY;
 
   const prices: { tier: TariffTier; price: number }[] = [
     { tier: "t1", price: PLATFORM_PRICES.t1 },
@@ -153,8 +161,9 @@ export default async function LandingPage({
             <h2 className="lx-title lx-title-lg">Loyiha haqida</h2>
             <p className="lx-lead">
               {BRAND.name} — Toshkent davlat yuridik universiteti uchun pulli jonli-dars platformasi.
-              Talaba o&apos;z o&apos;qituvchisiga yoziladi, o&apos;qituvchi guruh va efirni ko&apos;radi,
-              admin o&apos;qituvchilarni taklif qiladi.
+              {hideTariff
+                ? "Talaba kursni sotib oladi, o'qituvchi jonli darsni olib boradi, admin kursni tasdiqlaydi."
+                : "Talaba o'z o'qituvchisiga yoziladi, o'qituvchi guruh va efirni ko'radi, admin o'qituvchilarni taklif qiladi."}
             </p>
             <div className="lx-roles">
               {ROLES.map((role) => (

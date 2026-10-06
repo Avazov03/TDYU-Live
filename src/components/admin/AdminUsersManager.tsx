@@ -149,16 +149,15 @@ export function AdminUsersManager({
       setOpenId(userId);
       return;
     }
-    const password = await resetPassword(userId);
-    if (password) {
-      await copyText(password);
-      markCopied(`pw-${userId}`);
-    }
+    setError("Avval «Yangi parol» tugmasini bosing. Ko‘z yangi parol yaratmaydi.");
   };
 
   const copyPassword = async (userId: string) => {
-    const password = revealed[userId] || (await resetPassword(userId));
-    if (!password) return;
+    const password = revealed[userId];
+    if (!password) {
+      setError("Avval «Yangi parol» tugmasini bosing.");
+      return;
+    }
     await copyText(password);
     markCopied(`pw-${userId}`);
   };

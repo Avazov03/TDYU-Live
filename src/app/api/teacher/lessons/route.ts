@@ -20,6 +20,7 @@ const schema = z.object({
   summaryUz: z.string().trim().max(500).optional().or(z.literal("")),
   coverUrl: z.string().trim().url().optional().or(z.literal("")),
   scheduledAt: z.string(),
+  additional: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -43,8 +44,14 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
+  const additional = Boolean(parsed.data.additional);
   const planLock = lessonPlanLock(course.lifecycleStatus, isCourseReviewV1Enabled());
-  if (planLock) {
+  const additionalOk =
+    additional &&
+    (course.lifecycleStatus === "active" ||
+      course.lifecycleStatus === "published" ||
+      course.lifecycleStatus === "upcoming");
+  if (planLock && !additionalOk) {
     return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
   }
 
@@ -74,12 +81,13 @@ export async function POST(req: Request) {
       summaryUz: parsed.data.summaryUz || null,
       coverUrl: parsed.data.coverUrl || null,
       scheduledAt: when,
+      isAdditional: additional,
     },
   });
 
   await notifyCourseStudents(course.id, {
     type: "system",
-    titleUz: "Yangi dars rejasiga qo‘shildi",
+    titleUz: additional ? "Qo‘shimcha dars qo‘shildi" : "Yangi dars rejasiga qo‘shildi",
     messageUz: `${course.titleUz}: ${lesson.titleUz}`,
     relatedId: lesson.id,
   }).catch(() => undefined);

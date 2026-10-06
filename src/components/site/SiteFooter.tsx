@@ -133,6 +133,7 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/support">Yordam</Link>
                 <Link href="/privacy">Maxfiylik</Link>
               </li>
               <li>

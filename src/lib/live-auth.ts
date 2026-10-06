@@ -116,7 +116,12 @@ export async function authorizeLiveJoin(input: {
   }
 
   const phase: "lobby" | "live" =
-    session.status === "live" || lesson.status === "live" ? "live" : "lobby";
+    session.status === "live" ||
+    session.status === "paused" ||
+    lesson.status === "live" ||
+    lesson.status === "paused"
+      ? "live"
+      : "lobby";
 
   const joinToken = v2
     ? issueLiveJoinToken({

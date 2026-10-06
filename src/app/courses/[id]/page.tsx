@@ -303,6 +303,13 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                     Mening kurslarim
                   </Link>
                 )}
+                {enrollmentOwned && !completed ? (
+                  <p className="lx-cd-note">
+                    <Link href="/support" data-testid="course-support-link">
+                      Yordam va to‘lovni qaytarish
+                    </Link>
+                  </p>
+                ) : null}
               </div>
             ) : v2Enabled && listPrice != null ? (
               <div className="lx-cd-buy" data-testid="course-checkout-v2">
@@ -340,7 +347,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             ) : hideTariff ? (
               <div className="lx-cd-buy" data-testid="course-no-tariff">
                 {displayPrice != null ? <p className="lx-cd-price">{formatSom(displayPrice)}</p> : null}
-                <p className="lx-cd-state">Kurs xaridi tez orada ochiladi.</p>
+                <p className="lx-cd-state">Narx hali belgilanmagan. Admin narx qo‘ygach sotib olish ochiladi.</p>
                 <Link href="/#kurslar" className="btn lx-cd-cta">
                   Boshqa kurslar
                 </Link>

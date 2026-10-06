@@ -109,8 +109,9 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
   );
   // The paywall preview is marketing for published courses only; drafts and withdrawn courses do not exist to outsiders.
   if (!access.ok && !staffJoin && !lesson.course.isPublished) notFound();
+  const teaching = lesson.status === "live" || lesson.status === "paused";
   const canJoinLive =
-    (lesson.status === "live" || waitingLike) && (access.ok || staffJoin);
+    (teaching || waitingLike) && (access.ok || staffJoin);
   const canWatchVod = access.ok || staffJoin;
   const liveMux =
     liveMuxV1 && lesson.status === "live"
@@ -214,7 +215,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
               displayName={displayName}
               subject={lesson.titleUz}
               moderator={staffJoin}
-              phase={lesson.status === "live" ? "live" : "lobby"}
+              phase={teaching ? "live" : "lobby"}
             />
           ) : showLocalVideo ? (
             <div className="player-wrap">
@@ -410,7 +411,7 @@ export default async function LearnPage({ params }: { params: Promise<{ id: stri
             </p>
           ) : null}
 
-          {lesson.status === "ended" ? (
+          {lesson.status === "ended" && (access.ok || staffJoin) ? (
             <LiveChat
               lessonId={lesson.id}
               canSend={

@@ -40,23 +40,25 @@ export async function POST(req: Request) {
     const existing = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
-    if (existing) {
-      authLog("register_duplicate_email", { email: normalizedEmail });
-      return NextResponse.json({ error: "Bu email allaqachon ro'yxatdan o'tgan" }, { status: 409 });
+    if (!existing) {
+      const user = await prisma.user.create({
+        data: {
+          fullName,
+          email: normalizedEmail,
+          passwordHash: await hashPassword(password),
+          role: "student",
+        },
+        select: { id: true },
+      });
+      authLog("register_success", { userId: user.id });
+    } else {
+      authLog("register_duplicate_email", {});
     }
 
-    const user = await prisma.user.create({
-      data: {
-        fullName,
-        email: normalizedEmail,
-        passwordHash: await hashPassword(password),
-        role: "student",
-      },
-      select: { id: true, email: true, fullName: true },
+    return NextResponse.json({
+      ok: true,
+      message: "Davom etish uchun kirish sahifasidan kiring.",
     });
-
-    authLog("register_success", { userId: user.id, email: normalizedEmail });
-    return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     authError("register_failed", error, { email: normalizedEmail || undefined });
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });

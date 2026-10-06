@@ -27,9 +27,15 @@ describe("FF_ENROLLMENT_ACCESS_MODE parsing", () => {
     else process.env.FF_ENROLLMENT_ACCESS = prevCompat;
   });
 
-  it("defaults to off", () => {
+  it("defaults to enrollment", () => {
     delete process.env.FF_ENROLLMENT_ACCESS_MODE;
     delete process.env.FF_ENROLLMENT_ACCESS;
+    assert.equal(getEnrollmentAccessMode(), "enrollment");
+    assert.equal(usesEnrollmentAccessPath(), true);
+  });
+
+  it("explicit off remains a rollback", () => {
+    process.env.FF_ENROLLMENT_ACCESS_MODE = "off";
     assert.equal(getEnrollmentAccessMode(), "off");
     assert.equal(usesEnrollmentAccessPath(), false);
   });

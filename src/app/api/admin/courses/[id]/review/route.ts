@@ -5,7 +5,7 @@ import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
 import { applyCourseReviewAction } from "@/lib/course-review";
 
 const schema = z.object({
-  action: z.enum(["start_review", "request_changes", "reject", "approve", "publish"]),
+  action: z.enum(["start_review", "request_changes", "reject", "approve", "publish", "unpublish"]),
   reason: z.string().trim().max(2000).optional(),
   listPrice: z.number().int().optional(),
   capacity: z.number().int().nullable().optional(),

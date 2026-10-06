@@ -34,30 +34,34 @@ export async function maybeSendLessonReminders(userId: string) {
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   for (const lesson of lessons) {
-    const existing = await prisma.notification.findFirst({
-      where: {
-        userId,
-        type: "lesson_starting",
-        relatedId: lesson.id,
-        createdAt: { gte: dayAgo },
-      },
-      select: { id: true },
-    });
-    if (existing) continue;
-
     const mins = Math.max(
       1,
       Math.round((lesson.scheduledAt.getTime() - now.getTime()) / 60_000),
     );
-
-    await notifyUser({
-      userId,
-      type: "lesson_starting",
-      titleUz: `Dars ${mins} daqiqadan keyin`,
-      messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
-      relatedId: lesson.id,
+    const inserted = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${userId}:${lesson.id}:lesson_starting`}))`;
+      const existing = await tx.notification.findFirst({
+        where: {
+          userId,
+          type: "lesson_starting",
+          relatedId: lesson.id,
+          createdAt: { gte: dayAgo },
+        },
+        select: { id: true },
+      });
+      if (existing) return false;
+      await tx.notification.create({
+        data: {
+          userId,
+          type: "lesson_starting",
+          titleUz: `Dars ${mins} daqiqadan keyin`,
+          messageUz: `${lesson.course.titleUz}: ${lesson.titleUz}`,
+          relatedId: lesson.id,
+        },
+      });
+      return true;
     });
-    created += 1;
+    if (inserted) created += 1;
   }
 
   return created;

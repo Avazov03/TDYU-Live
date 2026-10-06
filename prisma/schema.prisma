@@ -216,6 +216,8 @@ model User {
   courseReviewEvents  CourseReviewEvent[]  @relation("CourseReviewActor")
   incidentsAcked      Incident[]           @relation("IncidentAcknowledgedBy")
   aiConversations     AiConversation[]
+  supportTickets      SupportTicket[]
+  liveAccountLock     LiveAccountLock?
 
   @@map("users")
 }
@@ -683,6 +685,8 @@ model LiveSession {
   warn55Sent             Boolean           @default(false) @map("warn_55_sent")
   warn58Sent             Boolean           @default(false) @map("warn_58_sent")
   warn59Sent             Boolean           @default(false) @map("warn_59_sent")
+  lastTeacherBeatAt      DateTime?         @map("last_teacher_beat_at")
+  manualPause            Boolean           @default(false) @map("manual_pause")
   roomKey                String?           @map("room_key")
   createdAt              DateTime          @default(now()) @map("created_at")
   updatedAt              DateTime          @updatedAt @map("updated_at")
@@ -817,4 +821,34 @@ model SiteSetting {
   value String @db.Text
 
   @@map("site_settings")
+}
+
+/// One live room per student account. A new device replaces the previous instance.
+model LiveAccountLock {
+  userId     String   @id @map("user_id")
+  lessonId   String   @map("lesson_id")
+  instanceId String   @map("instance_id")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("live_account_locks")
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  courseId  String?  @map("course_id")
+  subject   String
+  body      String   @db.Text
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("support_tickets")
 }

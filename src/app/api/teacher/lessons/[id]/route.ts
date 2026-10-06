@@ -89,8 +89,8 @@ export async function PATCH(
     }
   }
 
-  const updated = await prisma.lesson.update({
-    where: { id: lesson.id },
+  const claimed = await prisma.lesson.updateMany({
+    where: { id: lesson.id, status: lesson.status, scheduledAt: lesson.scheduledAt },
     data: {
       ...(parsed.data.titleUz != null ? { titleUz: parsed.data.titleUz } : {}),
       ...(parsed.data.summaryUz !== undefined ? { summaryUz: parsed.data.summaryUz || null } : {}),
@@ -100,6 +100,13 @@ export async function PATCH(
         : {}),
     },
   });
+  if (claimed.count !== 1) {
+    return NextResponse.json(
+      { error: "Dars holati o‘zgardi — sahifani yangilang", code: "CONFLICT" },
+      { status: 409 },
+    );
+  }
+  const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
 
   if (scheduleRules && nextAt && timeChanged) {
     await writeAuditLog({
@@ -151,6 +158,14 @@ export async function DELETE(
     }
   }
 
-  await prisma.lesson.delete({ where: { id: lesson.id } });
+  const deleted = await prisma.lesson.deleteMany({
+    where: { id: lesson.id, status: "scheduled" },
+  });
+  if (deleted.count !== 1) {
+    return NextResponse.json(
+      { error: "Dars holati o‘zgardi — sahifani yangilang", code: "CONFLICT" },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true });
 }

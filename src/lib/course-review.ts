@@ -1,6 +1,6 @@
 import type { CourseLifecycleStatus, CourseReviewDecision } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notify";
+import { notifyCourseStudents, notifyUser } from "@/lib/notify";
 import { isAdminRole } from "@/lib/roles";
 import {
   checkCourseReviewAction,
@@ -41,6 +41,7 @@ export async function applyCourseReviewAction(input: {
       titleUz: true,
       descriptionUz: true,
       lifecycleStatus: true,
+      isPublished: true,
       listPrice: true,
       teacher: { select: { userId: true } },
       lessons: {
@@ -58,10 +59,14 @@ export async function applyCourseReviewAction(input: {
       : null;
 
   const now = Date.now();
+  // Legacy courses (lifecycle null) that are live in the catalog unpublish like "published".
+  const current: CourseLifecycleStatus | null =
+    course.lifecycleStatus ??
+    (input.action === "unpublish" && course.isPublished ? "published" : null);
   const check = checkCourseReviewAction({
     action: input.action,
     actor,
-    current: course.lifecycleStatus,
+    current,
     reason: input.reason,
     listPrice: input.listPrice,
     capacity: input.capacity,
@@ -79,7 +84,7 @@ export async function applyCourseReviewAction(input: {
     return { ok: false, status, code: check.code, message: check.message };
   }
 
-  const from = course.lifecycleStatus as CourseLifecycleStatus;
+  const from = course.lifecycleStatus;
   const to = check.to;
   const reason = input.reason?.trim() || null;
   const listPrice = input.action === "approve" ? (input.listPrice as number) : null;
@@ -96,6 +101,7 @@ export async function applyCourseReviewAction(input: {
         ...(input.action === "publish"
           ? { isPublished: true, publishedByUserId: input.actorUserId }
           : {}),
+        ...(input.action === "unpublish" ? { isPublished: false } : {}),
       },
     });
     if (updated.count !== 1) return false;
@@ -141,7 +147,7 @@ export async function applyCourseReviewAction(input: {
     to,
   }).catch(() => undefined);
 
-  return { ok: true, from, to };
+  return { ok: true, from: current as CourseLifecycleStatus, to };
 }
 
 async function notifyForAction(input: {
@@ -163,6 +169,25 @@ async function notifyForAction(input: {
         relatedId: input.courseId,
       });
     }
+    return;
+  }
+  if (input.action === "unpublish") {
+    const message = `Sotuvdan olindi: ${input.reason ?? ""}. Yozilgan o‘quvchilar darslarini ko‘raveradi.`;
+    if (input.teacherUserId) {
+      await notifyUser({
+        userId: input.teacherUserId,
+        type: "system",
+        titleUz: input.title,
+        messageUz: message,
+        relatedId: input.courseId,
+      });
+    }
+    await notifyCourseStudents(input.courseId, {
+      type: "system",
+      titleUz: "Kurs sotuvdan olindi",
+      messageUz: `${input.title}. Sizning yozuvingiz ochiq qoladi.`,
+      relatedId: input.courseId,
+    });
     return;
   }
   if (!input.teacherUserId || input.action === "start_review") return;

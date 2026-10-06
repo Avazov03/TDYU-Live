@@ -12,7 +12,7 @@ export type PublicCourseCardData = {
   lessonCount: number;
   nextLessonAt: Date | null;
   started: boolean;
-  price: number;
+  price: number | null;
 };
 
 export type PublicCoursePage = {
@@ -98,7 +98,7 @@ export async function listPublicCourses(input: {
       lessonCount: c.lessons.length,
       nextLessonAt: next?.scheduledAt ?? null,
       started,
-      price: c.listPrice ?? c.priceT1,
+      price: c.listPrice,
     };
   });
 

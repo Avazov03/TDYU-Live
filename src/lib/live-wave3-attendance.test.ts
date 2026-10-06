@@ -117,7 +117,7 @@ describe("Live Wave 3 feature flag", () => {
   it("defaults off", () => {
     const prev = process.env.FF_LIVE_ATTENDANCE_V3;
     delete process.env.FF_LIVE_ATTENDANCE_V3;
-    assert.equal(isLiveAttendanceV3Enabled(), false);
+    assert.equal(isLiveAttendanceV3Enabled(), true);
     if (prev !== undefined) process.env.FF_LIVE_ATTENDANCE_V3 = prev;
   });
 

@@ -39,7 +39,8 @@ export function LiveStudio({
     streamKey && !streamKey.startsWith("demo_") ? streamKey : "",
   );
 
-  const isLive = status === "live";
+  const isPaused = status === "paused";
+  const isLive = status === "live" || isPaused;
   const isLobby = status === "lobby" || status === "waiting_room";
   const canOpenLobby = status === "scheduled" && !liveBlocked;
   const inRoom = isLive || isLobby;
@@ -104,7 +105,9 @@ export function LiveStudio({
     <section id="live" className={`live-studio${isLive ? " is-live" : ""}${isLobby ? " is-lobby" : ""}`}>
       <div className="live-studio-head">
         <div>
-          {isLive ? (
+          {isPaused ? (
+            <span className="badge pending">Pauza</span>
+          ) : isLive ? (
             <span className="live-pill">
               <span className="live-dot" />
               Jonli efir

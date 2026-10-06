@@ -62,6 +62,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const claimed = await prisma.teacherInvite.updateMany({
+      where: { id: invite.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (claimed.count !== 1) {
+      return NextResponse.json({ error: "Link eskirgan yoki ishlatilgan" }, { status: 400 });
+    }
+
     let userId = invite.teacher.userId ?? existingUser?.id ?? null;
     if (userId) {
       await prisma.user.update({
@@ -78,10 +86,6 @@ export async function POST(req: Request) {
     await prisma.teacher.update({
       where: { id: invite.teacherId },
       data: { userId, fullName },
-    });
-    await prisma.teacherInvite.update({
-      where: { id: invite.id },
-      data: { usedAt: new Date() },
     });
     await ensureTeacherWorkspace(invite.teacherId);
 
