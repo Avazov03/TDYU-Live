@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
@@ -15,6 +15,7 @@ type SettingsData = {
 };
 
 export function SettingsForm({ initial }: { initial: SettingsData }) {
+  const fid = useId();
   const { theme, setTheme } = useTheme();
   const [chatId, setChatId] = useState(initial.telegramChatId ?? "");
   const [msg, setMsg] = useState("");
@@ -48,16 +49,16 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 12 }}>Hisob</h3>
         <div className="field">
-          <label>To&apos;liq ism</label>
-          <input readOnly value={initial.fullName} />
+          <label htmlFor={`${fid}-1`}>To&apos;liq ism</label>
+          <input id={`${fid}-1`} readOnly value={initial.fullName} />
         </div>
         <div className="field">
-          <label>Email</label>
-          <input readOnly value={initial.email} />
+          <label htmlFor={`${fid}-2`}>Email</label>
+          <input id={`${fid}-2`} readOnly value={initial.email} />
         </div>
         <div className="field">
-          <label>Rol</label>
-          <input readOnly value={initial.role} />
+          <label htmlFor={`${fid}-3`}>Rol</label>
+          <input id={`${fid}-3`} readOnly value={initial.role} />
         </div>
         <p className="small muted">Ism, email va parolni tahrirlash keyingi yangilanishda qo&apos;shiladi.</p>
       </div>
@@ -79,8 +80,8 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
           </p>
         )}
         <div className="field">
-          <label>Telegram Chat ID</label>
-          <input
+          <label htmlFor={`${fid}-4`}>Telegram Chat ID</label>
+          <input id={`${fid}-4`}
             value={chatId}
             onChange={(e) => setChatId(e.target.value)}
             placeholder="Masalan: 123456789"
@@ -95,8 +96,8 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 12 }}>Interfeys</h3>
         <div className="field">
-          <label>Til</label>
-          <input readOnly value={initial.language.toUpperCase()} />
+          <label htmlFor={`${fid}-5`}>Til</label>
+          <input id={`${fid}-5`} readOnly value={initial.language.toUpperCase()} />
         </div>
         <div className="row gap-12" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <span>Mavzu: {theme === "dark" ? "Qorong'u" : "Yorug'"}</span>

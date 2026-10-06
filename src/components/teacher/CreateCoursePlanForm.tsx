@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { localInputToIso, nextTashkentHourInput } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ const defaultSlot = () => nextTashkentHourInput();
 
 /** Yangi kurs (umumiy mavzu) + birinchi dars yoki N ta dars shabloni. */
 export function CreateCoursePlanForm() {
+  const fid = useId();
   const router = useRouter();
   const [titleUz, setTitleUz] = useState("");
   const [descriptionUz, setDescriptionUz] = useState("");
@@ -59,17 +60,17 @@ export function CreateCoursePlanForm() {
         Umumiy kurs mavzusini kiriting — rejasiga dars qatorlari qo‘shiladi. Studio’da kartochka ko‘rinadi.
       </p>
       <div className="field">
-        <label>Kurs / umumiy mavzu</label>
-        <input value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required minLength={2} />
+        <label htmlFor={`${fid}-1`}>Kurs / umumiy mavzu</label>
+        <input id={`${fid}-1`} value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required minLength={2} />
       </div>
       <div className="field">
-        <label>Qisqa tavsif</label>
-        <textarea value={descriptionUz} onChange={(e) => setDescriptionUz(e.target.value)} rows={2} maxLength={800} />
+        <label htmlFor={`${fid}-2`}>Qisqa tavsif</label>
+        <textarea id={`${fid}-2`} value={descriptionUz} onChange={(e) => setDescriptionUz(e.target.value)} rows={2} maxLength={800} />
       </div>
       <div className="row gap-12" style={{ flexWrap: "wrap" }}>
         <div className="field" style={{ flex: 1, minWidth: 120 }}>
-          <label>Nechta jonli dars</label>
-          <input
+          <label htmlFor={`${fid}-3`}>Nechta jonli dars</label>
+          <input id={`${fid}-3`}
             type="number"
             min={1}
             max={40}
@@ -78,8 +79,8 @@ export function CreateCoursePlanForm() {
           />
         </div>
         <div className="field" style={{ flex: 1, minWidth: 120 }}>
-          <label>Oraliq (kun)</label>
-          <input
+          <label htmlFor={`${fid}-4`}>Oraliq (kun)</label>
+          <input id={`${fid}-4`}
             type="number"
             min={1}
             max={30}
@@ -89,12 +90,12 @@ export function CreateCoursePlanForm() {
         </div>
       </div>
       <div className="field">
-        <label>Birinchi dars vaqti</label>
-        <input type="datetime-local" value={firstAt} onChange={(e) => setFirstAt(e.target.value)} required />
+        <label htmlFor={`${fid}-5`}>Birinchi dars vaqti</label>
+        <input id={`${fid}-5`} type="datetime-local" value={firstAt} onChange={(e) => setFirstAt(e.target.value)} required />
       </div>
       <div className="field">
-        <label>Birinchi dars nomi</label>
-        <input value={firstTitle} onChange={(e) => setFirstTitle(e.target.value)} required />
+        <label htmlFor={`${fid}-6`}>Birinchi dars nomi</label>
+        <input id={`${fid}-6`} value={firstTitle} onChange={(e) => setFirstTitle(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
       {notice ? <p className="small" role="status" style={{ color: "var(--success)" }}>{notice}</p> : null}

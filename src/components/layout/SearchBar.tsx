@@ -228,6 +228,7 @@ export function SearchBar() {
             ref={inputRef}
             type="text"
             placeholder="Qidiruv"
+            aria-label="Qidiruv"
             value={query}
             autoComplete="off"
             spellCheck={false}

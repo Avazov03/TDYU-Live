@@ -77,6 +77,7 @@ export function LiveChat({ lessonId, canSend }: { lessonId: string; canSend: boo
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Izoh qo'shing..."
+              aria-label="Izoh"
               className="comment-input"
             />
             <button className="btn btn-primary btn-sm" type="submit" disabled={sending} style={{ marginTop: 8 }}>

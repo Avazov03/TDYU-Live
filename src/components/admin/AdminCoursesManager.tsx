@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { formatSom } from "@/lib/tariffs";
 import { Icon } from "@/components/ui/Icon";
@@ -30,6 +30,7 @@ export function AdminCoursesManager({
   faculties: { id: string; nameUz: string }[];
   subjects: { id: string; facultyId: string; nameUz: string }[];
 }) {
+  const fid = useId();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [form, setForm] = useState({
@@ -92,32 +93,32 @@ export function AdminCoursesManager({
         <summary>Yangi kurs</summary>
         <form onSubmit={create} className="card" style={{ margin: 0, border: "none", background: "transparent" }}>
           <div className="field">
-            <label>Nomi</label>
-            <input value={form.titleUz} onChange={(e) => set("titleUz", e.target.value)} required />
+            <label htmlFor={`${fid}-1`}>Nomi</label>
+            <input id={`${fid}-1`} value={form.titleUz} onChange={(e) => set("titleUz", e.target.value)} required />
           </div>
           <div className="field">
-            <label>Tavsif</label>
-            <textarea value={form.descriptionUz} onChange={(e) => set("descriptionUz", e.target.value)} required />
+            <label htmlFor={`${fid}-2`}>Tavsif</label>
+            <textarea id={`${fid}-2`} value={form.descriptionUz} onChange={(e) => set("descriptionUz", e.target.value)} required />
           </div>
           <div className="field">
-            <label>O&apos;qituvchi</label>
-            <select value={form.teacherId} onChange={(e) => set("teacherId", e.target.value)}>
+            <label htmlFor={`${fid}-3`}>O&apos;qituvchi</label>
+            <select id={`${fid}-3`} value={form.teacherId} onChange={(e) => set("teacherId", e.target.value)}>
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>{t.fullName}</option>
               ))}
             </select>
           </div>
           <div className="field">
-            <label>Fakultet</label>
-            <select value={form.facultyId} onChange={(e) => set("facultyId", e.target.value)}>
+            <label htmlFor={`${fid}-4`}>Fakultet</label>
+            <select id={`${fid}-4`} value={form.facultyId} onChange={(e) => set("facultyId", e.target.value)}>
               {faculties.map((f) => (
                 <option key={f.id} value={f.id}>{f.nameUz}</option>
               ))}
             </select>
           </div>
           <div className="field">
-            <label>Fan</label>
-            <select value={form.subjectId} onChange={(e) => set("subjectId", e.target.value)}>
+            <label htmlFor={`${fid}-5`}>Fan</label>
+            <select id={`${fid}-5`} value={form.subjectId} onChange={(e) => set("subjectId", e.target.value)}>
               {subjects.filter((s) => s.facultyId === form.facultyId).map((s) => (
                 <option key={s.id} value={s.id}>{s.nameUz}</option>
               ))}
@@ -125,16 +126,16 @@ export function AdminCoursesManager({
           </div>
           <div className="row gap-12">
             <div className="field" style={{ flex: 1 }}>
-              <label>1-tarif</label>
-              <input value={form.priceT1} onChange={(e) => set("priceT1", e.target.value)} />
+              <label htmlFor={`${fid}-6`}>1-tarif</label>
+              <input id={`${fid}-6`} value={form.priceT1} onChange={(e) => set("priceT1", e.target.value)} />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label>2-tarif</label>
-              <input value={form.priceT2} onChange={(e) => set("priceT2", e.target.value)} />
+              <label htmlFor={`${fid}-7`}>2-tarif</label>
+              <input id={`${fid}-7`} value={form.priceT2} onChange={(e) => set("priceT2", e.target.value)} />
             </div>
             <div className="field" style={{ flex: 1 }}>
-              <label>3-tarif</label>
-              <input value={form.priceT3} onChange={(e) => set("priceT3", e.target.value)} />
+              <label htmlFor={`${fid}-8`}>3-tarif</label>
+              <input id={`${fid}-8`} value={form.priceT3} onChange={(e) => set("priceT3", e.target.value)} />
             </div>
           </div>
           {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
@@ -149,6 +150,7 @@ export function AdminCoursesManager({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Kurs, o'qituvchi yoki fan..."
+            aria-label="Kursni qidirish"
           />
         </div>
       </div>

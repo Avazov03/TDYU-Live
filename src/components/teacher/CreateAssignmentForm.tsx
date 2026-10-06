@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { localInputToIso } from "@/lib/utils";
 
 export function CreateAssignmentForm({ courses }: { courses: { id: string; titleUz: string }[] }) {
+  const fid = useId();
   const router = useRouter();
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [titleUz, setTitleUz] = useState("");
@@ -44,24 +45,24 @@ export function CreateAssignmentForm({ courses }: { courses: { id: string; title
   return (
     <form onSubmit={submit} className="card" style={{ marginBottom: 20 }}>
       <div className="field">
-        <label>Kurs</label>
-        <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+        <label htmlFor={`${fid}-1`}>Kurs</label>
+        <select id={`${fid}-1`} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>{c.titleUz}</option>
           ))}
         </select>
       </div>
       <div className="field">
-        <label>Sarlavha</label>
-        <input value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
+        <label htmlFor={`${fid}-2`}>Sarlavha</label>
+        <input id={`${fid}-2`} value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
       </div>
       <div className="field">
-        <label>Tavsif</label>
-        <textarea value={descriptionUz} onChange={(e) => setDescriptionUz(e.target.value)} required />
+        <label htmlFor={`${fid}-3`}>Tavsif</label>
+        <textarea id={`${fid}-3`} value={descriptionUz} onChange={(e) => setDescriptionUz(e.target.value)} required />
       </div>
       <div className="field">
-        <label>Muddat</label>
-        <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required />
+        <label htmlFor={`${fid}-4`}>Muddat</label>
+        <input id={`${fid}-4`} type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
       <button className="btn btn-primary" type="submit" disabled={busy}>

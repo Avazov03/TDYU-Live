@@ -279,10 +279,12 @@ export function AdminUsersManager({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={canSeeSecrets ? "Ism, email yoki kurs..." : "Ism yoki kurs..."}
+            aria-label="Foydalanuvchini qidirish"
           />
         </div>
         <select
           className="staff-filter"
+          aria-label="Holat bo‘yicha filtr"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
         >
@@ -408,7 +410,7 @@ export function AdminUsersManager({
                               <div className="account-field">
                                 <div className="small muted">Parol</div>
                                 <div className="account-field-row">
-                                  <input readOnly value={visible ? pw : ""} placeholder="Ko'rsatish yangi parol beradi" />
+                                  <input readOnly value={visible ? pw : ""} placeholder="Ko'rsatish yangi parol beradi" aria-label="Vaqtinchalik parol" />
                                   <button type="button" className="iconbtn" aria-label="Parolni ko'rsatish" disabled={busyId === user.id} onClick={() => void revealPassword(user.id)}>
                                     <Icon name={visible ? "eyeoff" : "eye"} size={15} />
                                   </button>

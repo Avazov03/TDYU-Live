@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { ImpersonateTeacherButton } from "@/components/admin/ImpersonateTeacherButton";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
@@ -83,6 +83,7 @@ export function AdminTeachersManager({
   subjects: { id: string; facultyId: string; nameUz: string }[];
   canSeeSecrets: boolean;
 }) {
+  const fid = useId();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -336,10 +337,12 @@ export function AdminTeachersManager({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ism yoki login..."
+            aria-label="O‘qituvchini qidirish"
           />
         </div>
         <select
           className="staff-filter"
+          aria-label="Holat bo‘yicha filtr"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
         >
@@ -547,16 +550,16 @@ export function AdminTeachersManager({
           <h3 style={{ marginBottom: 12 }}>Taklif havolasi</h3>
           <form onSubmit={create}>
             <div className="field">
-              <label>Ism</label>
-              <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+              <label htmlFor={`${fid}-1`}>Ism</label>
+              <input id={`${fid}-1`} value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </div>
             <div className="field">
-              <label>Email</label>
-              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required />
+              <label htmlFor={`${fid}-2`}>Email</label>
+              <input id={`${fid}-2`} type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required />
             </div>
             <div className="field">
-              <label>Fakultet</label>
-              <select
+              <label htmlFor={`${fid}-3`}>Fakultet</label>
+              <select id={`${fid}-3`}
                 value={facultyId}
                 onChange={(e) => {
                   setFacultyId(e.target.value);
@@ -570,8 +573,8 @@ export function AdminTeachersManager({
               </select>
             </div>
             <div className="field">
-              <label>Fan</label>
-              <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
+              <label htmlFor={`${fid}-4`}>Fan</label>
+              <select id={`${fid}-4`} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
                 {filteredSubjects.map((s) => (
                   <option key={s.id} value={s.id}>{s.nameUz}</option>
                 ))}

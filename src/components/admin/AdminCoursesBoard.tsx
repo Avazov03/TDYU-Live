@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { RoleAvatar } from "@/components/admin/RoleAvatar";
 import { SoftExpand } from "@/components/admin/SoftDisclosure";
@@ -64,6 +64,7 @@ export function AdminCoursesBoard({
     stale: number;
   };
 }) {
+  const fid = useId();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [health, setHealth] = useState<HealthFilter>("all");
@@ -240,15 +241,16 @@ export function AdminCoursesBoard({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Kurs, o'qituvchi, fan..."
+            aria-label="Kursni qidirish"
           />
         </div>
-        <select className="staff-filter" value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+        <select className="staff-filter" aria-label="O‘qituvchi bo‘yicha filtr" value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
           <option value="all">Barcha o&apos;qituvchilar</option>
           {groups.map((g) => (
             <option key={g.teacherId} value={g.teacherId}>{g.teacherName}</option>
           ))}
         </select>
-        <select className="staff-filter" value={health} onChange={(e) => setHealth(e.target.value as HealthFilter)}>
+        <select className="staff-filter" aria-label="Holat bo‘yicha filtr" value={health} onChange={(e) => setHealth(e.target.value as HealthFilter)}>
           <option value="all">Barcha holat</option>
           <option value="live">Jonli</option>
           <option value="on_track">Rejada</option>
@@ -386,32 +388,32 @@ export function AdminCoursesBoard({
                             }}
                           >
                             <div className="field">
-                              <label>Nomi</label>
-                              <input value={editForm.titleUz} onChange={(e) => setEdit("titleUz", e.target.value)} required />
+                              <label htmlFor={`${fid}-1`}>Nomi</label>
+                              <input id={`${fid}-1`} value={editForm.titleUz} onChange={(e) => setEdit("titleUz", e.target.value)} required />
                             </div>
                             <div className="field">
-                              <label>Tavsif</label>
-                              <textarea value={editForm.descriptionUz} onChange={(e) => setEdit("descriptionUz", e.target.value)} required />
+                              <label htmlFor={`${fid}-2`}>Tavsif</label>
+                              <textarea id={`${fid}-2`} value={editForm.descriptionUz} onChange={(e) => setEdit("descriptionUz", e.target.value)} required />
                             </div>
                             <div className="field">
-                              <label>O&apos;qituvchi</label>
-                              <select value={editForm.teacherId} onChange={(e) => setEdit("teacherId", e.target.value)}>
+                              <label htmlFor={`${fid}-3`}>O&apos;qituvchi</label>
+                              <select id={`${fid}-3`} value={editForm.teacherId} onChange={(e) => setEdit("teacherId", e.target.value)}>
                                 {teachers.map((t) => (
                                   <option key={t.id} value={t.id}>{t.fullName}</option>
                                 ))}
                               </select>
                             </div>
                             <div className="field">
-                              <label>Fakultet</label>
-                              <select value={editForm.facultyId} onChange={(e) => setEdit("facultyId", e.target.value)}>
+                              <label htmlFor={`${fid}-4`}>Fakultet</label>
+                              <select id={`${fid}-4`} value={editForm.facultyId} onChange={(e) => setEdit("facultyId", e.target.value)}>
                                 {faculties.map((f) => (
                                   <option key={f.id} value={f.id}>{f.nameUz}</option>
                                 ))}
                               </select>
                             </div>
                             <div className="field">
-                              <label>Fan</label>
-                              <select value={editForm.subjectId} onChange={(e) => setEdit("subjectId", e.target.value)}>
+                              <label htmlFor={`${fid}-5`}>Fan</label>
+                              <select id={`${fid}-5`} value={editForm.subjectId} onChange={(e) => setEdit("subjectId", e.target.value)}>
                                 {subjects
                                   .filter((s) => s.facultyId === editForm.facultyId)
                                   .map((s) => (
@@ -421,8 +423,8 @@ export function AdminCoursesBoard({
                             </div>
                             {reviewFlow && course.lifecycleStatus ? null : seatMode ? (
                               <div className="field">
-                                <label>Narx (so‘m)</label>
-                                <input
+                                <label htmlFor={`${fid}-6`}>Narx (so‘m)</label>
+                                <input id={`${fid}-6`}
                                   inputMode="numeric"
                                   value={editForm.listPrice}
                                   onChange={(e) => setEdit("listPrice", e.target.value)}
@@ -431,16 +433,16 @@ export function AdminCoursesBoard({
                             ) : (
                               <div className="row gap-12">
                                 <div className="field" style={{ flex: 1 }}>
-                                  <label>1-tarif</label>
-                                  <input value={editForm.priceT1} onChange={(e) => setEdit("priceT1", e.target.value)} />
+                                  <label htmlFor={`${fid}-7`}>1-tarif</label>
+                                  <input id={`${fid}-7`} value={editForm.priceT1} onChange={(e) => setEdit("priceT1", e.target.value)} />
                                 </div>
                                 <div className="field" style={{ flex: 1 }}>
-                                  <label>2-tarif</label>
-                                  <input value={editForm.priceT2} onChange={(e) => setEdit("priceT2", e.target.value)} />
+                                  <label htmlFor={`${fid}-8`}>2-tarif</label>
+                                  <input id={`${fid}-8`} value={editForm.priceT2} onChange={(e) => setEdit("priceT2", e.target.value)} />
                                 </div>
                                 <div className="field" style={{ flex: 1 }}>
-                                  <label>3-tarif</label>
-                                  <input value={editForm.priceT3} onChange={(e) => setEdit("priceT3", e.target.value)} />
+                                  <label htmlFor={`${fid}-9`}>3-tarif</label>
+                                  <input id={`${fid}-9`} value={editForm.priceT3} onChange={(e) => setEdit("priceT3", e.target.value)} />
                                 </div>
                               </div>
                             )}

@@ -191,22 +191,23 @@ export function AdminPaymentsBoard({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={canSeeSecrets ? "O'quvchi, email, kurs, o'qituvchi..." : "O'quvchi, kurs, o'qituvchi..."}
+            aria-label="To‘lovni qidirish"
           />
         </div>
-        <select className="staff-filter" value={range} onChange={(e) => setRange(e.target.value as RangeFilter)}>
+        <select className="staff-filter" aria-label="Davr bo‘yicha filtr" value={range} onChange={(e) => setRange(e.target.value as RangeFilter)}>
           <option value="month">Shu oy</option>
           <option value="14">14 kun</option>
           <option value="30">30 kun</option>
           <option value="all">Barchasi</option>
         </select>
-        <select className="staff-filter" value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
+        <select className="staff-filter" aria-label="Holat bo‘yicha filtr" value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
           <option value="all">Barcha holat</option>
           <option value="demo_paid">Demo</option>
           <option value="paid">To&apos;langan</option>
           <option value="pending">Kutilmoqda</option>
           <option value="failed">Muvaffaqiyatsiz</option>
         </select>
-        <select className="staff-filter" value={tier} onChange={(e) => setTier(e.target.value as TierFilter)}>
+        <select className="staff-filter" aria-label="Tarif bo‘yicha filtr" value={tier} onChange={(e) => setTier(e.target.value as TierFilter)}>
           <option value="all">Barcha tarif</option>
           <option value="t1">{TARIFF_SHORT.t1}</option>
           <option value="t2">{TARIFF_SHORT.t2}</option>

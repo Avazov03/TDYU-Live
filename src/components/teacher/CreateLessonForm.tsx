@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { localInputToIso, nextTashkentHourInput } from "@/lib/utils";
@@ -12,6 +12,7 @@ export function CreateLessonForm({
 }: {
   courses: { id: string; titleUz: string; statusText: string; needsReview?: boolean }[];
 }) {
+  const fid = useId();
   const router = useRouter();
   const [done, setDone] = useState<{ courseTitle: string; needsReview: boolean } | null>(null);
   const [courseId, setCourseId] = useState(courses.length === 1 ? courses[0].id : "");
@@ -104,20 +105,20 @@ export function CreateLessonForm({
         ) : null}
       </div>
       <div className="field">
-        <label>Mavzu</label>
-        <input value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
+        <label htmlFor={`${fid}-1`}>Mavzu</label>
+        <input id={`${fid}-1`} value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
       </div>
       <div className="field">
-        <label>Qisqa ma&apos;lumot</label>
-        <textarea value={summaryUz} onChange={(e) => setSummaryUz(e.target.value)} maxLength={500} rows={3} />
+        <label htmlFor={`${fid}-2`}>Qisqa ma&apos;lumot</label>
+        <textarea id={`${fid}-2`} value={summaryUz} onChange={(e) => setSummaryUz(e.target.value)} maxLength={500} rows={3} />
       </div>
       <div className="field">
-        <label>Banner rasmi (ixtiyoriy URL)</label>
-        <input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://" />
+        <label htmlFor={`${fid}-3`}>Banner rasmi (ixtiyoriy URL)</label>
+        <input id={`${fid}-3`} value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://" />
       </div>
       <div className="field">
-        <label>Sana va vaqt</label>
-        <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
+        <label htmlFor={`${fid}-4`}>Sana va vaqt</label>
+        <input id={`${fid}-4`} type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
       </div>
       {error ? <p className="small" style={{ color: "var(--danger)" }}>{error}</p> : null}
       {done ? (

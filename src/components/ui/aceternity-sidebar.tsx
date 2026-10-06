@@ -187,6 +187,7 @@ export const SidebarLink = ({
   return (
     <Link
       href={link.href}
+      aria-label={link.label}
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2",
         className,
