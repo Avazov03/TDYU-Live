@@ -11,7 +11,7 @@
  */
 
 import { spawn, spawnSync, type ChildProcess } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { createConnection } from "net";
 import os from "os";
 import path from "path";
@@ -109,6 +109,26 @@ function stopServer(server: ChildProcess | null) {
   }
 }
 
+const STAMP_DIR = path.join(ROOT, ".e2e-stamps");
+
+/** HEAD sha when no tracked file differs from it (the run tests exactly that commit), else null. */
+function cleanHead(): string | null {
+  const status = spawnSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: ROOT, encoding: "utf8" });
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
+  if (status.status !== 0 || head.status !== 0 || status.stdout.trim()) return null;
+  return head.stdout.trim();
+}
+
+/** Local proof for `npm run ci:gate` that the full hermetic suite passed on this exact commit. */
+function writeStamp(sha: string) {
+  mkdirSync(STAMP_DIR, { recursive: true });
+  writeFileSync(
+    path.join(STAMP_DIR, `${sha}.json`),
+    JSON.stringify({ sha, passedAt: new Date().toISOString(), host: os.hostname() }, null, 2),
+  );
+  console.log(`e2e:full — stamped ${sha.slice(0, 7)} as green (.e2e-stamps/)`);
+}
+
 async function main() {
   const argv = process.argv.slice(2).filter((a) => a !== "--");
   const flags = new Set(argv.filter((a) => RUNNER_FLAGS.has(a)));
@@ -122,6 +142,7 @@ async function main() {
   delete toolEnv.NODE_ENV;
 
   console.log(`e2e:full flags: [${[...flags].join(" ")}] playwright args: [${playwrightArgs.join(" ")}]`);
+  const stampable = !playwrightArgs.length && !flags.has("--skip-build") ? cleanHead() : null;
   if (await portInUse(port)) throw new Error(`Port ${port} is already in use — stop that process first.`);
 
   let server: ChildProcess | null = null;
@@ -167,6 +188,7 @@ async function main() {
       shell: process.platform === "win32",
     });
     exitCode = res.status ?? 1;
+    if (exitCode === 0 && stampable && cleanHead() === stampable) writeStamp(stampable);
   } finally {
     stopServer(server);
     if (!flags.has("--no-docker") && !flags.has("--keep-db")) {

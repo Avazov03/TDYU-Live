@@ -1,49 +1,18 @@
-import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { loginAs } from "../auth/login";
 import { isE2EDbReady, skipReasonDbNotReady, studentCreds, skipReasonMissingCreds } from "../helpers/env";
+import { expectHealthyPage } from "../helpers/page-health";
 
 /**
- * Phone viewport (mobile project): no horizontal overflow, unique ids, nav reachable via the drawer.
+ * Phone viewport (mobile project): page health on public and student pages, nav reachable via the drawer.
  */
-
-async function layoutProblems(page: Page) {
-  return page.evaluate(() => {
-    const vw = document.documentElement.clientWidth;
-    const overflow = document.documentElement.scrollWidth - vw;
-    const culprits: string[] = [];
-    if (overflow > 1) {
-      for (const el of document.body.querySelectorAll<HTMLElement>("*")) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.right > vw + 1 && getComputedStyle(el).position !== "fixed") {
-          culprits.push(`${el.tagName.toLowerCase()}${el.className ? "." + String(el.className).trim().split(/\s+/).join(".") : ""} → ${Math.round(r.right)}px`);
-          if (culprits.length >= 5) break;
-        }
-      }
-    }
-    const ids = new Map<string, number>();
-    for (const el of document.querySelectorAll("[id]")) ids.set(el.id, (ids.get(el.id) ?? 0) + 1);
-    return {
-      overflowPx: overflow > 1 ? overflow : 0,
-      culprits,
-      duplicateIds: [...ids].filter(([, n]) => n > 1).map(([id]) => id),
-    };
-  });
-}
-
-async function expectSoundLayout(page: Page, label: string) {
-  await page.waitForLoadState("networkidle").catch(() => undefined);
-  const p = await layoutProblems(page);
-  expect.soft(p.overflowPx, `${label}: horizontal overflow (${p.culprits.join("; ")})`).toBe(0);
-  expect.soft(p.duplicateIds, `${label}: duplicate ids`).toEqual([]);
-}
 
 test.describe("Mobile layout", () => {
   for (const path of ["/", "/login", "/register"]) {
     test(`public ${path} fits the phone screen`, async ({ page, monitor }) => {
       monitor.noteAction(`Goto ${path}`);
       await page.goto(path);
-      await expectSoundLayout(page, path);
+      await expectHealthyPage(page, path);
     });
   }
 
@@ -56,7 +25,7 @@ test.describe("Mobile layout", () => {
     for (const path of ["/app", "/my-courses", "/schedule", "/assignments", "/certificates", "/settings"]) {
       monitor.noteAction(`Goto ${path}`);
       await page.goto(path);
-      await expectSoundLayout(page, path);
+      await expectHealthyPage(page, path);
     }
 
     monitor.noteAction("Open the mobile menu and navigate");

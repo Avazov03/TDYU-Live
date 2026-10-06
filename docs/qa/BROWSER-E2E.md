@@ -284,17 +284,21 @@ Gated by `E2E_FLOWS=1` (set in `e2e/hermetic.env`). They change data, so they ru
 
 ## Production error alerts
 
-`src/instrumentation.ts` (`onRequestError`) → `src/lib/ops-alert.ts` sends every server 500 to Telegram: recipients are `OPS_ALERT_TELEGRAM_CHAT_IDS` or, if unset, admins with a linked Telegram chat. On by default only in production (`OPS_ALERTS=0|1` overrides). Rules live in `src/lib/ops-alert-policy.ts` (unit-tested in `test:security`): secrets and query strings are redacted, Next control-flow errors ignored, one alert per route+message per 10 min (repeats counted), at most 20 per hour. Verify the chain on production as admin: `POST /api/admin/ops/test-alert` (logs `{"scope":"ops","event":"alert_sent",…}` or `alert_no_recipients`).
+`src/instrumentation.ts` (`onRequestError`) → `src/lib/ops-alert.ts` sends every server 500 to Telegram: recipients are `OPS_ALERT_TELEGRAM_CHAT_IDS` or, if unset, admins with a linked Telegram chat. If nobody is reachable on Telegram the alert is emailed (Resend) to `OPS_ALERT_EMAILS` or every admin. On by default only in production (`OPS_ALERTS=0|1` overrides). Rules live in `src/lib/ops-alert-policy.ts` (unit-tested in `test:security`): secrets and query strings are redacted, Next control-flow errors ignored, one alert per route+message per 10 min (repeats counted), at most 20 per hour. Verify the chain on production as admin: `POST /api/admin/ops/test-alert` (logs `{"scope":"ops","event":"alert_sent",…}` or `alert_no_recipients`).
+
+## Page health (`e2e/health`, `e2e/helpers/page-health.ts`)
+
+Every main page of every role (public, student, teacher incl. the open assignment form, all admin pages) is checked for horizontal overflow, duplicate ids, buttons/links without an accessible name, form fields without a label and images without alt. Checks are soft, so one failure lists all problems of all pages with selector hints (e.g. `input[Qidiruv]`, `a.flex.items-center[/schedule]`). Visibility uses `checkVisibility()`, so content of closed `<details>` and hidden drawers is not reported.
 
 ## Mobile project
 
-Playwright project `mobile` (Pixel 7, Chromium engine) re-runs `e2e/mobile`, `smoke/public`, `shell` and `catalog`. `e2e/mobile/layout.spec.ts` fails on horizontal overflow (lists the overflowing elements) and duplicate ids on public and student pages, and checks the drawer reaches navigation.
+Playwright project `mobile` (Pixel 7, Chromium engine) re-runs `e2e/mobile`, `smoke/public`, `shell` and `catalog`. `e2e/mobile/layout.spec.ts` runs the page-health checks on public and student pages at phone width and checks the drawer reaches navigation.
 
 ## CI and deploy gate
 
 `.github/workflows/ci.yml` — job `checks` (lint, type-check, unit suites) then job `e2e` (`npm run test:e2e:full`, all projects). See "Hermetic full run" above.
 
-Before a production deploy run `npm run ci:gate` (or `npx tsx scripts/require-green-ci.ts <sha> --wait`): it exits non-zero unless the CI workflow succeeded for that commit.
+Before a production deploy run `npm run ci:gate` (or `npx tsx scripts/require-green-ci.ts <sha> --wait`): it exits non-zero unless the CI workflow succeeded for that commit. While the workflow is not on GitHub (or `gh` is unavailable) it accepts a local stamp instead: a full `npm run test:e2e:full` (no spec filter, no `--skip-build`) on a clean tree writes `.e2e-stamps/<sha>.json`. A failed CI run is never overridden by a stamp.
 
 ## Phase 2.3C foundation status
 
