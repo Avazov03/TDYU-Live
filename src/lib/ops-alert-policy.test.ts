@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   AlertThrottle,
+  alertHtmlToText,
   formatRequestErrorAlert,
   isIgnorableRequestError,
   redactSecrets,
@@ -31,6 +32,14 @@ test("alert hides the query string, escapes HTML and includes route + digest", (
   assert.match(text, /&lt;script&gt;/);
   assert.match(text, /digest: <code>123<\/code>/);
   assert.match(text, /\+2 ta/);
+});
+
+test("email text drops tags and restores escaped characters", () => {
+  const html = formatRequestErrorAlert({ ...base, message: "a < b && c" }, "lexify.zonic.fit");
+  const text = alertHtmlToText(html);
+  assert.doesNotMatch(text, /<\/?(b|code|pre)>/);
+  assert.match(text, /a < b && c/);
+  assert.match(text, /GET \/learn\/x/);
 });
 
 test("Next control-flow errors are ignored", () => {

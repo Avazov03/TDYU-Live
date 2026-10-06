@@ -62,6 +62,15 @@ export function formatRequestErrorAlert(info: RequestErrorInfo, host: string, su
   return lines.join("\n");
 }
 
+/** Plain-text version of a Telegram HTML alert (for email). */
+export function alertHtmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 /**
  * Per-process throttle: one alert per fingerprint per `perKeyMs`, at most `globalLimit` alerts per
  * `globalWindowMs`. Suppressed repeats are counted and reported with the next alert of that key.
