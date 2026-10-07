@@ -6,7 +6,7 @@ import { getTeacherForUser } from "@/lib/teacher";
 import { formatDateTime, parseClientDateTime } from "@/lib/utils";
 import { isCourseReviewV1Enabled, isScheduleRulesV1Enabled } from "@/lib/feature-flags";
 import { isPreAudienceLifecycle, lessonPlanLock } from "@/lib/course-review-policy";
-import { checkLessonRemoval, checkReschedule, lessonEnd } from "@/lib/schedule-policy";
+import { checkLessonRemoval, checkReschedule, isRunningLessonStatus, lessonEnd } from "@/lib/schedule-policy";
 import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 import { notifyCourseStudents } from "@/lib/notify";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -39,8 +39,8 @@ export async function PATCH(
   const { id } = await params;
   const lesson = await ownedLesson(session.user.id, id);
   if (!lesson) return NextResponse.json({ error: "Dars topilmadi" }, { status: 404 });
-  if (lesson.status === "live" || lesson.status === "lobby") {
-    return NextResponse.json({ error: "Kutish/jonli efirda tahrirlab bo'lmaydi" }, { status: 400 });
+  if (isRunningLessonStatus(lesson.status)) {
+    return NextResponse.json({ error: "Efir ochiq (kutish, jonli yoki pauza) — tahrirlab bo'lmaydi" }, { status: 400 });
   }
   const reviewFlow = isCourseReviewV1Enabled();
   const planLock = lessonPlanLock(lesson.course.lifecycleStatus, reviewFlow);

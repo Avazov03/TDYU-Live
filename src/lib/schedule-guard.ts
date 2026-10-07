@@ -3,6 +3,7 @@ import { formatDateTime } from "@/lib/utils";
 import {
   checkEarlyStart,
   lessonEnd,
+  RUNNING_LESSON_STATUSES,
   type LessonWindow,
   type ScheduleCheck,
 } from "@/lib/schedule-policy";
@@ -37,7 +38,7 @@ export async function loadTeacherLessonWindows(teacherId: string): Promise<Lesso
       },
       OR: [
         { status: "scheduled", scheduledAt: { gte: since } },
-        { status: { in: ["lobby", "live"] } },
+        { status: { in: [...RUNNING_LESSON_STATUSES] } },
       ],
     },
     select: {

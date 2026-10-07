@@ -45,6 +45,7 @@ describe("Live Wave 1 lifecycle mapping", () => {
     assert.equal(canTeacherStartLive("lobby"), true);
     assert.equal(canTeacherStartLive("ended"), false);
     assert.equal(canTeacherEndLive("live"), true);
+    assert.equal(canTeacherEndLive("paused"), true);
     assert.equal(canTeacherEndLive("scheduled"), false);
   });
 });

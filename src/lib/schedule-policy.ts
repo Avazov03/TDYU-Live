@@ -151,6 +151,13 @@ export function checkLessonRemoval(input: { currentStart: Date; now: Date; curre
   return { ok: true };
 }
 
+/** A room is open for this lesson: waiting, live or paused. A Teacher may have only one at a time. */
+export const RUNNING_LESSON_STATUSES = ["lobby", "waiting_room", "live", "paused"] as const;
+
+export function isRunningLessonStatus(status: string): boolean {
+  return (RUNNING_LESSON_STATUSES as readonly string[]).includes(status);
+}
+
 /** Opening the room/starting now: no other lesson of this Teacher may be running or overlap. */
 export function checkEarlyStart(input: {
   lessonId: string;
@@ -160,7 +167,7 @@ export function checkEarlyStart(input: {
   formatWhen: (d: Date) => string;
 }): ScheduleCheck {
   const running = input.others.find(
-    (o) => o.id !== input.lessonId && (o.status === "live" || o.status === "lobby"),
+    (o) => o.id !== input.lessonId && isRunningLessonStatus(o.status),
   );
   if (running) {
     return {

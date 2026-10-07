@@ -143,5 +143,5 @@ export function canTeacherStartLive(lessonStatus: string): boolean {
 }
 
 export function canTeacherEndLive(lessonStatus: string): boolean {
-  return lessonStatus === "live" || isWaitingLessonStatus(lessonStatus);
+  return lessonStatus === "live" || lessonStatus === "paused" || isWaitingLessonStatus(lessonStatus);
 }

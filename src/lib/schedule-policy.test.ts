@@ -151,8 +151,8 @@ describe("checkEarlyStart", () => {
   it("allowed early when nothing overlaps", () => {
     assert.deepEqual(checkEarlyStart({ ...base, others: [win("me", 3), win("later", 5)] }), { ok: true });
   });
-  it("blocked while another lesson is live or in lobby", () => {
-    for (const status of ["live", "lobby"]) {
+  it("blocked while another lesson is waiting, live or paused", () => {
+    for (const status of ["live", "lobby", "waiting_room", "paused"]) {
       const r = checkEarlyStart({ ...base, others: [win("x", -0.5, status)] });
       assert.equal(!r.ok && r.code, "CONFLICT", status);
     }

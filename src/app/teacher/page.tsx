@@ -22,8 +22,14 @@ import { isLiveAllowedForCourse, liveGate } from "@/lib/course-review-policy";
 import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
 import { CompleteCourseButton } from "@/components/teacher/CompleteCourseButton";
 import { isOpenLessonStatus } from "@/lib/course-completion-policy";
+import { isRunningLessonStatus } from "@/lib/schedule-policy";
 
 export const dynamic = "force-dynamic";
+
+/** Students are in the room right now (live, or paused by the teacher). */
+function isOnAir(status: string) {
+  return status === "live" || status === "paused";
+}
 
 function countdownLabel(when: Date) {
   const ms = when.getTime() - Date.now();
@@ -96,7 +102,9 @@ export default async function TeacherHomePage() {
     c.lessons.map((l) => ({ ...l, courseTitle: c.titleUz, courseId: c.id })),
   );
 
-  const running = allLessons.filter((l) => l.status === "live" || l.status === "lobby");
+  const running = allLessons
+    .filter((l) => isRunningLessonStatus(l.status))
+    .sort((a, b) => Number(isOnAir(b.status)) - Number(isOnAir(a.status)));
   const gatedCourseIds = new Set(
     teacher.courses.filter((c) => liveGate(c.lifecycleStatus, reviewFlow)).map((c) => c.id),
   );
@@ -114,13 +122,14 @@ export default async function TeacherHomePage() {
       hasPlayableRecording(l.recordingUrl, l.muxVodPlaybackId),
     ).length;
     const actionable = course.lessons.filter(
-      (l) => l.status === "live" || l.status === "lobby" || l.status === "scheduled",
+      (l) => isRunningLessonStatus(l.status) || l.status === "scheduled",
     );
     const toReview = course.lessons.filter(
       (l) => l.status === "teacher_review" || l.status === "recording_ready",
     );
     const next =
-      course.lessons.find((l) => l.status === "live" || l.status === "lobby") ??
+      course.lessons.find((l) => isOnAir(l.status)) ??
+      course.lessons.find((l) => isRunningLessonStatus(l.status)) ??
       course.lessons.find((l) => l.status === "scheduled");
     const studentIds = new Set<string>();
     if (accessMode !== "enrollment") {
@@ -132,7 +141,7 @@ export default async function TeacherHomePage() {
     const activeStudents = studentIds.size;
     const total = course.lessons.length;
     const phase =
-      course.lessons.some((l) => l.status === "live" || l.status === "lobby")
+      course.lessons.some((l) => isRunningLessonStatus(l.status))
         ? "active"
         : withVideo > 0
           ? "ongoing"
@@ -219,9 +228,11 @@ export default async function TeacherHomePage() {
               <span className="lx-mc-next-label">
                 {focus.status === "live"
                   ? "Hozir efirdasiz"
-                  : focusLive
-                    ? "Kutish xonasi ochiq"
-                    : "Keyingi darsingiz"}
+                  : focus.status === "paused"
+                    ? "Efir pauzada"
+                    : focusLive
+                      ? "Kutish xonasi ochiq"
+                      : "Keyingi darsingiz"}
               </span>
               <p className="lx-mc-next-title">{focus.titleUz}</p>
               <p className="lx-mc-next-meta">
@@ -236,7 +247,7 @@ export default async function TeacherHomePage() {
               ) : null}
             </div>
             <Link href={`/teacher/live/${focus.id}`} className="btn btn-primary lx-mc-next-cta">
-              {focus.status === "live" ? "Efirga qaytish" : focusLive ? "Kutish xonasiga" : "Studioga kirish"}
+              {isOnAir(focus.status) ? "Efirga qaytish" : focusLive ? "Kutish xonasiga" : "Studioga kirish"}
             </Link>
           </section>
         ) : gatedStep ? (
@@ -317,7 +328,15 @@ export default async function TeacherHomePage() {
                   : card.completed
                     ? { text: "Yakunlangan", tone: "done" }
                     : card.phase === "active"
-                      ? { text: "Hozir efirda", tone: "live" }
+                      ? {
+                          text:
+                            card.next?.status === "paused"
+                              ? "Efir pauzada"
+                              : card.next?.status === "live"
+                                ? "Hozir efirda"
+                                : "Kutish ochiq",
+                          tone: "live",
+                        }
                       : card.phase === "ongoing"
                         ? { text: "Davom etmoqda", tone: "open" }
                         : card.phase === "new"
@@ -426,9 +445,9 @@ export default async function TeacherHomePage() {
                         <div className="lx-tc-actions">
                           {card.next ? (
                             <Link href={`/teacher/live/${card.next.id}`} className="btn btn-primary">
-                              {card.next.status === "live"
+                              {isOnAir(card.next.status)
                                 ? "Efirga qaytish"
-                                : card.next.status === "lobby"
+                                : isRunningLessonStatus(card.next.status)
                                   ? "Kutishga qaytish"
                                   : "Studioga kirish"}
                             </Link>
