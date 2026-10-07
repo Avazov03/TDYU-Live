@@ -3,7 +3,7 @@ import type { PublicCourseCardData } from "@/lib/public-courses";
 import { formatSom } from "@/lib/tariffs";
 import { formatDateTime, initials } from "@/lib/utils";
 
-function thumbTone(id: string) {
+export function thumbTone(id: string) {
   const n = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return `tone-${(n % 6) + 1}`;
 }

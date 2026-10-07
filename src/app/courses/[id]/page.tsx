@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/layout/AppShell";
+import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
 import { CheckoutButton } from "@/components/course/CheckoutButton";
 import { CheckoutV2Button } from "@/components/course/CheckoutV2Button";
+import { CourseSectionNav } from "@/components/course/CourseSectionNav";
+import { ExpandableText } from "@/components/course/ExpandableText";
+import { LessonListToggle } from "@/components/course/LessonListToggle";
 import { Icon } from "@/components/ui/Icon";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -27,6 +30,7 @@ import type { LessonStatus, TariffTier } from "@/generated/prisma/client";
 export const dynamic = "force-dynamic";
 
 const LIVE_STATUSES: LessonStatus[] = ["live", "lobby", "waiting_room", "paused"];
+const LESSONS_VISIBLE = 6;
 const DONE_STATUSES: LessonStatus[] = [
   "ended",
   "recording_processing",
@@ -104,17 +108,42 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const courseStatus = completed ? "Yakunlangan" : started ? "Davom etmoqda" : "Tez orada";
   const studentCount = enrollmentMode ? openSeats : course._count.subscriptions;
   const hasMaterials = lessons.some((l) => l._count.assets > 0);
-  const lead = course.shortDescriptionUz?.trim() || course.descriptionUz;
-  const showAbout = Boolean(course.shortDescriptionUz?.trim() && course.descriptionUz.trim());
+  const shortLead = course.shortDescriptionUz?.trim() ?? "";
+  const description = course.descriptionUz.trim();
+  const lead = shortLead || description;
+  const showAbout = Boolean(description && (shortLead || description.length > 220));
   const enrollmentOwned = Boolean(enrollment && (!sub || enrollmentMode));
   const displayPrice = v2Enabled || hideTariff ? listPrice : null;
-  const canBuyV2 = v2Enabled && listPrice != null && !staffViewer && purchasable && seatsLeft;
+  const canBuyV2 = v2Enabled && listPrice != null && !owned && !staffViewer && purchasable && seatsLeft;
+  const ownedNext = owned && nextLesson && !completed ? nextLesson : null;
+  const hasMobileBar = (canBuyV2 && listPrice != null) || Boolean(ownedNext);
+  const seatsOpen = course.capacity != null ? Math.max(course.capacity - openSeats, 0) : null;
+
+  const facts: { icon: "book" | "calendar" | "clock" | "users"; value: string; label: string }[] = [
+    { icon: "book", value: String(lessons.length), label: "jonli dars" },
+    ...(startsAt
+      ? [{ icon: "calendar" as const, value: dayMonth(startsAt), label: started ? "boshlangan" : "boshlanishi" }]
+      : []),
+    { icon: "clock", value: "60 daqiqa", label: "har dars" },
+    ...(seatsOpen != null && !owned && purchasable
+      ? [{ icon: "users" as const, value: `${seatsOpen} / ${course.capacity}`, label: "qolgan joy" }]
+      : studentCount > 0
+        ? [{ icon: "users" as const, value: String(studentCount), label: "o‘quvchi" }]
+        : []),
+  ];
+
+  const sections = [
+    { id: "reja", label: "Dars rejasi" },
+    ...(showAbout ? [{ id: "haqida", label: "Kurs haqida" }] : []),
+    { id: "ustoz", label: "O‘qituvchi" },
+  ];
 
   return (
-    <AppShell active={owned ? "my-courses" : "home"}>
-      <div className="lx-cd">
-        <Link href="/#kurslar" className="lx-cd-back">
-          <Icon name="arrowLeft" size={16} /> Kurslar
+    <div className="site lx-cdp">
+      <SiteHeader />
+      <main className="lx-cd">
+        <Link href={owned ? "/my-courses" : "/#kurslar"} className="lx-cd-back">
+          <Icon name="arrowLeft" size={16} /> {owned ? "Mening kurslarim" : "Kurslar"}
         </Link>
 
         <header className="lx-cd-hero">
@@ -126,43 +155,33 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           </div>
           <h1 className="lx-cd-title">{course.titleUz}</h1>
           {lead ? <p className="lx-cd-lead">{lead}</p> : null}
-          <ul className="lx-cd-meta">
-            <li>
-              <span className="avatar sm" aria-hidden>
-                {initials(course.teacher.fullName)}
-              </span>
-              {course.teacher.fullName}
-            </li>
-            <li>
-              <Icon name="book" size={16} /> {lessons.length} dars
-            </li>
-            {startsAt ? (
-              <li>
-                <Icon name="calendar" size={16} />
-                {started ? "Boshlangan" : "Boshlanishi"}: {dayMonth(startsAt)}
+          <a href="#ustoz" className="lx-cd-byline">
+            <span className="avatar sm" aria-hidden>
+              {initials(course.teacher.fullName)}
+            </span>
+            <span>
+              <strong>{course.teacher.fullName}</strong>
+              <small>{course.teacher.subject.nameUz}</small>
+            </span>
+          </a>
+          <ul className="lx-cd-facts">
+            {facts.map((f) => (
+              <li key={f.icon}>
+                <Icon name={f.icon} size={18} />
+                <span>
+                  <strong>{f.value}</strong>
+                  <small>{f.label}</small>
+                </span>
               </li>
-            ) : null}
-            <li>
-              <Icon name="clock" size={16} /> Har dars 60 daqiqagacha
-            </li>
-            {studentCount > 0 ? (
-              <li>
-                <Icon name="users" size={16} /> {studentCount} o‘quvchi
-              </li>
-            ) : null}
+            ))}
           </ul>
         </header>
 
+        <CourseSectionNav sections={sections} />
+
         <div className="lx-cd-layout">
           <div className="lx-cd-main">
-            {showAbout ? (
-              <section className="lx-cd-block">
-                <h2 className="lx-cd-h2">Kurs haqida</h2>
-                <p className="lx-cd-text">{course.descriptionUz}</p>
-              </section>
-            ) : null}
-
-            <section className="lx-cd-block">
+            <section className="lx-cd-block" id="reja">
               <div className="lx-cd-blockhead">
                 <h2 className="lx-cd-h2">Dars rejasi</h2>
                 {lessons.length > 0 ? (
@@ -176,7 +195,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                   Dars rejasi hali e’lon qilinmagan. O‘qituvchi reja qo‘shgach shu yerda ko‘rinadi.
                 </p>
               ) : (
-                <ol className="lx-cd-lessons">
+                <LessonListToggle total={course.lessons.length} visible={LESSONS_VISIBLE}>
                   {course.lessons.map((lesson, i) => {
                     const p = tashkentParts(lesson.scheduledAt);
                     const cancelled = lesson.status === "cancelled";
@@ -235,11 +254,18 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                       </li>
                     );
                   })}
-                </ol>
+                </LessonListToggle>
               )}
             </section>
 
-            <section className="lx-cd-block">
+            {showAbout ? (
+              <section className="lx-cd-block" id="haqida">
+                <h2 className="lx-cd-h2">Kurs haqida</h2>
+                <ExpandableText text={description} className="lx-cd-text" />
+              </section>
+            ) : null}
+
+            <section className="lx-cd-block" id="ustoz">
               <h2 className="lx-cd-h2">O‘qituvchi</h2>
               <div className="lx-cd-teacher">
                 <span className="avatar lg" aria-hidden>
@@ -258,7 +284,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </section>
           </div>
 
-          <aside className="lx-cd-aside" id="sotib-olish">
+          <aside className={`lx-cd-aside${hasMobileBar ? "" : " is-top"}`} id="sotib-olish">
             {owned ? (
               <div className="lx-cd-buy" data-testid="course-owned">
                 <p className="lx-cd-buy-kicker">{completed ? "Tarix" : "Sizning kursingiz"}</p>
@@ -386,18 +412,31 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         </div>
 
         {canBuyV2 && listPrice != null ? (
-          <div className="lx-cd-mbar">
+          <div className="lx-cd-mbar lx-bottom-bar">
             <div>
               <strong>{formatSom(listPrice)}</strong>
               <span>Bir martalik to‘lov</span>
             </div>
-            <a href="#sotib-olish" className="btn btn-primary">
-              Sotib olish
-            </a>
+            <Link href={`/checkout/v2?courseId=${encodeURIComponent(course.id)}`} className="btn btn-primary">
+              {session?.user ? "Sotib olish" : "Kirib sotib olish"}
+            </Link>
+          </div>
+        ) : ownedNext ? (
+          <div className="lx-cd-mbar lx-bottom-bar">
+            <div>
+              <strong className="lx-cd-mbar-title">{ownedNext.titleUz}</strong>
+              <span>
+                {liveLesson ? "Hozir efirda" : `Keyingi dars · ${formatDateTime(ownedNext.scheduledAt)}`}
+              </span>
+            </div>
+            <Link href={`/learn/${ownedNext.id}`} className="btn btn-primary">
+              {liveLesson ? "Darsga kirish" : "Darsni ochish"}
+            </Link>
           </div>
         ) : null}
-      </div>
-    </AppShell>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }
 

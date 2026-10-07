@@ -22,10 +22,15 @@ function fabSize() {
   return window.innerWidth <= 640 ? { w: 72, h: 95 } : { w: 92, h: 122 };
 }
 
+/** Space a page keeps for its own fixed bottom bar, from `--lx-fab-reserve` on :root. */
+function bottomReserve() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lx-fab-reserve")) || 0;
+}
+
 function clampPos(p: Pos): Pos {
   const { w, h } = fabSize();
   const maxX = window.innerWidth - w - EDGE;
-  const maxY = window.innerHeight - h - EDGE;
+  const maxY = window.innerHeight - h - EDGE - bottomReserve();
   return { x: Math.min(Math.max(EDGE, p.x), maxX), y: Math.min(Math.max(EDGE, p.y), maxY) };
 }
 
@@ -77,6 +82,11 @@ export function AiMentor({ status, pathname }: { status: AiStatus; pathname: str
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setPos((cur) => clampPos(cur)));
+    return () => cancelAnimationFrame(id);
+  }, [pathname]);
 
   useEffect(() => {
     let frame = 0;

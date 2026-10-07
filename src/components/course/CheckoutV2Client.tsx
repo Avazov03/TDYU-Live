@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { thumbTone } from "@/components/course/PublicCourseCard";
 import { formatSom } from "@/lib/tariffs";
 import { checkoutErrorMessageUz } from "@/lib/checkout-v2/messages";
 
@@ -20,14 +21,26 @@ type SuccessPayload = {
  * Course-level Checkout V2 UI (demo provider only).
  * Calls POST /api/checkout/v2 with Idempotency-Key — no V1 tariff path.
  */
+const STEPS: { key: Step; label: string }[] = [
+  { key: "review", label: "Tekshirish" },
+  { key: "method", label: "To‘lov" },
+  { key: "success", label: "Tayyor" },
+];
+
 export function CheckoutV2Client({
   courseId,
   courseTitle,
   listPrice,
+  teacherName,
+  subjectName,
+  lessonCount,
 }: {
   courseId: string;
   courseTitle: string;
   listPrice: number;
+  teacherName: string;
+  subjectName: string;
+  lessonCount: number;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("review");
@@ -92,10 +105,21 @@ export function CheckoutV2Client({
     setStep("success");
   }
 
+  const stepIdx = STEPS.findIndex((s) => s.key === (step === "processing" ? "method" : step));
+
   return (
-    <div className="lx-checkout" data-testid="checkout-v2">
+    <div className="lx-checkout lx-checkout-v2" data-testid="checkout-v2">
       <div className="lx-checkout-shell">
         <div className="lx-checkout-main">
+          {step !== "success" ? (
+            <Link
+              href={`/courses/${courseId}`}
+              className="lx-cd-back lx-checkout-top-back"
+              data-testid="checkout-v2-back-course"
+            >
+              <ArrowLeft size={16} aria-hidden /> Kursga qaytish
+            </Link>
+          ) : null}
           <p className="lx-checkout-kicker">Kurs xaridi</p>
           <h1 className="lx-checkout-title">
             {step === "success" ? "Kurs sotib olindi" : "Kursni sotib olish"}
@@ -106,9 +130,26 @@ export function CheckoutV2Client({
               : "Demo to‘lov — haqiqiy pul yechilmaydi."}
           </p>
 
+          <ol className="lx-checkout-steps" aria-label="Xarid bosqichlari">
+            {STEPS.map((s, i) => {
+              const done = i < stepIdx || step === "success";
+              const current = i === stepIdx && step !== "success";
+              return (
+                <li
+                  key={s.key}
+                  className={`lx-checkout-step${done ? " is-done" : ""}${current ? " is-current" : ""}`}
+                  aria-current={current ? "step" : undefined}
+                >
+                  <span className="lx-checkout-step-n">{done ? <Check size={12} aria-hidden /> : i + 1}</span>
+                  {s.label}
+                </li>
+              );
+            })}
+          </ol>
+
           {step === "review" && (
             <section className="lx-checkout-panel">
-              <h2 className="lx-checkout-panel-title">{courseTitle}</h2>
+              <h2 className="sr-only">{courseTitle}</h2>
               <p className="lx-checkout-panel-text">
                 Bir martalik to‘lov. Kursning barcha darslari va yozuvlari ochiladi.
               </p>
@@ -120,13 +161,6 @@ export function CheckoutV2Client({
               >
                 Davom etish · {priceLabel}
               </button>
-              <Link
-                href={`/courses/${courseId}`}
-                className="lx-checkout-back"
-                data-testid="checkout-v2-back-course"
-              >
-                Kursga qaytish
-              </Link>
             </section>
           )}
 
@@ -234,8 +268,23 @@ export function CheckoutV2Client({
 
         <aside className="lx-checkout-summary">
           <h2>Buyurtma</h2>
+          <div className="lx-checkout-item">
+            <span className={`lx-checkout-item-thumb course-thumb ${thumbTone(courseId)}`} aria-hidden>
+              <BookOpen size={22} />
+            </span>
+            <div className="lx-checkout-item-info">
+              <span className="lx-checkout-item-subject">{subjectName}</span>
+              <strong className="lx-checkout-clamp" title={courseTitle}>
+                {courseTitle}
+              </strong>
+              <span className="lx-checkout-item-meta">
+                {teacherName}
+                {lessonCount > 0 ? ` · ${lessonCount} dars` : ""}
+              </span>
+            </div>
+          </div>
           <div className="lx-checkout-summary-row">
-            <span>{courseTitle}</span>
+            <span>Kurs narxi</span>
             <strong>{priceLabel}</strong>
           </div>
           <div className="lx-checkout-summary-total">

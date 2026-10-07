@@ -10,6 +10,7 @@ import {
 import { countOpenCourseSeats, getOpenEnrollment } from "@/lib/access";
 import { CheckoutV2Client } from "@/components/course/CheckoutV2Client";
 import { isStudentRole } from "@/lib/roles";
+import { SiteHeader } from "@/components/site/SiteChrome";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,9 @@ export default async function CheckoutV2Page({ searchParams }: Props) {
       isPublished: true,
       lifecycleStatus: true,
       capacity: true,
+      teacher: { select: { fullName: true } },
+      subject: { select: { nameUz: true } },
+      _count: { select: { lessons: { where: { status: { not: "cancelled" } } } } },
     },
   });
   if (!course || !isCourseLifecyclePurchaseable(course.lifecycleStatus, course.isPublished)) {
@@ -68,10 +72,16 @@ export default async function CheckoutV2Page({ searchParams }: Props) {
   }
 
   return (
-    <CheckoutV2Client
-      courseId={course.id}
-      courseTitle={course.titleUz}
-      listPrice={listPrice}
-    />
+    <div className="site">
+      <SiteHeader />
+      <CheckoutV2Client
+        courseId={course.id}
+        courseTitle={course.titleUz}
+        listPrice={listPrice}
+        teacherName={course.teacher.fullName}
+        subjectName={course.subject.nameUz}
+        lessonCount={course._count.lessons}
+      />
+    </div>
   );
 }
