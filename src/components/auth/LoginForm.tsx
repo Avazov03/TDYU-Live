@@ -87,13 +87,13 @@ export function LoginForm({ googleEnabled = false }: LoginFormProps) {
       <form className="mt-6 flex flex-col gap-8" onSubmit={handleSubmit}>
         <AuthField
           id="login-email"
-          label="Email"
-          type="email"
+          label="Email yoki login"
+          type="text"
           value={email}
           onChange={setEmail}
           placeholder="youremail@yourdomain.com"
           required
-          autoComplete="email"
+          autoComplete="username"
         />
         <AuthField
           id="login-password"
