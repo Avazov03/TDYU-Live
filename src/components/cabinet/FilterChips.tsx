@@ -24,9 +24,10 @@ export function FilterChips<T extends string>({
             role="tab"
             aria-selected={active}
             className={`lx-filter-chip${active ? " is-active" : ""}`}
+            title={opt.label}
             onClick={() => onChange(opt.value)}
           >
-            {opt.label}
+            <span className="lx-filter-label">{opt.label}</span>
             {typeof opt.count === "number" ? (
               <span className="lx-filter-count">{opt.count}</span>
             ) : null}
