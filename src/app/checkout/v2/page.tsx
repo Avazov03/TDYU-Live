@@ -11,6 +11,7 @@ import { countOpenCourseSeats, getOpenEnrollment } from "@/lib/access";
 import { CheckoutV2Client } from "@/components/course/CheckoutV2Client";
 import { isStudentRole } from "@/lib/roles";
 import { SiteHeader } from "@/components/site/SiteChrome";
+import { telegramDeepLink } from "@/lib/telegram/link-token";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,11 @@ export default async function CheckoutV2Page({ searchParams }: Props) {
   if (!isCapacityAvailable(course.capacity, await countOpenCourseSeats(course.id))) {
     redirect(`/courses/${courseId}`);
   }
+  const buyer = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { telegramChatId: true },
+  });
+  const telegramLink = buyer?.telegramChatId ? null : telegramDeepLink(session.user.id);
 
   return (
     <div className="site">
@@ -81,6 +87,7 @@ export default async function CheckoutV2Page({ searchParams }: Props) {
         teacherName={course.teacher.fullName}
         subjectName={course.subject.nameUz}
         lessonCount={course._count.lessons}
+        telegramLink={telegramLink}
       />
     </div>
   );

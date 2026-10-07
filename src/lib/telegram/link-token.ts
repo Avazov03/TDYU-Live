@@ -18,6 +18,13 @@ export function telegramLinkPayload(userId: string): string | null {
   return key ? `link_${userId}_${sign(userId, key)}` : null;
 }
 
+/** `https://t.me/<bot>?start=link_…` for the signed-in owner; null when the bot or secret is not configured. */
+export function telegramDeepLink(userId: string): string | null {
+  const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.replace(/^@/, "").trim();
+  const payload = telegramLinkPayload(userId);
+  return bot && payload ? `https://t.me/${bot}?start=${payload}` : null;
+}
+
 /** Returns the userId for a valid signed payload; a bare `link_<userId>` is rejected. */
 export function verifyTelegramLinkPayload(payload: string): string | null {
   const key = secret();

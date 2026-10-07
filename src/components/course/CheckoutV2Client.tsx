@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, Check, CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, CheckCircle2, CreditCard, Loader2, Send, ShieldCheck } from "lucide-react";
 import { thumbTone } from "@/components/course/PublicCourseCard";
 import { formatSom } from "@/lib/tariffs";
 import { checkoutErrorMessageUz } from "@/lib/checkout-v2/messages";
@@ -34,6 +34,7 @@ export function CheckoutV2Client({
   teacherName,
   subjectName,
   lessonCount,
+  telegramLink = null,
 }: {
   courseId: string;
   courseTitle: string;
@@ -41,6 +42,8 @@ export function CheckoutV2Client({
   teacherName: string;
   subjectName: string;
   lessonCount: number;
+  /** Signed bot deep link; null when the buyer already linked Telegram. */
+  telegramLink?: string | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("review");
@@ -258,6 +261,24 @@ export function CheckoutV2Client({
                   </dd>
                 </div>
               </dl>
+              {telegramLink ? (
+                <a
+                  href={telegramLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lx-checkout-tg"
+                  data-testid="checkout-v2-telegram"
+                >
+                  <span className="lx-tg-ico" aria-hidden>
+                    <Send size={18} />
+                  </span>
+                  <span className="lx-checkout-tg-text">
+                    <strong>Birinchi darsni o‘tkazib yubormang</strong>
+                    <small>Efir boshlanganda Telegram’da xabar olasiz</small>
+                  </span>
+                  <span className="lx-checkout-tg-cta">Ulash</span>
+                </a>
+              ) : null}
               <button
                 type="button"
                 className="lx-checkout-primary"

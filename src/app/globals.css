@@ -6372,3 +6372,200 @@ html[data-theme="dark"] .acet-pane {
   .lx-ai-greet, .lx-ai-typing i { animation: none; }
   .lx-ai-fab:hover, .lx-ai-fab[data-dragging] { transform: none; }
 }
+
+/* —— Live-now bar (global, students) —— */
+.lx-live-bar {
+  --live-c: var(--danger);
+  position: fixed;
+  left: 50%;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(680px, calc(100vw - 24px));
+  padding: 10px 10px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--live-c) 45%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+  animation: lx-live-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.lx-live-bar[data-state="lobby"] { --live-c: var(--accent); }
+.lx-live-pill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--live-c) 16%, transparent);
+  color: var(--live-c);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lx-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.lx-live-bar[data-state="live"] .lx-live-dot { animation: lx-live-pulse 1.6s ease-out infinite; }
+.lx-live-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.lx-live-text strong,
+.lx-live-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lx-live-text strong { font-size: 14px; font-weight: 600; color: var(--text); }
+.lx-live-text > span { font-size: 12.5px; color: var(--text-2); }
+.lx-live-more {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.lx-live-cta {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--live-c);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.2s ease;
+}
+.lx-live-cta:hover { filter: brightness(1.08); }
+.lx-live-close,
+.lx-tg-close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.lx-live-close:hover,
+.lx-tg-close:hover { background: var(--surface-2); color: var(--text); }
+@media (max-width: 640px) {
+  .lx-live-bar { gap: 8px; padding: 8px 6px 8px 8px; border-radius: 12px; }
+  .lx-live-pill { padding: 0; width: 22px; height: 22px; justify-content: center; font-size: 0; }
+  .lx-live-text strong { font-size: 13px; }
+  .lx-live-text > span { font-size: 11.5px; }
+  .lx-live-course,
+  .lx-live-more { display: none; }
+  .lx-live-cta { padding: 8px 12px; font-size: 13px; }
+  .lx-live-close { width: 24px; height: 24px; }
+}
+@keyframes lx-live-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+@keyframes lx-live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live-c) 60%, transparent); }
+  100% { box-shadow: 0 0 0 8px transparent; }
+}
+
+/* —— Telegram nudge (global, until linked) —— */
+.lx-tg-nudge {
+  position: fixed;
+  right: 20px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 140;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  width: 340px;
+  padding: 16px 16px 16px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 20px 48px -20px rgba(0, 0, 0, 0.65);
+  animation: lx-tg-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.lx-tg-close { position: absolute; top: 8px; right: 8px; }
+.lx-tg-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #229ed9;
+  color: #fff;
+}
+.lx-tg-nudge.is-linked .lx-tg-ico { background: var(--success); }
+.lx-tg-body { min-width: 0; padding-right: 20px; }
+.lx-tg-body strong { display: block; font-size: 14.5px; font-weight: 600; color: var(--text); }
+.lx-tg-body p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lx-tg-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.2s ease;
+}
+.lx-tg-cta:hover { filter: brightness(1.08); }
+@media (max-width: 860px) {
+  :root:has(.lx-bottom-bar) .lx-tg-nudge { display: none; }
+}
+@media (max-width: 640px) {
+  .lx-tg-nudge { right: 12px; left: 12px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .lx-tg-cta { width: 100%; }
+}
+@keyframes lx-tg-in { from { opacity: 0; transform: translateY(16px); } }
+
+.lx-checkout-tg {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #229ed9 40%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, #229ed9 8%, transparent);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+.lx-checkout-tg:hover { border-color: #229ed9; }
+.lx-checkout-tg .lx-tg-ico { flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; }
+.lx-checkout-tg-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.lx-checkout-tg-text strong { font-size: 14px; font-weight: 600; }
+.lx-checkout-tg-text small { font-size: 12.5px; color: var(--text-2); }
+.lx-checkout-tg-cta {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 9px;
+  background: #229ed9;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.lx-checkout-success .lx-checkout-tg { animation: lx-receipt-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.9s backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-live-bar, .lx-tg-nudge, .lx-checkout-success .lx-checkout-tg { animation: none; }
+  .lx-live-bar[data-state="live"] .lx-live-dot { animation: none; }
+}

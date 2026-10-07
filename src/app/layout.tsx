@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { AiMentorMount } from "@/components/ai/AiMentorMount";
+import { UserPulse } from "@/components/notify/UserPulse";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ConfirmDialogHost } from "@/components/ui/ConfirmDialog";
@@ -30,6 +31,7 @@ export default function RootLayout({
         <ThemeProvider>
           <SessionProvider>
             {children}
+            <UserPulse />
             <AiMentorMount />
           </SessionProvider>
           <ConfirmDialogHost />

@@ -29,6 +29,15 @@ export function NotificationBell({ unreadCount }: { unreadCount: number }) {
   }, [open]);
 
   useEffect(() => {
+    const onPulse = (e: Event) => {
+      const n = (e as CustomEvent<number>).detail;
+      if (typeof n === "number") setUnread(n);
+    };
+    window.addEventListener("lx:unread", onPulse);
+    return () => window.removeEventListener("lx:unread", onPulse);
+  }, []);
+
+  useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
