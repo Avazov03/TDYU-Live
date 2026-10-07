@@ -22,6 +22,7 @@ import {
   ATTENDANCE_STALE_MS,
   closeLiveAttendanceInterval,
   closeStaleAttendanceForMissingPeers,
+  openLiveAttendanceInterval,
   userIdFromLivePeerId,
 } from "@/lib/live-attendance";
 
@@ -209,10 +210,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // A poll from a peer the room no longer knows (network gap past the TTL, throttled
+  // background tab, server restart) puts it back instead of leaving it invisible.
+  const rejoined = !listLivePeerIds(lessonId).includes(peerId);
+  if (rejoined) joinLivePeer(lessonId, peerId, displayName, role);
   const snap = pollLiveRoom(lessonId, peerId, since ?? 0);
 
   // Stale disconnect cleanup (Wave 3): peers gone from room longer than stale window.
   const active = await findActiveLiveSession(lessonId);
+  if (rejoined && v2 && active?.status === "live") {
+    await openLiveAttendanceInterval({
+      userId: session.user.id,
+      lessonId,
+      liveSessionId: active.id,
+      moderator,
+      phase: "live",
+      liveSessionStatus: active.status,
+    }).catch(() => undefined);
+  }
   if (active?.status === "live") {
     const present = new Set<string>();
     for (const id of listLivePeerIds(lessonId)) {

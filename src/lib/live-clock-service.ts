@@ -49,18 +49,22 @@ async function persistClock(
   });
 }
 
-async function autoEndLesson(lessonId: string, liveSessionId: string) {
+export async function autoEndLesson(
+  lessonId: string,
+  liveSessionId: string,
+  notice?: { titleUz: string; messageUz: string },
+): Promise<boolean> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { course: { select: { id: true, titleUz: true } } },
   });
-  if (!lesson) return;
-  if (lesson.status !== "live" && lesson.status !== "paused") return;
+  if (!lesson) return false;
+  if (lesson.status !== "live" && lesson.status !== "paused") return false;
   const claimed = await prisma.lesson.updateMany({
     where: { id: lesson.id, status: { in: ["live", "paused"] } },
     data: { status: "ended" },
   });
-  if (claimed.count !== 1) return;
+  if (claimed.count !== 1) return false;
   if (lesson.muxLiveStreamId) {
     await completeMuxLiveStream(lesson.muxLiveStreamId).catch(() => undefined);
   }
@@ -77,10 +81,11 @@ async function autoEndLesson(lessonId: string, liveSessionId: string) {
   }
   await notifyCourseStudents(lesson.courseId, {
     type: "lesson_live",
-    titleUz: "Dars 60 daqiqada yopildi",
-    messageUz: `${lesson.course.titleUz}: ${lesson.titleUz} dars vaqti tugadi.`,
+    titleUz: notice?.titleUz ?? "Dars 60 daqiqada yopildi",
+    messageUz: notice?.messageUz ?? `${lesson.course.titleUz}: ${lesson.titleUz} dars vaqti tugadi.`,
     relatedId: lesson.id,
   }).catch(() => undefined);
+  return true;
 }
 
 export async function beatTeachingClock(input: {

@@ -198,7 +198,7 @@ export function LiveStudio({
           <strong>Kutish rejimi</strong>
           <span className="small muted">
             Chat va kirish ochiq. Kamerani sinab ko‘ring. Yozuv faqat «Jonli efirni boshlash»dan keyin.
-            Efir 60 daqiqa ichida boshlanmasa, xona avtomatik yopiladi.
+            Efir dars vaqtidan keyin 60 daqiqa ichida boshlanmasa, xona avtomatik yopiladi.
           </span>
         </div>
       ) : null}
