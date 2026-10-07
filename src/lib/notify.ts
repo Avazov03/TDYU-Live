@@ -134,8 +134,9 @@ export async function notifyCourseStudents(
   courseId: string,
   payload: Omit<NotifyInput, "userId" | "email" | "telegramChatId">,
   minTier?: "t1" | "t2" | "t3",
-) {
-  for (const user of await courseStudentRecipients(courseId, minTier)) {
+): Promise<{ students: number; telegram: number }> {
+  const recipients = await courseStudentRecipients(courseId, minTier);
+  for (const user of recipients) {
     await notifyUser({
       ...payload,
       userId: user.id,
@@ -143,6 +144,10 @@ export async function notifyCourseStudents(
       telegramChatId: user.telegramChatId,
     });
   }
+  return {
+    students: recipients.length,
+    telegram: recipients.filter((u) => u.telegramChatId).length,
+  };
 }
 
 export async function notifyTeacherOfCourse(

@@ -153,7 +153,7 @@ export async function POST(
     });
   }
 
-  await notifyCourseStudents(
+  const notified = await notifyCourseStudents(
     lesson.courseId,
     {
       type: "lesson_live",
@@ -169,5 +169,6 @@ export async function POST(
     demo: stream.demo,
     rtmpUrl: stream.demo ? null : "rtmps://global-live.mux.com:443/app",
     liveSession,
+    notified,
   });
 }

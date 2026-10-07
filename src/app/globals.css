@@ -2118,6 +2118,15 @@ html[data-theme="dark"] .acet-pane {
   color: var(--danger);
   font-size: 13.5px;
 }
+.live-notice {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 13.5px;
+  font-weight: 500;
+}
 .live-error a { color: inherit; text-decoration: underline; display: inline-block; margin-top: 8px; }
 .live-obs { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .live-meet { margin-top: 16px; }

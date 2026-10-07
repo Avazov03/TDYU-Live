@@ -35,6 +35,7 @@ export function LiveStudio({
   const meetRef = useRef<MeetRoomHandle>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [key, setKey] = useState(
     streamKey && !streamKey.startsWith("demo_") ? streamKey : "",
   );
@@ -66,6 +67,7 @@ export function LiveStudio({
     }
     setLoading(true);
     setError("");
+    setNotice("");
     let recordingUrl: string | undefined;
     if (action === "end" && isLive) {
       try {
@@ -94,6 +96,14 @@ export function LiveStudio({
     }
     const nextKey = data.lesson?.streamKey as string | undefined;
     if (nextKey && !nextKey.startsWith("demo_")) setKey(nextKey);
+    const notified = data.notified as { students: number; telegram: number } | undefined;
+    if (notified) {
+      setNotice(
+        notified.students > 0
+          ? `✓ ${notified.students} talabaga xabar yuborildi (sayt, email; Telegram: ${notified.telegram})`
+          : "Kursda hali faol talaba yo‘q — xabar yuboriladigan hech kim topilmadi",
+      );
+    }
     if (action === "end" && !data.waitingClosed) {
       window.location.href = "/teacher";
       return;
@@ -188,8 +198,15 @@ export function LiveStudio({
           <strong>Kutish rejimi</strong>
           <span className="small muted">
             Chat va kirish ochiq. Kamerani sinab ko‘ring. Yozuv faqat «Jonli efirni boshlash»dan keyin.
+            Efir 60 daqiqa ichida boshlanmasa, xona avtomatik yopiladi.
           </span>
         </div>
+      ) : null}
+
+      {notice ? (
+        <p className="live-notice" role="status" data-testid="live-notified">
+          {notice}
+        </p>
       ) : null}
 
       {inRoom ? (

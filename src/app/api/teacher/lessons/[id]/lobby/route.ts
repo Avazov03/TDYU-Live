@@ -92,7 +92,7 @@ export async function POST(
     liveSession = await ensureWaitingLiveSession(lesson.id);
   }
 
-  await notifyCourseStudents(
+  const notified = await notifyCourseStudents(
     lesson.courseId,
     {
       type: "lesson_starting",
@@ -103,5 +103,5 @@ export async function POST(
     "t2",
   );
 
-  return NextResponse.json({ lesson: updated, liveSession });
+  return NextResponse.json({ lesson: updated, liveSession, notified });
 }
