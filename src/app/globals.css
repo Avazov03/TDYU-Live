@@ -4517,6 +4517,11 @@ html[data-theme="dark"] .acet-pane {
 .lx-cd-facts small { font-size: 12.5px; color: var(--text-3); }
 .lx-cd-tabs { display: none; }
 .lx-cd-block { scroll-margin-top: 88px; }
+.lx-cd-expand.is-open .lx-cd-lead {
+  display: block;
+  white-space: pre-line;
+  overflow: visible;
+}
 .lx-cd-expand:not(.is-open) .lx-cd-text {
   display: -webkit-box;
   -webkit-line-clamp: 6;

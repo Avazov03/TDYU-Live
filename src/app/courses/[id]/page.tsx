@@ -110,8 +110,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const hasMaterials = lessons.some((l) => l._count.assets > 0);
   const shortLead = course.shortDescriptionUz?.trim() ?? "";
   const description = course.descriptionUz.trim();
-  const lead = shortLead || description;
-  const showAbout = Boolean(description && (shortLead || description.length > 220));
+  const showAbout = Boolean(shortLead && description);
   const enrollmentOwned = Boolean(enrollment && (!sub || enrollmentMode));
   const displayPrice = v2Enabled || hideTariff ? listPrice : null;
   const canBuyV2 = v2Enabled && listPrice != null && !owned && !staffViewer && purchasable && seatsLeft;
@@ -154,7 +153,11 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </span>
           </div>
           <h1 className="lx-cd-title">{course.titleUz}</h1>
-          {lead ? <p className="lx-cd-lead">{lead}</p> : null}
+          {shortLead ? (
+            <p className="lx-cd-lead">{shortLead}</p>
+          ) : description ? (
+            <ExpandableText text={description} className="lx-cd-lead" />
+          ) : null}
           <a href="#ustoz" className="lx-cd-byline">
             <span className="avatar sm" aria-hidden>
               {initials(course.teacher.fullName)}
