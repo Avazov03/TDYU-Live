@@ -138,8 +138,8 @@ export function TeacherRejaBoard({ lessons, nowIso }: { lessons: RejaLessonRow[]
       {tab === "overdue" && overdue.length > 0 ? (
         <div className="lx-reja-overdue" role="status">
           <p>
-            Bu darslar belgilangan vaqtda boshlanmagan. Yangi vaqt qo‘ying yoki rejadan olib tashlang — o‘quvchilar
-            jadvalida ham shunday ko‘rinadi.
+            Bu darslar belgilangan vaqtda boshlanmagan. Hozir o‘tishingiz, yangi vaqt qo‘yishingiz yoki rejadan olib
+            tashlashingiz mumkin — o‘quvchilar jadvalida ham shunday ko‘rinadi.
           </p>
           {removable.length > 1 ? (
             <button type="button" className="btn btn-sm btn-danger" disabled={bulkBusy} onClick={() => void removeOverdue()}>

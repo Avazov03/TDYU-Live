@@ -234,9 +234,9 @@ export default async function TeacherHomePage() {
                       ? "Kutish xonasi ochiq"
                       : "Keyingi darsingiz"}
               </span>
-              <p className="lx-mc-next-title">{focus.titleUz}</p>
+              <p className="lx-mc-next-title">{focus.courseTitle}</p>
               <p className="lx-mc-next-meta">
-                {focus.courseTitle} ·{" "}
+                Dars: {focus.titleUz} ·{" "}
                 <strong>
                   {dayTitle(focus.scheduledAt)} · {clockLabel(focus.scheduledAt)}
                 </strong>
@@ -247,7 +247,7 @@ export default async function TeacherHomePage() {
               ) : null}
             </div>
             <Link href={`/teacher/live/${focus.id}`} className="btn btn-primary lx-mc-next-cta">
-              {isOnAir(focus.status) ? "Efirga qaytish" : focusLive ? "Kutish xonasiga" : "Studioga kirish"}
+              {isOnAir(focus.status) ? "Efirga qaytish" : focusLive ? "Kutish xonasiga" : "Darsni boshlash"}
             </Link>
           </section>
         ) : gatedStep ? (
@@ -448,8 +448,8 @@ export default async function TeacherHomePage() {
                               {isOnAir(card.next.status)
                                 ? "Efirga qaytish"
                                 : isRunningLessonStatus(card.next.status)
-                                  ? "Kutishga qaytish"
-                                  : "Studioga kirish"}
+                                  ? "Kutish xonasiga"
+                                  : "Darsni boshlash"}
                             </Link>
                           ) : card.completed || card.cancelled ? null : (
                             <Link href="/teacher/reja" className="btn btn-primary">

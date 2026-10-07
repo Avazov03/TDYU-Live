@@ -37,9 +37,9 @@ export function LessonActions({
             <span className="lx-lesson-wait">Efir nashrdan keyin</span>
           )
         ) : null}
-        {status === "scheduled" && !courseGate && !overdue ? (
+        {status === "scheduled" && !courseGate ? (
           <Link href={`/teacher/live/${lessonId}`} className="btn btn-primary btn-sm">
-            Studioga kirish
+            Darsni boshlash
           </Link>
         ) : null}
         {status === "lobby" ? (
