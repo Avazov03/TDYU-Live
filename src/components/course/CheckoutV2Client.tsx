@@ -119,7 +119,14 @@ export function CheckoutV2Client({
             >
               <ArrowLeft size={16} aria-hidden /> Kursga qaytish
             </Link>
-          ) : null}
+          ) : (
+            <div className="lx-checkout-done" aria-hidden>
+              <svg viewBox="0 0 52 52">
+                <circle className="lx-checkout-done-ring" cx="26" cy="26" r="24" />
+                <path className="lx-checkout-done-check" d="M15 27l7 7 15-15" />
+              </svg>
+            </div>
+          )}
           <p className="lx-checkout-kicker">Kurs xaridi</p>
           <h1 className="lx-checkout-title">
             {step === "success" ? "Kurs sotib olindi" : "Kursni sotib olish"}
@@ -221,7 +228,7 @@ export function CheckoutV2Client({
           )}
 
           {step === "success" && result && (
-            <section className="lx-checkout-panel" data-testid="checkout-v2-success">
+            <section className="lx-checkout-panel lx-checkout-success" data-testid="checkout-v2-success">
               <div className="lx-checkout-success-badge">
                 <CheckCircle2 aria-hidden />
                 Muvaffaqiyatli
