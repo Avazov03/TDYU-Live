@@ -5904,6 +5904,11 @@ html[data-theme="dark"] .acet-pane {
 .lx-review-lessons li::marker { color: var(--text-3); }
 .lx-review-lessons li span + span { margin-left: 8px; }
 .lx-review .lx-form-done { margin: 0; }
+.lx-review .admin-course-card { min-width: 0; }
+.lx-review .admin-course-title h4,
+.lx-review .admin-course-detail p,
+.lx-review .admin-course-detail li,
+.lx-review .lx-form-done { overflow-wrap: anywhere; }
 
 .lx-dialog {
   width: min(560px, calc(100vw - 24px));
