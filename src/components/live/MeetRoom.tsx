@@ -42,6 +42,7 @@ type PeerInfo = {
   avPermission?: "none" | "requested" | "granted" | "revoked";
   teacherMuted?: boolean;
   teacherCamOff?: boolean;
+  inst?: string;
 };
 
 type PresentState = { fileUrl: string; fileName: string; mime: string } | null;
@@ -77,7 +78,7 @@ async function api(body: Record<string, unknown>) {
       id: number;
       from: string;
       to: string;
-      data: { kind: string; sdp?: string; candidate?: RTCIceCandidateInit };
+      data: { kind: string; sdp?: string; inst?: string; toInst?: string; candidate?: RTCIceCandidateInit };
     }[];
     present?: PresentState;
     pointer?: { on: boolean; x: number; y: number };
@@ -379,6 +380,8 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   const screenStreamRef = useRef<MediaStream | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
   const remoteMedia = useRef(new Map<string, MediaStream>());
+  /** Page run of the remote peer each connection is negotiated with. */
+  const remoteInst = useRef(new Map<string, string>());
   const names = useRef(new Map<string, PeerInfo>());
   const sinceRef = useRef(0);
   const phaseRefreshRef = useRef(false);
@@ -507,7 +510,16 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     pcs.current.delete(id);
     names.current.delete(id);
     remoteMedia.current.delete(id);
+    remoteInst.current.delete(id);
     setRemotes((prev) => prev.filter((p) => p.info.id !== id));
+  }, []);
+
+  /** Drops a connection negotiated with an earlier page run of the peer; the peer stays listed. */
+  const resetPc = useCallback((id: string) => {
+    pcs.current.get(id)?.close();
+    pcs.current.delete(id);
+    remoteMedia.current.delete(id);
+    remoteInst.current.delete(id);
   }, []);
 
   const sendSignal = useCallback(
@@ -519,7 +531,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         name: displayName,
         action: "signal",
         to,
-        data,
+        data: { ...data, inst: instanceRef.current || undefined, toInst: remoteInst.current.get(to) },
       });
     },
     [displayName, lessonId],
@@ -617,10 +629,11 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
   );
 
   const callPeer = useCallback(
-    async (otherId: string) => {
+    async (otherId: string, otherInst?: string) => {
       if (peerIdRef.current >= otherId) return;
       if (pcs.current.has(otherId)) return;
       const pc = ensurePc(otherId);
+      if (otherInst) remoteInst.current.set(otherId, otherInst);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       sendSignal(otherId, { kind: "offer", sdp: offer.sdp });
@@ -663,6 +676,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             joinToken: joinTokenRef.current || undefined,
             name: displayName,
             action: "join",
+            instance: instanceRef.current || undefined,
           });
           sendEvent({ kind: "state", micOn: false, camOn: false });
           setMicOn(false);
@@ -702,6 +716,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           joinToken: joinTokenRef.current || undefined,
           name: displayName,
           action: "join",
+          instance: instanceRef.current || undefined,
         });
         sendEvent({ kind: "state", micOn: Boolean(moderator), camOn: Boolean(moderator) });
         if (moderator && phase === "live") startRecorder(stream);
@@ -718,6 +733,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
             joinToken: joinTokenRef.current || undefined,
             name: displayName,
             action: "join",
+            instance: instanceRef.current || undefined,
           });
         } catch {
           /* join without media */
@@ -740,8 +756,11 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           joinToken: joinTokenRef.current || undefined,
           name: displayName,
           action: "poll",
+          instance: instanceRef.current || undefined,
           since: sinceRef.current,
         });
+        // A poll from before a phase switch must not touch the new run's peer connections.
+        if (stopped) return;
         sinceRef.current = snap.since ?? sinceRef.current;
         const phaseChanged =
           (phase === "lobby" && snap.sessionStatus === "live") ||
@@ -768,8 +787,11 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
         const liveIds = new Set((snap.peers ?? []).map((p) => p.id));
         for (const p of snap.peers ?? []) {
           names.current.set(p.id, p);
-          if (peerIdRef.current < p.id) await callPeer(p.id);
+          const knownInst = remoteInst.current.get(p.id);
+          if (p.inst && knownInst && knownInst !== p.inst) resetPc(p.id);
+          if (peerIdRef.current < p.id) await callPeer(p.id, p.inst);
           else ensurePc(p.id);
+          if (stopped) return;
         }
         setRemotes((prev) => {
           const known = new Map(prev.map((r) => [r.info.id, r]));
@@ -782,9 +804,17 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           if (!liveIds.has(id)) dropRemote(id);
         }
         for (const msg of snap.messages ?? []) {
+          if (stopped) return;
           if (msg.data.kind !== "offer" && msg.data.kind !== "answer" && msg.data.kind !== "ice") continue;
+          // Signals addressed to an earlier run of this page (or sent by an earlier run of the peer) are stale.
+          if (msg.data.toInst && msg.data.toInst !== instanceRef.current) continue;
+          const knownInst = remoteInst.current.get(msg.from);
+          const fromOtherRun = Boolean(msg.data.inst && knownInst && msg.data.inst !== knownInst);
+          if (fromOtherRun && msg.data.kind !== "offer") continue;
+          if (fromOtherRun) resetPc(msg.from);
           const pc = ensurePc(msg.from);
           if (msg.data.kind === "offer" && msg.data.sdp) {
+            if (msg.data.inst) remoteInst.current.set(msg.from, msg.data.inst);
             if (pc.signalingState === "have-local-offer") {
               await pc.setLocalDescription({ type: "rollback" }).catch(() => undefined);
             }
@@ -807,6 +837,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
           }
         }
       } catch (err) {
+        if (stopped) return;
         const { code, status } = err as { code?: string; status?: number };
         const roomClosed =
           code === "SESSION_ENDED" ||
@@ -889,6 +920,7 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
     moderator,
     outgoingStream,
     phase,
+    resetPc,
     router,
     sendEvent,
     sendSignal,

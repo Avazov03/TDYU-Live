@@ -29,6 +29,8 @@ export type LivePeer = {
   teacherCamOff: boolean;
   micOn: boolean;
   camOn: boolean;
+  /** Current page run of this peer; changes when its room remounts (lobby → live, reload). */
+  inst?: string;
 };
 
 export type PresentState = {
@@ -56,6 +58,8 @@ export type SignalPayload = {
     | "state"
     | "pointer";
   sdp?: string;
+  inst?: string;
+  toInst?: string;
   candidate?: {
     candidate?: string;
     sdpMid?: string | null;
@@ -138,6 +142,7 @@ function publicPeer(p: PeerRow): LivePeer {
     teacherCamOff: p.teacherCamOff,
     micOn: p.micOn,
     camOn: p.camOn,
+    inst: p.inst,
   };
 }
 
@@ -204,6 +209,7 @@ export function joinLivePeer(
   peerId: string,
   name: string,
   role: PeerRole,
+  inst?: string,
 ) {
   const state = room(lessonId);
   prune(state);
@@ -212,6 +218,7 @@ export function joinLivePeer(
     existing.name = name.trim().slice(0, 80) || existing.name;
     existing.role = role;
     existing.lastSeen = Date.now();
+    if (inst) existing.inst = inst;
     // Preserve A/V permission flags on re-join (Wave 2).
     return snapshot(state, peerId, 0);
   }
@@ -222,6 +229,7 @@ export function joinLivePeer(
     name: name.trim().slice(0, 80) || "Mehmon",
     role,
     ...flags,
+    inst,
     lastSeen: Date.now(),
   });
   return snapshot(state, peerId, 0);

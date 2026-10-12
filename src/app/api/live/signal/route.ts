@@ -57,6 +57,8 @@ const postSchema = z.object({
     .object({
       kind: eventKind,
       sdp: z.string().optional(),
+      inst: z.string().max(64).optional(),
+      toInst: z.string().max(64).optional(),
       candidate: z.unknown().optional(),
       handRaised: z.boolean().optional(),
       targetId: z.string().optional(),
@@ -170,7 +172,7 @@ export async function POST(req: Request) {
   }
 
   if (action === "join") {
-    const snap = joinLivePeer(lessonId, peerId, displayName, role);
+    const snap = joinLivePeer(lessonId, peerId, displayName, role, instance);
     return NextResponse.json({ ...snap, peerId });
   }
 
@@ -205,6 +207,8 @@ export async function POST(req: Request) {
     pushLiveSignal(lessonId, peerId, to, {
       kind: data.kind,
       sdp: data.sdp,
+      inst: data.inst,
+      toInst: data.toInst,
       candidate: data.candidate as SignalPayload["candidate"],
     });
     return NextResponse.json({ ok: true });
@@ -213,7 +217,7 @@ export async function POST(req: Request) {
   // A poll from a peer the room no longer knows (network gap past the TTL, throttled
   // background tab, server restart) puts it back instead of leaving it invisible.
   const rejoined = !listLivePeerIds(lessonId).includes(peerId);
-  if (rejoined) joinLivePeer(lessonId, peerId, displayName, role);
+  if (rejoined) joinLivePeer(lessonId, peerId, displayName, role, instance);
   const snap = pollLiveRoom(lessonId, peerId, since ?? 0);
 
   // Stale disconnect cleanup (Wave 3): peers gone from room longer than stale window.
