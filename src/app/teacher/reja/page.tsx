@@ -15,7 +15,12 @@ import type { CourseLifecycleStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeacherRejaPage() {
+export default async function TeacherRejaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kurs?: string | string[] }>;
+}) {
+  const { kurs } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/teacher/reja");
   if (session.user.role !== "teacher") redirect("/");
@@ -44,6 +49,7 @@ export default async function TeacherRejaPage() {
     (c) => c.lifecycleStatus !== "completed" && !lessonPlanLock(c.lifecycleStatus, reviewFlow),
   );
   const lockedCount = teacher.courses.length - plannable.length;
+  const preselectId = typeof kurs === "string" && plannable.some((c) => c.id === kurs) ? kurs : undefined;
 
   return (
     <AppShell active="teacher-reja">
@@ -61,10 +67,11 @@ export default async function TeacherRejaPage() {
         <div className="lx-reja-tools">
           <SoftDisclosure
             title="Kursga dars qo‘shish"
-            defaultOpen={lessons.length === 0 && plannable.length > 0}
+            defaultOpen={Boolean(preselectId) || (lessons.length === 0 && plannable.length > 0)}
           >
             {plannable.length > 0 ? (
               <CreateLessonForm
+                initialCourseId={preselectId}
                 courses={plannable.map((c) => ({
                   id: c.id,
                   titleUz: c.titleUz,

@@ -21,8 +21,9 @@ import { CancelCourseButton } from "@/components/teacher/CancelCourseButton";
 import { isLiveAllowedForCourse, liveGate } from "@/lib/course-review-policy";
 import { TeacherCourseReviewPanel } from "@/components/teacher/TeacherCourseReviewPanel";
 import { CompleteCourseButton } from "@/components/teacher/CompleteCourseButton";
+import { QuickLiveButton } from "@/components/teacher/QuickLiveButton";
 import { isOpenLessonStatus } from "@/lib/course-completion-policy";
-import { isRunningLessonStatus } from "@/lib/schedule-policy";
+import { DEFAULT_LESSON_MINUTES, isRunningLessonStatus } from "@/lib/schedule-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +32,18 @@ function isOnAir(status: string) {
   return status === "live" || status === "paused";
 }
 
+function isLongOverdue(when: Date) {
+  return Date.now() - when.getTime() > DEFAULT_LESSON_MINUTES * 60_000;
+}
+
 function countdownLabel(when: Date) {
   const ms = when.getTime() - Date.now();
-  if (ms <= 0) return "Vaqti keldi";
+  if (ms <= 0) {
+    const lateMins = Math.round(-ms / 60_000);
+    if (lateMins < DEFAULT_LESSON_MINUTES) return "Vaqti keldi";
+    const lateHours = Math.round(lateMins / 60);
+    return lateHours < 48 ? `Muddati o‘tgan · ${lateHours} soat` : `Muddati o‘tgan · ${Math.round(lateHours / 24)} kun`;
+  }
   const mins = Math.round(ms / 60_000);
   if (mins < 60) return `${mins} daqiqa qoldi`;
   const hours = Math.round(mins / 60);
@@ -139,14 +149,16 @@ export default async function TeacherHomePage() {
       for (const e of course.enrollments) studentIds.add(e.userId);
     }
     const activeStudents = studentIds.size;
-    const total = course.lessons.length;
-    const phase =
-      course.lessons.some((l) => isRunningLessonStatus(l.status))
-        ? "active"
-        : withVideo > 0
-          ? "ongoing"
-          : total <= 1
-            ? "new"
+    const total = course.lessons.filter((l) => l.status !== "cancelled").length;
+    const allTaught = ended.length > 0 && actionable.length === 0;
+    const phase = course.lessons.some((l) => isRunningLessonStatus(l.status))
+      ? "active"
+      : allTaught
+        ? "taught"
+        : actionable.length === 0
+          ? "empty"
+          : ended.length > 0
+            ? "ongoing"
             : "planned";
 
     return {
@@ -162,6 +174,7 @@ export default async function TeacherHomePage() {
         course.lifecycleStatus !== "cancelled" &&
         !isLiveAllowedForCourse(course.lifecycleStatus),
       total,
+      taught: ended.length,
       withVideo,
       activeStudents,
       next,
@@ -184,6 +197,7 @@ export default async function TeacherHomePage() {
 
   const focus = running[0] ?? nextUp ?? null;
   const focusLive = Boolean(running[0]);
+  const focusOverdue = focus != null && !focusLive && isLongOverdue(focus.scheduledAt);
   const studentTotal = new Set(
     teacher.courses.flatMap((c) => [
       ...(accessMode !== "enrollment"
@@ -232,7 +246,9 @@ export default async function TeacherHomePage() {
                     ? "Efir pauzada"
                     : focusLive
                       ? "Kutish xonasi ochiq"
-                      : "Keyingi darsingiz"}
+                      : focusOverdue
+                        ? "O‘tkazilmagan dars"
+                        : "Keyingi darsingiz"}
               </span>
               <p className="lx-mc-next-title">{focus.courseTitle}</p>
               <p className="lx-mc-next-meta">
@@ -244,6 +260,12 @@ export default async function TeacherHomePage() {
               </p>
               {running.length > 1 ? (
                 <p className="lx-mc-next-meta">Yana {running.length - 1} ta efir ochiq — kurs kartalarida.</p>
+              ) : null}
+              {focusOverdue ? (
+                <p className="lx-mc-next-meta">
+                  Vaqti o‘tib ketgan. Hozir o‘tishingiz yoki <Link href="/teacher/reja">Reja</Link>da vaqtini
+                  surishingiz mumkin.
+                </p>
               ) : null}
             </div>
             <Link href={`/teacher/live/${focus.id}`} className="btn btn-primary lx-mc-next-cta">
@@ -337,11 +359,13 @@ export default async function TeacherHomePage() {
                                 : "Kutish ochiq",
                           tone: "live",
                         }
-                      : card.phase === "ongoing"
-                        ? { text: "Davom etmoqda", tone: "open" }
-                        : card.phase === "new"
-                          ? { text: "Yangi", tone: "open" }
-                          : { text: "Rejada", tone: "open" };
+                      : card.phase === "taught"
+                        ? { text: "Yakunlangan", tone: "done" }
+                        : card.phase === "empty"
+                          ? { text: "Reja bo‘sh", tone: "muted" }
+                          : card.phase === "ongoing"
+                            ? { text: "Davom etmoqda", tone: "open" }
+                            : { text: "Rejada", tone: "open" };
                 const nextOpen = card.next && card.next.status !== "scheduled";
                 const nextDate = card.next ? tashkentParts(card.next.scheduledAt) : null;
                 const pct = card.total ? Math.round((card.withVideo / card.total) * 100) : 0;
@@ -367,9 +391,11 @@ export default async function TeacherHomePage() {
                     ) : (
                       <>
                         <div className="lx-tc-top">
-                          <span className={`lx-tc-phase is-${phase.tone}`}>{phase.text}</span>
-                          <span className="lx-tc-count">
+                          <span className="lx-tc-count" title="Faol talabalar">
                             <Icon name="users" size={14} /> {card.activeStudents}
+                          </span>
+                          <span className={`lx-tc-phase is-${phase.tone}`} data-testid="course-phase">
+                            {phase.text}
                           </span>
                         </div>
                         <h3 className="lx-tc-title">{card.titleUz}</h3>
@@ -418,8 +444,10 @@ export default async function TeacherHomePage() {
                             {card.cancelled
                               ? "Kurs bekor qilingan — xaridorlarga to‘lov qaytarilgan."
                               : card.completed
-                                ? "Kurs yakunlangan — yozuvlar o‘quvchilarga doimiy ochiq."
-                                : "Keyingi dars yo‘q — rejaga dars qo‘shing."}
+                                ? "Kurs yopildi — yozuvlar o‘quvchilarga doimiy ochiq."
+                                : card.phase === "taught"
+                                  ? `Rejadagi barcha darslar o‘tildi (${card.taught}/${card.taught}). Yana dars o‘tishingiz yoki kursni yakunlashingiz mumkin.`
+                                  : "Rejada hali dars yo‘q — hoziroq dars o‘ting yoki rejaga qo‘shing."}
                           </p>
                         )}
 
@@ -452,9 +480,12 @@ export default async function TeacherHomePage() {
                                   : "Darsni boshlash"}
                             </Link>
                           ) : card.completed || card.cancelled ? null : (
-                            <Link href="/teacher/reja" className="btn btn-primary">
-                              Dars qo‘shish
-                            </Link>
+                            <>
+                              <QuickLiveButton courseId={card.id} label="Hozir dars o‘tish" />
+                              <Link href={`/teacher/reja?kurs=${card.id}#reja`} className="btn">
+                                Dars qo‘shish
+                              </Link>
+                            </>
                           )}
                           <Link href="/teacher/reja" className="btn">
                             Reja

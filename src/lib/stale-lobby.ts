@@ -5,6 +5,7 @@ import { notifyCourseStudents, notifyTeacherOfCourse } from "@/lib/notify";
 import { isLiveAttendanceV3Enabled, isLiveWaitingRoomV2Enabled } from "@/lib/feature-flags";
 import { closeAllOpenAttendanceForLiveSession } from "@/lib/live-attendance";
 import { autoEndLesson } from "@/lib/live-clock-service";
+import { isQuickLesson } from "@/lib/quick-lesson";
 
 /** A waiting room that never went live this long after both its opening and the lesson time is closed. */
 export const STALE_LOBBY_MINUTES = 60;
@@ -34,6 +35,22 @@ export async function closeStaleLobbies(now = new Date()): Promise<number> {
     closeLiveRoom(lesson.id);
     await endLiveSession(lesson.id);
     closed++;
+    if (isQuickLesson(lesson)) {
+      await prisma.lesson.deleteMany({ where: { id: lesson.id, status: "scheduled" } });
+      await notifyCourseStudents(lesson.courseId, {
+        type: "system",
+        titleUz: "Efir bo‘lmadi",
+        messageUz: `${lesson.course.titleUz}: ${lesson.titleUz} — efir boshlanmadi, kutish xonasi yopildi.`,
+        relatedId: lesson.courseId,
+      }).catch(() => undefined);
+      await notifyTeacherOfCourse(lesson.courseId, {
+        type: "system",
+        titleUz: "Kutish xonasi avtomatik yopildi",
+        messageUz: `${lesson.titleUz}: ${STALE_LOBBY_MINUTES} daqiqa ichida efir boshlanmadi, tez dars olib tashlandi.`,
+        relatedId: lesson.courseId,
+      }).catch(() => undefined);
+      continue;
+    }
     await notifyCourseStudents(lesson.courseId, {
       type: "system",
       titleUz: "Kutish xonasi yopildi",
@@ -48,6 +65,24 @@ export async function closeStaleLobbies(now = new Date()): Promise<number> {
     }).catch(() => undefined);
   }
   return closed;
+}
+
+/** Quick lessons whose waiting room never opened (e.g. the lobby request failed half-way). */
+export async function removeAbandonedQuickLessons(now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - STALE_LOBBY_MINUTES * 60_000);
+  const candidates = await prisma.lesson.findMany({
+    where: {
+      status: "scheduled",
+      scheduledAt: { lt: cutoff, gt: new Date(now.getTime() - 7 * 24 * 3_600_000) },
+      createdAt: { lt: cutoff },
+      liveSessions: { none: {} },
+    },
+    select: { id: true, scheduledAt: true, createdAt: true },
+  });
+  const ids = candidates.filter(isQuickLesson).map((l) => l.id);
+  if (ids.length === 0) return 0;
+  const { count } = await prisma.lesson.deleteMany({ where: { id: { in: ids }, status: "scheduled" } });
+  return count;
 }
 
 export async function closeAbandonedLive(now = new Date()): Promise<number> {

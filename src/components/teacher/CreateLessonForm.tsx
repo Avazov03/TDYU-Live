@@ -9,13 +9,17 @@ const defaultSlot = () => nextTashkentHourInput();
 
 export function CreateLessonForm({
   courses,
+  initialCourseId,
 }: {
   courses: { id: string; titleUz: string; statusText: string; needsReview?: boolean }[];
+  initialCourseId?: string;
 }) {
   const fid = useId();
   const router = useRouter();
   const [done, setDone] = useState<{ courseTitle: string; needsReview: boolean } | null>(null);
-  const [courseId, setCourseId] = useState(courses.length === 1 ? courses[0].id : "");
+  const [courseId, setCourseId] = useState(
+    initialCourseId ?? (courses.length === 1 ? courses[0].id : ""),
+  );
   const selected = courses.find((c) => c.id === courseId);
   const [titleUz, setTitleUz] = useState("");
   const [summaryUz, setSummaryUz] = useState("");
@@ -109,7 +113,13 @@ export function CreateLessonForm({
       </div>
       <div className="field">
         <label htmlFor={`${fid}-1`}>Mavzu</label>
-        <input id={`${fid}-1`} value={titleUz} onChange={(e) => setTitleUz(e.target.value)} required />
+        <input
+          id={`${fid}-1`}
+          value={titleUz}
+          onChange={(e) => setTitleUz(e.target.value)}
+          autoFocus={Boolean(initialCourseId)}
+          required
+        />
       </div>
       <div className="field">
         <label htmlFor={`${fid}-2`}>Qisqa ma&apos;lumot</label>
@@ -141,6 +151,11 @@ export function CreateLessonForm({
       {done ? (
         <div className={`lx-form-done${done.needsReview ? " is-next" : ""}`} role="status" data-testid="lesson-created">
           <strong>Dars «{done.courseTitle}» rejasiga qo‘shildi.</strong>
+          {done.needsReview ? null : (
+            <Link href="/teacher#kurslar" className="btn btn-sm">
+              Studio’ga qaytish
+            </Link>
+          )}
           {done.needsReview ? (
             <>
               <span>Kurs hali qoralama — o‘quvchilar ko‘rishi va efir ochilishi uchun uni tekshiruvga yuboring.</span>

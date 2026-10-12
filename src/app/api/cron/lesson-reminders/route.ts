@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
 import { sendCourseStartReminders, sendUpcomingLessonReminders } from "@/lib/lesson-reminders";
-import { closeAbandonedLive, closeStaleLobbies } from "@/lib/stale-lobby";
+import { closeAbandonedLive, closeStaleLobbies, removeAbandonedQuickLessons } from "@/lib/stale-lobby";
 
 export const dynamic = "force-dynamic";
 
@@ -17,5 +17,13 @@ export async function GET(req: Request) {
   const courseStarts = await sendCourseStartReminders();
   const staleLobbiesClosed = await closeStaleLobbies();
   const abandonedLiveEnded = await closeAbandonedLive();
-  return NextResponse.json({ ok: true, created, courseStarts, staleLobbiesClosed, abandonedLiveEnded });
+  const quickLessonsRemoved = await removeAbandonedQuickLessons();
+  return NextResponse.json({
+    ok: true,
+    created,
+    courseStarts,
+    staleLobbiesClosed,
+    abandonedLiveEnded,
+    quickLessonsRemoved,
+  });
 }

@@ -16,6 +16,7 @@ import {
 import { closeAllOpenAttendanceForLiveSession } from "@/lib/live-attendance";
 import { startRecordingAfterLiveEnd } from "@/lib/recording-lifecycle";
 import { isStorageKeyForLesson } from "@/lib/recording-storage";
+import { isQuickLesson } from "@/lib/quick-lesson";
 
 const bodySchema = z
   .object({
@@ -71,6 +72,16 @@ export async function POST(
       where: { id: lesson.id, status: lesson.status },
       data: { status: "scheduled" },
     });
+    if (closed.count === 1 && isQuickLesson(lesson)) {
+      await prisma.lesson.deleteMany({ where: { id: lesson.id, status: "scheduled" } });
+      await notifyCourseStudents(lesson.courseId, {
+        type: "system",
+        titleUz: "Efir bo‘lmadi",
+        messageUz: `${lesson.course.titleUz}: ${lesson.titleUz} — o‘qituvchi kutish xonasini yopdi, efir boshlanmadi.`,
+        relatedId: lesson.courseId,
+      }).catch(() => undefined);
+      return NextResponse.json({ removed: true, waitingClosed: true });
+    }
     const updated = await prisma.lesson.findUniqueOrThrow({ where: { id: lesson.id } });
     if (closed.count !== 1) {
       return NextResponse.json({ lesson: updated, liveSession, waitingClosed: true });

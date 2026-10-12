@@ -8,15 +8,20 @@ import { formatDateTime } from "@/lib/utils";
 import { statusLabel, type PlanStatus } from "@/lib/plan";
 import { liveGate } from "@/lib/course-review-policy";
 import { isCourseReviewV1Enabled } from "@/lib/feature-flags";
+import { isQuickLesson } from "@/lib/quick-lesson";
+import { notifiedNotice } from "@/lib/live-notice";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeacherLiveLessonPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lessonId: string }>;
+  searchParams: Promise<{ xabar?: string; tg?: string }>;
 }) {
   const { lessonId } = await params;
+  const sp = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect(`/login?callbackUrl=/teacher/live/${lessonId}`);
   if (session.user.role !== "teacher") redirect("/");
@@ -48,6 +53,11 @@ export default async function TeacherLiveLessonPage({
 
   const siblings = lesson.course.lessons;
   const gate = liveGate(lesson.course.lifecycleStatus, isCourseReviewV1Enabled());
+  const sentTo = Number(sp.xabar);
+  const initialNotice =
+    sp.xabar != null && Number.isInteger(sentTo) && sentTo >= 0 && lesson.status === "lobby"
+      ? notifiedNotice({ students: sentTo, telegram: Math.max(0, Number(sp.tg) || 0) })
+      : "";
 
   return (
     <AppShell active="teacher">
@@ -116,6 +126,8 @@ export default async function TeacherLiveLessonPage({
         streamKey={lesson.streamKey}
         displayName={teacher.fullName}
         liveBlocked={Boolean(gate)}
+        quick={isQuickLesson(lesson)}
+        initialNotice={initialNotice}
       />
 
       <p style={{ marginTop: 16 }}>

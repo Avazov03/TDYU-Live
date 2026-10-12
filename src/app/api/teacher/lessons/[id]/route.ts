@@ -10,6 +10,7 @@ import { checkLessonRemoval, checkReschedule, isRunningLessonStatus, lessonEnd }
 import { loadTeacherLessonWindows } from "@/lib/schedule-guard";
 import { notifyCourseStudents } from "@/lib/notify";
 import { writeAuditLog } from "@/lib/audit-log";
+import { isQuickLesson } from "@/lib/quick-lesson";
 
 const patchSchema = z.object({
   titleUz: z.string().trim().min(2).optional(),
@@ -147,7 +148,11 @@ export async function DELETE(
   if (planLock) {
     return NextResponse.json({ error: planLock, code: "PLAN_LOCKED" }, { status: 409 });
   }
-  if (isScheduleRulesV1Enabled() && !isPreAudienceLifecycle(lesson.course.lifecycleStatus, reviewFlow)) {
+  if (
+    isScheduleRulesV1Enabled() &&
+    !isQuickLesson(lesson) &&
+    !isPreAudienceLifecycle(lesson.course.lifecycleStatus, reviewFlow)
+  ) {
     const check = checkLessonRemoval({
       currentStart: lesson.scheduledAt,
       currentEnd: lessonEnd(lesson),

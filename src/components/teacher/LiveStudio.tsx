@@ -8,6 +8,7 @@ import { CopyField } from "@/components/ui/CopyField";
 import { MeetRoom, type MeetRoomHandle } from "@/components/live/MeetRoom";
 import { LessonInventory } from "@/components/teacher/LessonInventory";
 import { confirmAction } from "@/components/ui/ConfirmDialog";
+import { notifiedNotice } from "@/lib/live-notice";
 
 type LiveStudioProps = {
   lessonId: string;
@@ -19,6 +20,9 @@ type LiveStudioProps = {
   displayName: string;
   /** Course is not published yet — the lobby API would refuse, so don't offer it. */
   liveBlocked?: boolean;
+  /** «Hozir dars o‘tish» lesson: closing its waiting room removes it. */
+  quick?: boolean;
+  initialNotice?: string;
 };
 
 export function LiveStudio({
@@ -30,12 +34,14 @@ export function LiveStudio({
   streamKey,
   displayName,
   liveBlocked = false,
+  quick = false,
+  initialNotice = "",
 }: LiveStudioProps) {
   const router = useRouter();
   const meetRef = useRef<MeetRoomHandle>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(initialNotice);
   const [key, setKey] = useState(
     streamKey && !streamKey.startsWith("demo_") ? streamKey : "",
   );
@@ -58,7 +64,9 @@ export function LiveStudio({
             }
           : {
               title: "Kutish xonasini yopasizmi?",
-              message: "Talabalar xonadan chiqariladi.",
+              message: quick
+                ? "Talabalar xonadan chiqariladi, efir bo‘lmagani uchun bu dars rejadan olib tashlanadi."
+                : "Talabalar xonadan chiqariladi.",
               confirmLabel: "Xonani yopish",
             },
       ))
@@ -97,14 +105,8 @@ export function LiveStudio({
     const nextKey = data.lesson?.streamKey as string | undefined;
     if (nextKey && !nextKey.startsWith("demo_")) setKey(nextKey);
     const notified = data.notified as { students: number; telegram: number } | undefined;
-    if (notified) {
-      setNotice(
-        notified.students > 0
-          ? `✓ ${notified.students} talabaga xabar yuborildi (sayt, email; Telegram: ${notified.telegram})`
-          : "Kursda hali faol talaba yo‘q — xabar yuboriladigan hech kim topilmadi",
-      );
-    }
-    if (action === "end" && !data.waitingClosed) {
+    if (notified) setNotice(notifiedNotice(notified));
+    if (action === "end" && (data.removed || !data.waitingClosed)) {
       window.location.href = "/teacher";
       return;
     }

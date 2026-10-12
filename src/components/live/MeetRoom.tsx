@@ -809,7 +809,10 @@ export const MeetRoom = forwardRef<MeetRoomHandle, MeetRoomProps>(function MeetR
       } catch (err) {
         const { code, status } = err as { code?: string; status?: number };
         const roomClosed =
-          code === "SESSION_ENDED" || code === "NOT_JOINABLE" || code === "LESSON_CANCELLED";
+          code === "SESSION_ENDED" ||
+          code === "NOT_JOINABLE" ||
+          code === "LESSON_CANCELLED" ||
+          code === "LESSON_NOT_FOUND";
         if (roomClosed) {
           if (!phaseRefreshRef.current) {
             phaseRefreshRef.current = true;
